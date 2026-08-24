@@ -1,0 +1,87 @@
+# ============================================================
+# .gitignore — Digital Subsidy and Grant Administration Platform
+# ============================================================
+
+# ── Maven ────────────────────────────────────────────────────
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+*.jar
+*.war
+*.ear
+*.class
+
+# ── IntelliJ IDEA ────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea/workspace.xml
+.idea/tasks.xml
+.idea/usage.statistics.xml
+.idea/dictionaries/
+.idea/shelf/
+
+# ── Eclipse ──────────────────────────────────────────────────
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# ── VS Code ──────────────────────────────────────────────────
+.vscode/
+*.code-workspace
+
+# ── Spring Boot ──────────────────────────────────────────────
+spring-shell.log
+
+# ── Java ─────────────────────────────────────────────────────
+*.class
+hs_err_pid*
+replay_pid*
+
+# ── OS / System ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# ── Build output ─────────────────────────────────────────────
+build/
+dist/
+bin/
+
+# ── Environment / Secrets (NEVER commit these) ───────────────
+.env
+.env.local
+.env.*.local
+application-local.properties
+application-secrets.properties
+secrets.properties
+*.pem
+*.key
+*.p12
+*.jks
+
+# ── Logs ─────────────────────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ── Uploads / Generated files ────────────────────────────────
+uploads/
+generated/
+
+# ── Node.js (if frontend tooling is added later) ─────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# ── Maven wrapper (keep) ─────────────────────────────────────
+!.mvn/
