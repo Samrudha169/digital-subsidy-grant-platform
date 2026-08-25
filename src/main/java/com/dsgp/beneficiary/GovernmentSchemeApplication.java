@@ -27,7 +27,7 @@ public class GovernmentSchemeApplication {
             return;
         }
 
-        // ---------- Full Name (letters and spaces only) ----------
+        //  Full Name
         String fullName;
         while (true) {
             System.out.print("Enter Full Name: ");
@@ -38,7 +38,7 @@ public class GovernmentSchemeApplication {
             System.out.println("Invalid input! Name should contain only letters and spaces. Try again.\n");
         }
 
-        // ---------- Government ID (Aadhaar - 12 digits, or PAN - 10 alphanumeric) ----------
+        //Government ID
         String govId;
         while (true) {
             System.out.print("Enter Government ID (12-digit Aadhaar or 10-char PAN): ");
@@ -51,7 +51,7 @@ public class GovernmentSchemeApplication {
             System.out.println("Invalid ID! Enter a 12-digit Aadhaar number or a 10-character PAN. Try again.\n");
         }
 
-        // ---------- Contact Number (exactly 10 digits) ----------
+        //Contact Number
         String contact;
         while (true) {
             System.out.print("Enter Contact Number (10 digits): ");
@@ -62,7 +62,7 @@ public class GovernmentSchemeApplication {
             System.out.println("Invalid number! Enter exactly 10 digits. Try again.\n");
         }
 
-        // ---------- Email (proper format) ----------
+        //Email
         String email;
         String emailRegex = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$";
         while (true) {
@@ -74,7 +74,7 @@ public class GovernmentSchemeApplication {
             System.out.println("Invalid email format! Example: name@example.com. Try again.\n");
         }
 
-        // ---------- Age (numbers only, realistic range) ----------
+        // Age
         int age = 0;
         while (true) {
             System.out.print("Enter Age: ");
@@ -91,7 +91,7 @@ public class GovernmentSchemeApplication {
             }
         }
 
-        // ---------- Address (must not be empty) ----------
+        // Address
         String address;
         while (true) {
             System.out.print("Enter Address: ");
@@ -102,7 +102,7 @@ public class GovernmentSchemeApplication {
             System.out.println("Address cannot be empty. Try again.\n");
         }
 
-        // ---------- Scheme Name (letters, numbers, spaces - must not be empty) ----------
+        // Scheme Name
         String schemeName;
         while (true) {
             System.out.print("Enter Scheme Name: ");
@@ -112,7 +112,7 @@ public class GovernmentSchemeApplication {
             }
             System.out.println("Invalid scheme name! Use only letters, numbers and spaces. Try again.\n");
         }
-        // ---------- Save to Database ----------
+        //  Save to Database
         String sql = "INSERT INTO beneficiary " +
                 "(full_name, gov_id, contact, email, age, address, scheme_name) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -135,10 +135,10 @@ public class GovernmentSchemeApplication {
             System.out.println("\nFailed to save data to database!");
             e.printStackTrace();
         }
-        // ---------- Confirmation ----------
+        // Confirmation
         System.out.println("\nApplication submitted successfully...\n");
 
-        // ---------- Display details ----------
+        // Display details
         System.out.println("---------- Application Details ----------");
         System.out.println("Full Name        : " + fullName);
         System.out.println("Government ID    : " + govId);
