@@ -38,6 +38,7 @@ public class GovernmentSchemeApplication {
         System.out.println("Full Name        : " + fullName);
         System.out.println("Government ID    : " + govId);
         System.out.println("Contact Info     : " + contact);
+        System.out.println("Email            : " + email);
         System.out.println("Age              : " + ageOrDob);
         System.out.println("Address          : " + address);
         System.out.println("Scheme Name      : " + schemeName);
