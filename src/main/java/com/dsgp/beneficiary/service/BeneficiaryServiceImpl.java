@@ -102,6 +102,14 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<BeneficiarySummaryResponse> getBeneficiariesByStatus(
+            RegistrationStatus status, Pageable pageable) {
+        return beneficiaryRepository.findByRegistrationStatus(status, pageable)
+                .map(this::mapToSummaryResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<BeneficiarySummaryResponse> getAllBeneficiaries(Pageable pageable) {
         return beneficiaryRepository.findAll(pageable).map(this::mapToSummaryResponse);
     }
@@ -170,17 +178,23 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                             + Arrays.toString(DocumentType.values()));
         }
 
+        // Reject duplicate document type for the same beneficiary
+        if (documentRepository.existsByBeneficiaryIdAndDocumentType(beneficiaryId, documentType)) {
+            throw new DuplicateDocumentTypeException(beneficiaryId, documentType.name());
+        }
+
         validateFile(file);
 
-        String storedFileName  = UUID.randomUUID() + "_" + file.getOriginalFilename();
-        Path   targetDir  = Paths.get(uploadDir, "beneficiary", String.valueOf(beneficiaryId));
-        Path   targetPath = targetDir.resolve(storedFileName);
+        String storedFileName = UUID.randomUUID() + "_" + file.getOriginalFilename();
+        Path   targetDir      = Paths.get(uploadDir, "beneficiary", String.valueOf(beneficiaryId));
+        Path   targetPath     = targetDir.resolve(storedFileName);
 
         try {
             Files.createDirectories(targetDir);
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             log.error("Failed to store document for beneficiary {}: {}", beneficiaryId, e.getMessage());
+            // Wrap with cause so GlobalExceptionHandler can return 500
             throw new DocumentUploadException("Failed to store document. Please try again.", e);
         }
 
@@ -217,6 +231,14 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
         log.info("Suspending beneficiary ID: {}", id);
         beneficiary.setRegistrationStatus(RegistrationStatus.SUSPENDED);
         beneficiaryRepository.save(beneficiary);
+    }
+
+    @Override
+    public BeneficiaryResponse verifyIdentity(Long id) {
+        Beneficiary beneficiary = findById(id);
+        log.info("Marking identity as verified for beneficiary ID: {}", id);
+        beneficiary.setIdentityVerified(true);
+        return mapToResponse(beneficiaryRepository.save(beneficiary));
     }
 
     // ── Private Helpers ───────────────────────────────────────────────────────

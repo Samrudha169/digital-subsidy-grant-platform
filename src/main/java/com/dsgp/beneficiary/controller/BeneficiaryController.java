@@ -182,4 +182,44 @@ public class BeneficiaryController {
     public ResponseEntity<List<DocumentResponse>> getDocuments(@PathVariable Long id) {
         return ResponseEntity.ok(beneficiaryService.getDocuments(id));
     }
+
+    // ── Identity Verification ────────────────────────────────────────────────
+
+    /**
+     * Marks a beneficiary's identity as verified.
+     *
+     * <p>PATCH /api/v1/beneficiaries/{id}/verify
+     *
+     * <p>Sets {@code identityVerified = true}. Intended for use after a
+     * Field Officer has physically confirmed the beneficiary's identity documents.
+     *
+     * @param id the beneficiary ID
+     * @return 200 OK with the updated full beneficiary response
+     */
+    @PatchMapping("/{id}/verify")
+    public ResponseEntity<BeneficiaryResponse> verifyIdentity(@PathVariable Long id) {
+        log.info("PATCH /beneficiaries/{}/verify — marking identity as verified", id);
+        return ResponseEntity.ok(beneficiaryService.verifyIdentity(id));
+    }
+
+    // ── Status Filter ────────────────────────────────────────────────────────
+
+    /**
+     * Returns a paginated list of beneficiaries filtered by registration status.
+     *
+     * <p>GET /api/v1/beneficiaries/status/{status}?page=0&size=20
+     *
+     * @param status  the registration status (PENDING, ACTIVE, SUSPENDED)
+     * @param page    zero-based page index (default 0)
+     * @param size    page size (default 20)
+     * @return 200 OK with a page of summary responses
+     */
+    @GetMapping("/status/{status}")
+    public ResponseEntity<Page<BeneficiarySummaryResponse>> getBeneficiariesByStatus(
+            @PathVariable RegistrationStatus status,
+            @RequestParam(defaultValue = "0")  int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("registrationDate").descending());
+        return ResponseEntity.ok(beneficiaryService.getBeneficiariesByStatus(status, pageable));
+    }
 }

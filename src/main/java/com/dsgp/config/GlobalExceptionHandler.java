@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.LocalDateTime;
@@ -58,7 +59,15 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DocumentUploadException.class)
     public ResponseEntity<ApiErrorResponse> handleDocumentUpload(
             DocumentUploadException ex, HttpServletRequest request) {
-        log.error("Document upload error: {}", ex.getMessage(), ex.getCause());
+        // If the exception wraps an IOException it is a filesystem failure → 500;
+        // otherwise it is a bad-request condition (empty file, wrong MIME type) → 400.
+        if (ex.getCause() instanceof java.io.IOException) {
+            log.error("Document upload I/O error: {}", ex.getMessage(), ex.getCause());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(build(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage(),
+                            request.getRequestURI(), null));
+        }
+        log.warn("Document upload validation error: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(build(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI(), null));
     }
@@ -69,6 +78,14 @@ public class GlobalExceptionHandler {
         log.warn("Invalid document type: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(build(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI(), null));
+    }
+
+    @ExceptionHandler(DuplicateDocumentTypeException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateDocumentType(
+            DuplicateDocumentTypeException ex, HttpServletRequest request) {
+        log.warn("Duplicate document type upload attempt: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), null));
     }
 
     // ── Validation Exceptions ─────────────────────────────────────────────────
@@ -101,6 +118,25 @@ public class GlobalExceptionHandler {
                 .body(build(HttpStatus.PAYLOAD_TOO_LARGE,
                         "File size exceeds the maximum allowed limit of 5MB",
                         request.getRequestURI(), null));
+    }
+
+    /**
+     * Handles invalid path-variable or request-parameter type conversions
+     * (e.g., an unrecognised enum value such as {@code /status/UNKNOWN}).
+     * Returns 400 Bad Request.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiErrorResponse> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        String message = String.format("Invalid value '%s' for parameter '%s'",
+                ex.getValue(), ex.getName());
+        if (ex.getRequiredType() != null && ex.getRequiredType().isEnum()) {
+            message += ". Allowed values: "
+                    + java.util.Arrays.toString(ex.getRequiredType().getEnumConstants());
+        }
+        log.warn("Type mismatch at {}: {}", request.getRequestURI(), message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(build(HttpStatus.BAD_REQUEST, message, request.getRequestURI(), null));
     }
 
     // ── Catch-All ─────────────────────────────────────────────────────────────

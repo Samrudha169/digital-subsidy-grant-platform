@@ -117,4 +117,25 @@ public interface BeneficiaryService {
      * @throws com.dsgp.beneficiary.exception.BeneficiaryNotFoundException if not found
      */
     void deleteBeneficiary(Long id);
+
+    /**
+     * Marks a beneficiary's identity as verified.
+     *
+     * <p>Sets {@code identityVerified = true}. Used after a Field Officer
+     * has confirmed the beneficiary's identity documents.
+     *
+     * @param id the beneficiary ID
+     * @return the updated full response DTO
+     * @throws com.dsgp.beneficiary.exception.BeneficiaryNotFoundException if not found
+     */
+    BeneficiaryResponse verifyIdentity(Long id);
+
+    /**
+     * Returns a paginated list of beneficiaries filtered by registration status.
+     *
+     * @param status   the registration status to filter by
+     * @param pageable pagination and sort parameters
+     * @return a page of {@link BeneficiarySummaryResponse}
+     */
+    Page<BeneficiarySummaryResponse> getBeneficiariesByStatus(RegistrationStatus status, Pageable pageable);
 }

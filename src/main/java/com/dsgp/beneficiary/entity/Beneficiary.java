@@ -22,7 +22,8 @@ import java.time.LocalDateTime;
 @Table(
     name = "beneficiaries",
     uniqueConstraints = {
-        @UniqueConstraint(name = "uk_beneficiary_aadhaar", columnNames = "aadhaar_number")
+        @UniqueConstraint(name = "uk_beneficiary_aadhaar",  columnNames = "aadhaar_number"),
+        @UniqueConstraint(name = "uk_beneficiary_mobile",   columnNames = "mobile_number")
     }
 )
 @Data
