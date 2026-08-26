@@ -31,6 +31,9 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <jjwt.version>0.12.5</jjwt.version>
+        <!-- Pinned to 1.18.34 for Java 21 compatibility (TypeTag fix). -->
+        <!-- BOM does not apply to annotationProcessorPaths, so version must be explicit. -->
+        <lombok.version>1.18.34</lombok.version>
     </properties>
 
     <dependencies>
@@ -124,6 +127,20 @@
 
     <build>
         <plugins>
+            <!-- Ensure Lombok annotation processing works during mvn clean compile -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

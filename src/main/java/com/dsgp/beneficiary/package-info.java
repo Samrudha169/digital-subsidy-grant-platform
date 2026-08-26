@@ -13,6 +13,6 @@
  *   <li>{@code dto}        — Data transfer objects</li>
  * </ul>
  *
- * <p><strong>Phase:</strong> Architecture setup — no implementation yet.
+ * <p><strong>Phase:</strong> Module 1 — Beneficiary Registration implemented.
  */
 package com.dsgp.beneficiary;
