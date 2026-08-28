@@ -1,73 +1,41 @@
 package com.dsgp.beneficiary.dto;
 
-import com.dsgp.beneficiary.entity.Category;
-import com.dsgp.beneficiary.entity.Gender;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-
-/**
- * Request DTO for registering a new beneficiary.
- *
- * <p>All required fields are annotated with Bean Validation constraints.
- * The controller applies {@code @Valid} to trigger validation before
- * the service layer is invoked.
- */
 @Data
 public class BeneficiaryRegistrationRequest {
 
-    @NotBlank(message = "First name is required")
-    @Size(max = 100, message = "First name must not exceed 100 characters")
-    private String firstName;
+    @NotBlank(message = "Full name is required")
+    @Size(max = 100, message = "Full name must not exceed 100 characters")
+    private String fullName;
 
-    @NotBlank(message = "Last name is required")
-    @Size(max = 100, message = "Last name must not exceed 100 characters")
-    private String lastName;
+    @NotBlank(message = "Government ID is required")
+    @Size(max = 20, message = "Government ID must not exceed 20 characters")
+    private String govId;
 
-    @NotNull(message = "Date of birth is required")
-    @Past(message = "Date of birth must be a past date")
-    private LocalDate dateOfBirth;
+    @NotBlank(message = "Contact number is required")
+    @Pattern(
+            regexp = "\\d{10}",
+            message = "Contact number must be exactly 10 digits"
+    )
+    private String contact;
 
-    @NotNull(message = "Gender is required")
-    private Gender gender;
-
-    @NotBlank(message = "Aadhaar number is required")
-    @Pattern(regexp = "\\d{12}", message = "Aadhaar number must be exactly 12 digits")
-    private String aadhaarNumber;
-
-    @NotBlank(message = "Mobile number is required")
-    @Pattern(regexp = "[6-9]\\d{9}", message = "Mobile number must be a valid 10-digit Indian mobile number starting with 6-9")
-    private String mobileNumber;
-
+    @NotBlank(message = "Email is required")
     @Email(message = "Email must be a valid address")
+    @Size(max = 150, message = "Email must not exceed 150 characters")
     private String email;
 
+    @NotNull(message = "Age is required")
+    @Min(value = 1, message = "Age must be at least 1")
+    @Max(value = 120, message = "Age must not exceed 120")
+    private Integer age;
+
+    @NotBlank(message = "Address is required")
+    @Size(max = 255, message = "Address must not exceed 255 characters")
     private String address;
 
-    private String village;
-
-    private String taluka;
-
-    @NotBlank(message = "District is required")
-    private String district;
-
-    @NotBlank(message = "State is required")
-    private String state;
-
-    @Pattern(regexp = "\\d{6}", message = "PIN code must be exactly 6 digits")
-    private String pinCode;
-
-    @DecimalMin(value = "0.0", inclusive = true, message = "Annual income must be zero or positive")
-    private BigDecimal annualIncome;
-
-    @DecimalMin(value = "0.0", inclusive = true, message = "Land holding must be zero or positive")
-    private BigDecimal landHolding;
-
-    @NotNull(message = "Category is required")
-    private Category category;
-
-    /** Name or ID of the officer performing the registration. */
-    private String createdBy;
+    @NotBlank(message = "Scheme name is required")
+    @Size(max = 150, message = "Scheme name must not exceed 150 characters")
+    private String schemeName;
 }

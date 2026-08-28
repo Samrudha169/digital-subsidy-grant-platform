@@ -165,10 +165,10 @@ public class GovernmentSchemeApplication implements CommandLineRunner {
 
         // Save to Database
         String sql = """
-                INSERT INTO beneficiary
-                (full_name, gov_id, contact, email, age, address, scheme_name)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """;
+               INSERT INTO beneficiary
+               (full_name, gov_id, contact, email, age, address, scheme_name)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+               """;
 
         try {
 
