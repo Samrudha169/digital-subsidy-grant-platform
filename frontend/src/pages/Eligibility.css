@@ -1,0 +1,334 @@
+/* ============================================
+   ELIGIBILITY PAGE
+   ============================================ */
+
+.eligibility-page {
+    min-height: 100vh;
+    background-color: var(--color-gray-50);
+}
+
+/* ============================================
+   HERO
+   ============================================ */
+
+.eligibility-hero {
+    background: linear-gradient(
+            135deg,
+            var(--color-primary) 0%,
+            var(--color-primary-dark) 100%
+    );
+    color: var(--color-white);
+    padding: var(--spacing-4xl) 0;
+}
+
+.eligibility-hero-content {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+    text-align: center;
+}
+
+.eligibility-hero h1 {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-tight);
+    margin-bottom: var(--spacing-lg);
+}
+
+.eligibility-hero p {
+    max-width: 42rem;
+    margin: 0 auto;
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ============================================
+   MAIN CONTAINER
+   ============================================ */
+
+.eligibility-container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: var(--spacing-4xl) var(--container-padding);
+}
+
+/* ============================================
+   ELIGIBILITY FORM CARD
+   ============================================ */
+
+.eligibility-card {
+    max-width: 48rem;
+    margin: 0 auto;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow-lg);
+}
+
+.form-heading {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.form-heading h2 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.form-heading p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+}
+
+/* ============================================
+   FORM GROUPS
+   ============================================ */
+
+.eligibility-form-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+.eligibility-form-group label {
+    display: block;
+    margin-bottom: var(--spacing-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.eligibility-form-group select {
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    background-color: var(--color-white);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    transition: var(--transition-base);
+    cursor: pointer;
+}
+
+.eligibility-form-group select:hover {
+    border-color: var(--color-border-dark);
+}
+
+.eligibility-form-group select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(26, 54, 93, 0.1);
+}
+
+/* ============================================
+   SUBMIT BUTTON
+   ============================================ */
+
+.eligibility-submit {
+    width: 100%;
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-lg);
+    border: none;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: var(--transition-base);
+}
+
+.eligibility-submit:hover {
+    background-color: var(--color-primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.eligibility-submit:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* ============================================
+   RESULTS SECTION
+   ============================================ */
+
+.eligibility-results {
+    margin-top: var(--spacing-4xl);
+}
+
+.results-heading {
+    text-align: center;
+    margin-bottom: var(--spacing-2xl);
+}
+
+.results-heading h2 {
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.results-heading p {
+    max-width: 48rem;
+    margin: 0 auto;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+}
+
+/* ============================================
+   RESULT CARDS
+   ============================================ */
+
+.eligibility-results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-xl);
+}
+
+.eligibility-scheme-card {
+    background-color: var(--color-white);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-base);
+}
+
+.eligibility-scheme-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-primary-light);
+    box-shadow: var(--shadow-xl);
+}
+
+/* ============================================
+   RESULT CARD HEADER
+   ============================================ */
+
+.result-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
+}
+
+.result-category,
+.result-target {
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+}
+
+.result-category {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.result-target {
+    background-color: var(--color-accent);
+    color: var(--color-white);
+}
+
+/* ============================================
+   RESULT CARD CONTENT
+   ============================================ */
+
+.eligibility-scheme-card h3 {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    line-height: var(--line-height-tight);
+    margin-bottom: var(--spacing-md);
+}
+
+.eligibility-scheme-card p {
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-xl);
+    flex-grow: 1;
+}
+
+/* ============================================
+   RESULT BUTTON
+   ============================================ */
+
+.result-button {
+    display: block;
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    text-align: center;
+    text-decoration: none;
+    font-weight: var(--font-weight-semibold);
+    transition: var(--transition-base);
+}
+
+.result-button:hover {
+    background-color: var(--color-primary-light);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.result-button:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+    .eligibility-hero {
+        padding: var(--spacing-3xl) 0;
+    }
+
+    .eligibility-hero h1 {
+        font-size: var(--font-size-3xl);
+    }
+
+    .eligibility-hero p {
+        font-size: var(--font-size-base);
+    }
+
+    .eligibility-container {
+        padding: var(--spacing-3xl) var(--container-padding);
+    }
+
+    .eligibility-card {
+        padding: var(--spacing-lg);
+    }
+
+    .eligibility-results-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .result-card-header {
+        flex-wrap: wrap;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .eligibility-submit,
+    .eligibility-scheme-card,
+    .result-button {
+        transition: none;
+    }
+}

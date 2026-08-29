@@ -1,0 +1,243 @@
+.schemes-page {
+    min-height: 100vh;
+    background-color: var(--color-gray-50);
+}
+
+/* Page Header */
+
+.schemes-hero {
+    background: linear-gradient(
+            135deg,
+            var(--color-primary) 0%,
+            var(--color-primary-dark) 100%
+    );
+    color: var(--color-white);
+    padding: var(--spacing-4xl) 0;
+}
+
+.schemes-container {
+    max-width: var(--container-max-width);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+}
+
+.schemes-hero h1 {
+    text-align: center;
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-md);
+}
+
+.schemes-hero p {
+    max-width: 48rem;
+    margin: 0 auto var(--spacing-2xl);
+    text-align: center;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+}
+
+/* Search */
+
+.schemes-search {
+    max-width: 42rem;
+    margin: 0 auto;
+}
+
+.schemes-search input {
+    width: 100%;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border: 2px solid transparent;
+    border-radius: var(--radius-xl);
+    font-family: var(--font-family-base);
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    background-color: var(--color-white);
+    box-shadow: var(--shadow-lg);
+}
+
+.schemes-search input::placeholder {
+    color: var(--color-text-muted);
+}
+
+.schemes-search input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Schemes Section */
+
+.schemes-list-section {
+    padding: var(--spacing-4xl) 0;
+}
+
+.schemes-section-header {
+    text-align: center;
+    margin-bottom: var(--spacing-3xl);
+}
+
+.schemes-section-header h2 {
+    font-size: var(--font-size-3xl);
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.schemes-section-header p {
+    font-size: var(--font-size-lg);
+    color: var(--color-text-secondary);
+}
+
+/* Scheme Grid */
+
+.schemes-page-grid {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(300px, 1fr)
+    );
+    gap: var(--spacing-xl);
+}
+
+/* Scheme Card */
+
+.scheme-page-card {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    transition: var(--transition-base);
+}
+
+.scheme-page-card:hover {
+    transform: translateY(-6px);
+    border-color: var(--color-primary-light);
+    box-shadow: var(--shadow-xl);
+}
+
+/* Card Header */
+
+.scheme-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.scheme-category,
+.scheme-target {
+    display: inline-block;
+    padding: var(--spacing-xs) var(--spacing-md);
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.scheme-category {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+}
+
+.scheme-target {
+    background-color: var(--color-accent);
+    color: var(--color-white);
+}
+
+/* Card Content */
+
+.scheme-page-card h3 {
+    color: var(--color-primary);
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-xs);
+}
+
+.scheme-full-name {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    margin-bottom: var(--spacing-lg);
+}
+
+.scheme-page-description {
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* Benefit */
+
+.scheme-benefit {
+    background-color: var(--color-gray-50);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-xl);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.scheme-benefit span {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.scheme-benefit strong {
+    color: var(--color-success);
+    font-size: var(--font-size-sm);
+}
+
+/* Button */
+
+.scheme-view-btn {
+    display: block;
+    width: 100%;
+    margin-top: auto;
+    padding: var(--spacing-md);
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    text-decoration: none;
+    text-align: center;
+    border-radius: var(--radius-lg);
+    font-weight: var(--font-weight-semibold);
+    transition: var(--transition-base);
+}
+
+.scheme-view-btn:hover {
+    background-color: var(--color-primary-light);
+    transform: translateY(-2px);
+}
+
+/* Mobile */
+
+@media (max-width: 768px) {
+
+    .schemes-hero {
+        padding: var(--spacing-3xl) 0;
+    }
+
+    .schemes-hero h1 {
+        font-size: var(--font-size-3xl);
+    }
+
+    .schemes-hero p {
+        font-size: var(--font-size-base);
+    }
+
+    .schemes-page-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .scheme-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .scheme-benefit {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

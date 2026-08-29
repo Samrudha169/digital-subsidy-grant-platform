@@ -1,0 +1,179 @@
+.scheme-detail-page {
+    min-height: 100vh;
+    background: #f5f7fa;
+    color: #1f2937;
+}
+
+/* Hero */
+.scheme-detail-hero {
+    background: linear-gradient(135deg, #193b68, #102b4d);
+    color: white;
+    padding: 70px 20px;
+}
+
+.scheme-detail-container {
+    width: 90%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.scheme-detail-badge {
+    display: inline-block;
+    background: #ff922e;
+    color: white;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 18px;
+}
+
+.scheme-detail-hero h1 {
+    font-size: 48px;
+    margin: 0 0 10px;
+}
+
+.scheme-detail-hero .scheme-full-name {
+    font-size: 20px;
+    opacity: 0.9;
+    margin-bottom: 20px;
+}
+
+.scheme-detail-hero p {
+    font-size: 18px;
+    line-height: 1.6;
+    max-width: 800px;
+}
+
+/* Main sections */
+.scheme-detail-page main {
+    padding-top: 45px;
+    padding-bottom: 60px;
+}
+
+.scheme-info,
+.scheme-benefits,
+.scheme-eligibility,
+.scheme-documents {
+    background: white;
+    border: 1px solid #e1e5ea;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.scheme-info h2,
+.scheme-benefits h2,
+.scheme-eligibility h2,
+.scheme-documents h2 {
+    color: #193b68;
+    font-size: 26px;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.scheme-info p {
+    color: #4b5563;
+    line-height: 1.7;
+    font-size: 16px;
+}
+
+/* Benefit */
+.benefit-card {
+    background: #f0f8ee;
+    border-left: 5px solid #269b26;
+    border-radius: 8px;
+    padding: 22px;
+}
+
+.benefit-card h3 {
+    color: #168b16;
+    font-size: 28px;
+    margin: 0 0 8px;
+}
+
+.benefit-card p {
+    color: #4b5563;
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* Lists */
+.scheme-eligibility ul,
+.scheme-documents ul {
+    margin: 0;
+    padding-left: 22px;
+}
+
+.scheme-eligibility li,
+.scheme-documents li {
+    color: #4b5563;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+/* Buttons */
+.scheme-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 30px;
+}
+
+.scheme-actions .btn {
+    text-decoration: none;
+    padding: 14px 25px;
+    border-radius: 7px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.scheme-actions .btn-primary {
+    background: #193b68;
+    color: white;
+}
+
+.scheme-actions .btn-primary:hover {
+    background: #102b4d;
+}
+
+.scheme-actions .btn-secondary {
+    background: white;
+    color: #193b68;
+    border: 2px solid #193b68;
+}
+
+.scheme-actions .btn-secondary:hover {
+    background: #f0f4f8;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .scheme-detail-hero {
+        padding: 50px 20px;
+    }
+
+    .scheme-detail-hero h1 {
+        font-size: 36px;
+    }
+
+    .scheme-detail-hero .scheme-full-name {
+        font-size: 18px;
+    }
+
+    .scheme-info,
+    .scheme-benefits,
+    .scheme-eligibility,
+    .scheme-documents {
+        padding: 22px;
+    }
+
+    .scheme-actions {
+        flex-direction: column;
+    }
+
+    .scheme-actions .btn {
+        width: 100%;
+        box-sizing: border-box;
+    }
+}
