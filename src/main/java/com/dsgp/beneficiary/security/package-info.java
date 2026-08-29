@@ -12,4 +12,4 @@
  *
  * <p><strong>Phase:</strong> Architecture setup — no implementation yet.
  */
-package com.dsgp.security;
+package com.dsgp.beneficiary.security;

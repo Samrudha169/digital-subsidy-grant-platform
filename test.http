@@ -3,21 +3,11 @@ POST http://localhost:8080/api/v1/beneficiaries
 Content-Type: application/json
 
 {
-  "firstName": "Rahul",
-  "lastName": "Sharma",
-  "dateOfBirth": "1998-06-15",
-  "gender": "MALE",
-  "aadhaarNumber": "234567890123",
-  "mobileNumber": "9123456780",
+  "fullName": "Rahul Sharma",
+  "govId": "345678901234",
+  "contact": "9876543210",
   "email": "rahul.sharma@example.com",
+  "age": 28,
   "address": "Kothrud, Pune",
-  "village": "Kothrud",
-  "taluka": "Haveli",
-  "district": "Pune",
-  "state": "Maharashtra",
-  "pinCode": "411038",
-  "annualIncome": 180000,
-  "landHolding": 2.5,
-  "category": "GENERAL",
-  "createdBy": "admin"
+  "schemeName": "Agriculture Subsidy"
 }

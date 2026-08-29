@@ -1,4 +1,4 @@
-package com.dsgp.security;
+package com.dsgp.beneficiary.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
