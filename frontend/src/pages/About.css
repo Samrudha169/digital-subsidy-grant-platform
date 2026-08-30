@@ -1,0 +1,483 @@
+/* ========================================
+   ABOUT PAGE
+======================================== */
+
+.about-page {
+    min-height: 100vh;
+    background-color: var(--color-gray-50);
+}
+
+.about-container {
+    width: 90%;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+
+/* ========================================
+   HERO
+======================================== */
+
+.about-hero {
+    background: linear-gradient(
+            135deg,
+            var(--color-primary) 0%,
+            var(--color-primary-dark) 100%
+    );
+
+    color: var(--color-white);
+    padding: var(--spacing-4xl) 0;
+}
+
+.about-hero .about-container {
+    text-align: center;
+}
+
+.about-hero h1 {
+    font-size: var(--font-size-4xl);
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-sm);
+}
+
+.about-hero p {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-hero span {
+    display: block;
+    max-width: 700px;
+    margin: 0 auto;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+}
+
+
+/* ========================================
+   INTRODUCTION
+======================================== */
+
+.about-introduction {
+    padding: var(--spacing-4xl) 0;
+}
+
+.about-intro-card {
+    max-width: 900px;
+    margin: 0 auto;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-3xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.about-intro-card h2 {
+    color: var(--color-primary);
+    font-size: var(--font-size-3xl);
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.about-intro-card p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-lg);
+}
+
+.about-intro-card p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* ========================================
+   SECTION HEADERS
+======================================== */
+
+.about-section-header {
+    text-align: center;
+    margin-bottom: var(--spacing-3xl);
+}
+
+.about-section-header h2 {
+    color: var(--color-primary);
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--spacing-sm);
+}
+
+.about-section-header p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+}
+
+
+/* ========================================
+   PURPOSE
+======================================== */
+
+.about-purpose {
+    padding: var(--spacing-4xl) 0;
+    background-color: var(--color-white);
+}
+
+.about-purpose-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-3xl);
+    align-items: stretch;
+}
+
+.about-purpose-text {
+    padding: var(--spacing-xl) 0;
+}
+
+.about-purpose-text h3 {
+    color: var(--color-primary);
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-lg);
+}
+
+.about-purpose-text p {
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-lg);
+}
+
+.about-purpose-text p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* Highlight */
+
+.about-purpose-highlight {
+    background-color: var(--color-gray-50);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.about-highlight-number {
+    width: 70px;
+    height: 70px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    color: var(--color-white);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-bold);
+
+    margin-bottom: var(--spacing-lg);
+}
+
+.about-purpose-highlight h3 {
+    color: var(--color-primary);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-sm);
+}
+
+.about-purpose-highlight p {
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+}
+
+
+/* ========================================
+   FEATURES
+======================================== */
+
+.about-features {
+    padding: var(--spacing-4xl) 0;
+}
+
+.about-features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-xl);
+}
+
+.about-feature-card {
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition-base);
+}
+
+.about-feature-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-primary-light);
+    box-shadow: var(--shadow-lg);
+}
+
+.about-feature-number {
+    width: 55px;
+    height: 55px;
+    margin: 0 auto var(--spacing-lg);
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: var(--radius-full);
+
+    background-color: var(--color-primary);
+    color: var(--color-white);
+
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+}
+
+.about-feature-card h3 {
+    color: var(--color-primary);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-feature-card p {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-relaxed);
+}
+
+
+/* ========================================
+   FOCUS SECTORS
+======================================== */
+
+.about-sectors {
+    padding: var(--spacing-4xl) 0;
+    background-color: var(--color-white);
+}
+
+.about-sectors-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-xl);
+}
+
+.about-sector-card {
+    background-color: var(--color-gray-50);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-2xl);
+    transition: var(--transition-base);
+}
+
+.about-sector-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--color-primary-light);
+}
+
+.about-sector-card h3 {
+    color: var(--color-primary);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-sector-card p {
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin: 0;
+}
+
+
+/* ========================================
+   ACADEMIC PROJECT
+======================================== */
+
+.about-academic {
+    padding: var(--spacing-4xl) 0;
+}
+
+.about-academic-card {
+    max-width: 900px;
+    margin: 0 auto;
+
+    background-color: var(--color-primary);
+    color: var(--color-white);
+
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-3xl);
+
+    text-align: center;
+}
+
+.about-academic-card h2 {
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-lg);
+}
+
+.about-academic-card p {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-lg);
+}
+
+.about-academic-card p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* ========================================
+   DISCLAIMER
+======================================== */
+
+.about-disclaimer {
+    padding: 0 0 var(--spacing-4xl);
+}
+
+.about-disclaimer-card {
+    max-width: 900px;
+    margin: 0 auto;
+
+    background-color: var(--color-white);
+
+    border: 1px solid var(--color-border);
+    border-left: 5px solid var(--color-accent);
+
+    border-radius: var(--radius-xl);
+
+    padding: var(--spacing-2xl);
+}
+
+.about-disclaimer-card h2 {
+    color: var(--color-primary);
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-disclaimer-card p {
+    color: var(--color-text-secondary);
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-md);
+}
+
+.about-disclaimer-card p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* ========================================
+   TABLET
+======================================== */
+
+@media (max-width: 900px) {
+
+    .about-purpose-content {
+        grid-template-columns: 1fr;
+    }
+
+    .about-features-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .about-sectors-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* ========================================
+   MOBILE
+======================================== */
+
+@media (max-width: 768px) {
+
+    .about-container {
+        width: 92%;
+    }
+
+    .about-hero {
+        padding: var(--spacing-3xl) 0;
+    }
+
+    .about-hero h1 {
+        font-size: var(--font-size-3xl);
+    }
+
+    .about-hero p {
+        font-size: var(--font-size-lg);
+    }
+
+    .about-hero span {
+        font-size: var(--font-size-sm);
+    }
+
+    .about-introduction,
+    .about-purpose,
+    .about-features,
+    .about-sectors,
+    .about-academic {
+        padding: var(--spacing-3xl) 0;
+    }
+
+    .about-intro-card {
+        padding: var(--spacing-2xl);
+    }
+
+    .about-intro-card h2,
+    .about-section-header h2 {
+        font-size: var(--font-size-2xl);
+    }
+
+    .about-section-header p {
+        font-size: var(--font-size-base);
+    }
+
+    .about-features-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .about-academic-card {
+        padding: var(--spacing-2xl);
+    }
+
+    .about-disclaimer {
+        padding-bottom: var(--spacing-3xl);
+    }
+}
+
+
+/* ========================================
+   SMALL MOBILE
+======================================== */
+
+@media (max-width: 480px) {
+
+    .about-container {
+        width: 94%;
+    }
+
+    .about-hero h1 {
+        font-size: var(--font-size-2xl);
+    }
+
+    .about-intro-card,
+    .about-purpose-highlight,
+    .about-feature-card,
+    .about-sector-card,
+    .about-academic-card,
+    .about-disclaimer-card {
+        padding: var(--spacing-xl);
+    }
+
+    .about-purpose-text h3 {
+        font-size: var(--font-size-xl);
+    }
+}

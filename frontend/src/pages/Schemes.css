@@ -1,9 +1,13 @@
 .schemes-page {
+
+
     min-height: 100vh;
     background-color: var(--color-gray-50);
 }
 
-/* Page Header */
+/* ============================================
+   PAGE HEADER
+   ============================================ */
 
 .schemes-hero {
     background: linear-gradient(
@@ -16,9 +20,10 @@
 }
 
 .schemes-container {
-    max-width: var(--container-max-width);
+    width: 90%;
+    max-width: 1100px;
     margin: 0 auto;
-    padding: 0 var(--container-padding);
+    padding: 0;
 }
 
 .schemes-hero h1 {
@@ -37,7 +42,9 @@
     line-height: var(--line-height-relaxed);
 }
 
-/* Search */
+/* ============================================
+   SEARCH
+   ============================================ */
 
 .schemes-search {
     max-width: 42rem;
@@ -66,7 +73,9 @@
     box-shadow: var(--shadow-xl);
 }
 
-/* Schemes Section */
+/* ============================================
+   SCHEMES SECTION
+   ============================================ */
 
 .schemes-list-section {
     padding: var(--spacing-4xl) 0;
@@ -88,27 +97,35 @@
     color: var(--color-text-secondary);
 }
 
-/* Scheme Grid */
+/* ============================================
+   SCHEME GRID
+   ============================================ */
 
 .schemes-page-grid {
     display: grid;
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(300px, 1fr)
-    );
+    grid-template-columns: repeat(3, 1fr);
     gap: var(--spacing-xl);
+    align-items: stretch;
 }
 
-/* Scheme Card */
+/* ============================================
+   SCHEME CARD
+   ============================================ */
 
 .scheme-page-card {
     background-color: var(--color-white);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
     padding: var(--spacing-2xl);
-    box-shadow: var(--shadow-sm);
+
     display: flex;
     flex-direction: column;
+
+    /* IMPORTANT */
+    height: 100%;
+    min-height: 500px;
+
+    box-shadow: var(--shadow-sm);
     transition: var(--transition-base);
 }
 
@@ -118,23 +135,36 @@
     box-shadow: var(--shadow-xl);
 }
 
-/* Card Header */
+/* ============================================
+   CARD HEADER / BADGES
+   ============================================ */
 
 .scheme-page-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+
     gap: var(--spacing-sm);
+
     margin-bottom: var(--spacing-lg);
+
+    min-height: 40px;
 }
 
 .scheme-category,
-.scheme-target {
-    display: inline-block;
+.scheme-page-target {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
     padding: var(--spacing-xs) var(--spacing-md);
+
     border-radius: var(--radius-full);
+
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
+
+    white-space: nowrap;
 }
 
 .scheme-category {
@@ -142,42 +172,80 @@
     color: var(--color-white);
 }
 
-.scheme-target {
+.scheme-page-target {
     background-color: var(--color-accent);
     color: var(--color-white);
 }
 
-/* Card Content */
+/* ============================================
+   CARD TITLE
+   ============================================ */
 
 .scheme-page-card h3 {
     color: var(--color-primary);
     font-size: var(--font-size-2xl);
+
     margin-bottom: var(--spacing-xs);
+
+    line-height: var(--line-height-tight);
+
+    /* Reserve same title area */
+    min-height: 30px;
 }
+
+/* ============================================
+   FULL NAME
+   ============================================ */
 
 .scheme-full-name {
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
+
     margin-bottom: var(--spacing-lg);
+
+    /* Reserve identical space */
+    min-height: 42px;
+
+    line-height: var(--line-height-normal);
 }
+
+/* ============================================
+   DESCRIPTION
+   ============================================ */
 
 .scheme-page-description {
     color: var(--color-text-secondary);
+
     line-height: var(--line-height-relaxed);
+
     margin-bottom: var(--spacing-lg);
+
+    /* IMPORTANT
+       Gives every card the same description area */
+    min-height: 84px;
 }
 
-/* Benefit */
+/* ============================================
+   BENEFIT
+   ============================================ */
 
 .scheme-benefit {
     background-color: var(--color-gray-50);
+
     border-radius: var(--radius-lg);
+
     padding: var(--spacing-md);
+
     margin-bottom: var(--spacing-xl);
+
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     gap: var(--spacing-md);
+
+    /* Same height for every benefit box */
+    min-height: 52px;
 }
 
 .scheme-benefit span {
@@ -190,19 +258,35 @@
     font-size: var(--font-size-sm);
 }
 
-/* Button */
+/* ============================================
+   BUTTON
+   ============================================ */
 
 .scheme-view-btn {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     width: 100%;
+
     margin-top: auto;
+
     padding: var(--spacing-md);
+
     background-color: var(--color-primary);
+
     color: var(--color-white);
+
     text-decoration: none;
+
     text-align: center;
+
     border-radius: var(--radius-lg);
+
     font-weight: var(--font-weight-semibold);
+
+    min-height: 48px;
+
     transition: var(--transition-base);
 }
 
@@ -211,7 +295,27 @@
     transform: translateY(-2px);
 }
 
-/* Mobile */
+/* ============================================
+   NO RESULTS
+   ============================================ */
+
+.no-schemes {
+    text-align: center;
+    padding: var(--spacing-4xl);
+}
+
+.no-schemes h3 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-md);
+}
+
+.no-schemes p {
+    color: var(--color-text-secondary);
+}
+
+/* ============================================
+   MOBILE
+   ============================================ */
 
 @media (max-width: 768px) {
 
@@ -231,13 +335,39 @@
         grid-template-columns: 1fr;
     }
 
+    .scheme-page-card {
+        min-height: 0;
+    }
+
     .scheme-page-header {
-        flex-direction: column;
+        display: flex;
+        justify-content: space-between;
         align-items: flex-start;
+        gap: var(--spacing-sm);
+        flex-wrap: wrap;
+    }
+
+    .scheme-full-name {
+        min-height: 0;
+    }
+
+    .scheme-page-description {
+        min-height: 0;
     }
 
     .scheme-benefit {
         flex-direction: column;
         align-items: flex-start;
+    }
+}
+
+/* ============================================
+   TABLET
+   ============================================ */
+
+@media (min-width: 769px) and (max-width: 1024px) {
+
+    .schemes-page-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
