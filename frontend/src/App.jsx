@@ -7,6 +7,11 @@ import Eligibility from './pages/Eligibility';
 import TrackApplication from './pages/TrackApplication';
 import About from './pages/About';
 import Login from './pages/Login';
+import NSP from './pages/NSP';
+import PMEGP from './pages/PMEGP';
+import Help from './pages/Help';
+import FAQ from './pages/FAQ';
+import Contact from './pages/Contact';
 function App() {
     // Navigation links
     const navLinks = [
@@ -110,6 +115,11 @@ function App() {
             <Route path="/track" element={<TrackApplication />} />
             <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/schemes/nsp" element={<NSP />} />
+            <Route path="/schemes/pmegp" element={<PMEGP />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/faq" element={<FAQ />} />
+            <Route path="/contact" element={<Contact />} />
 
             <Route
                 path="/"
