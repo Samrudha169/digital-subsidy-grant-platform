@@ -1,15 +1,26 @@
 # Architecture Documentation
 
-This directory contains architecture documentation for the Digital Subsidy & Grant Administration Platform.
+This directory contains architecture documentation for the Digital Subsidy & Grant Administration Platform (DSGP).
 
-## Contents (Planned)
+## Milestone 1 Documents (Complete)
 
-- `system-architecture.md` — High-level system architecture description
-- `module-design.md` — Per-module design specifications
-- `api-design.md` — REST API design guidelines
-- `database-design.md` — Database schema and entity relationship documentation
-- `security-design.md` — Security architecture and RBAC design
-- `integration-design.md` — External integration specifications (Treasury, Beneficiary DB)
-- `deployment-guide.md` — Deployment and environment setup
+| Document | Description |
+|----------|-------------|
+| [`eligibility-scoring.md`](eligibility-scoring.md) | Eligibility scoring criteria, weighted scoring algorithm, pass/fail threshold, and result structure |
+| [`verification-workflow.md`](verification-workflow.md) | Multi-level verification workflow (Field → District → Finance), state machine, escalation, and SLA |
+| [`disbursement-architecture.md`](disbursement-architecture.md) | Staged disbursement model, approval flow, treasury integration points, payment confirmation |
+| [`regional-hierarchy.md`](regional-hierarchy.md) | National–State–District–Block–Village hierarchy, role assignments, regional scoping |
+| [`api-design.md`](api-design.md) | REST API specifications for Beneficiary, Scheme, Eligibility, Verification, and Disbursement modules |
+| [`integration-design.md`](integration-design.md) | Treasury System and External Beneficiary Database integration plans |
 
-**Phase:** Architecture setup — documentation will be populated as modules are implemented.
+## Planned for Later Milestones
+
+| Document | Planned Phase |
+|----------|--------------|
+| `database-design.md` — Full ERD and schema documentation | Milestone 2 |
+| `security-design.md` — JWT, RBAC, and security architecture | Milestone 5 |
+| `deployment-guide.md` — Environment setup and deployment | Milestone 5 |
+
+---
+
+*Milestone 1 objective: Establish project architecture and disbursement framework.*
