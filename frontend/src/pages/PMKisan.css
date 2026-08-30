@@ -1,179 +1,788 @@
-.scheme-detail-page {
+/* ============================================
+   PM-KISAN PAGE
+   Same structure and visual style as NSP page
+   ============================================ */
+
+.pmkisan-page {
     min-height: 100vh;
-    background: #f5f7fa;
-    color: #1f2937;
+    background: var(--color-gray-50);
+    color: var(--color-text-primary);
 }
 
-/* Hero */
-.scheme-detail-hero {
-    background: linear-gradient(135deg, #193b68, #102b4d);
-    color: white;
-    padding: 70px 20px;
-}
 
-.scheme-detail-container {
+/* ============================================
+   CONTAINERS
+   ============================================ */
+
+.pmkisan-container {
     width: 90%;
     max-width: 1100px;
     margin: 0 auto;
 }
 
-.scheme-detail-badge {
+.pmkisan-main-container {
+    width: 90%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 0 60px;
+}
+
+
+/* ============================================
+   HERO
+   ============================================ */
+
+.pmkisan-hero {
+    background: linear-gradient(
+            135deg,
+            var(--color-primary) 0%,
+            var(--color-primary-dark) 100%
+    );
+
+    color: var(--color-white);
+    padding: 70px 20px;
+}
+
+.pmkisan-badge {
     display: inline-block;
-    background: #ff922e;
-    color: white;
-    padding: 8px 18px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: 600;
+
+    background: var(--color-accent);
+    color: var(--color-white);
+
+    padding: 6px 18px;
+
+    border-radius: var(--radius-full);
+
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+
+    margin-bottom: 18px;
+
+    letter-spacing: 0.02em;
+}
+
+.pmkisan-hero h1 {
+    font-size: 2.8rem;
+
+    font-weight: var(--font-weight-bold);
+
+    margin: 0 0 8px;
+
+    line-height: var(--line-height-tight);
+}
+
+.pmkisan-hero-full-name {
+    font-size: 1.1rem;
+
+    opacity: 0.85;
+
     margin-bottom: 18px;
 }
 
-.scheme-detail-hero h1 {
-    font-size: 48px;
+.pmkisan-hero-desc {
+    font-size: 1.1rem;
+
+    line-height: var(--line-height-relaxed);
+
+    max-width: 680px;
+
+    margin-bottom: 28px;
+
+    opacity: 0.92;
+}
+
+.pmkisan-hero-actions {
+    display: flex;
+
+    gap: 14px;
+
+    flex-wrap: wrap;
+}
+
+
+/* ============================================
+   COMMON SECTIONS
+   ============================================ */
+
+.pmkisan-section {
+    background: var(--color-white);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-xl);
+
+    padding: 36px;
+
+    margin-bottom: 24px;
+
+    box-shadow: var(--shadow-sm);
+}
+
+.pmkisan-section--alt {
+    background: var(--color-gray-50);
+}
+
+.pmkisan-section-title {
+    font-size: 1.6rem;
+
+    font-weight: var(--font-weight-bold);
+
+    color: var(--color-primary);
+
     margin: 0 0 10px;
 }
 
-.scheme-detail-hero .scheme-full-name {
-    font-size: 20px;
-    opacity: 0.9;
-    margin-bottom: 20px;
+.pmkisan-section-subtitle {
+    color: var(--color-text-secondary);
+
+    margin-bottom: 28px;
+
+    font-size: var(--font-size-base);
+
+    line-height: var(--line-height-relaxed);
 }
 
-.scheme-detail-hero p {
-    font-size: 18px;
-    line-height: 1.6;
-    max-width: 800px;
+
+/* ============================================
+   OVERVIEW
+   ============================================ */
+
+.pmkisan-overview-section {
+    background: var(--color-white);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-xl);
+
+    padding: 36px;
+
+    margin-bottom: 24px;
+
+    box-shadow: var(--shadow-sm);
 }
 
-/* Main sections */
-.scheme-detail-page main {
-    padding-top: 45px;
-    padding-bottom: 60px;
+.pmkisan-overview-grid {
+    display: grid;
+
+    grid-template-columns: 1fr 300px;
+
+    gap: 40px;
+
+    align-items: start;
 }
 
-.scheme-info,
-.scheme-benefits,
-.scheme-eligibility,
-.scheme-documents {
-    background: white;
-    border: 1px solid #e1e5ea;
-    border-radius: 12px;
-    padding: 30px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+.pmkisan-overview-text h2 {
+    font-size: 1.6rem;
+
+    font-weight: var(--font-weight-bold);
+
+    color: var(--color-primary);
+
+    margin: 0 0 16px;
 }
 
-.scheme-info h2,
-.scheme-benefits h2,
-.scheme-eligibility h2,
-.scheme-documents h2 {
-    color: #193b68;
-    font-size: 26px;
-    margin-top: 0;
-    margin-bottom: 15px;
+.pmkisan-overview-text p {
+    color: var(--color-text-secondary);
+
+    line-height: var(--line-height-relaxed);
+
+    margin-bottom: 14px;
 }
 
-.scheme-info p {
-    color: #4b5563;
-    line-height: 1.7;
-    font-size: 16px;
+
+/* ============================================
+   QUICK FACTS
+   ============================================ */
+
+.pmkisan-quick-facts {
+    background: var(--color-gray-50);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-lg);
+
+    padding: 24px;
 }
 
-/* Benefit */
-.benefit-card {
-    background: #f0f8ee;
-    border-left: 5px solid #269b26;
-    border-radius: 8px;
-    padding: 22px;
+.pmkisan-quick-facts h3 {
+    font-size: var(--font-size-sm);
+
+    font-weight: var(--font-weight-bold);
+
+    color: var(--color-primary);
+
+    margin: 0 0 16px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.05em;
 }
 
-.benefit-card h3 {
-    color: #168b16;
-    font-size: 28px;
+.pmkisan-fact-row {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+
+    padding: 10px 0;
+
+    border-bottom: 1px solid var(--color-border);
+}
+
+.pmkisan-fact-row:last-child {
+    border-bottom: none;
+
+    padding-bottom: 0;
+}
+
+.pmkisan-fact-label {
+    font-size: var(--font-size-xs);
+
+    color: var(--color-text-muted);
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.04em;
+}
+
+.pmkisan-fact-value {
+    font-size: var(--font-size-sm);
+
+    font-weight: var(--font-weight-semibold);
+
+    color: var(--color-text-primary);
+}
+
+
+/* ============================================
+   NOTICES
+   ============================================ */
+
+.pmkisan-notice {
+    display: flex;
+
+    gap: 12px;
+
+    align-items: flex-start;
+
+    padding: 16px;
+
+    border-radius: var(--radius-lg);
+
+    margin-top: 20px;
+
+    font-size: var(--font-size-sm);
+
+    line-height: var(--line-height-relaxed);
+}
+
+.pmkisan-notice span:first-child {
+    font-size: 1.1rem;
+
+    flex-shrink: 0;
+
+    margin-top: 1px;
+}
+
+.pmkisan-notice--info {
+    background: #eff6ff;
+
+    border: 1px solid #bfdbfe;
+
+    color: #1e40af;
+}
+
+.pmkisan-notice--warning {
+    background: #fffbeb;
+
+    border: 1px solid #fde68a;
+
+    color: #92400e;
+}
+
+.pmkisan-notice--danger {
+    background: #fef2f2;
+
+    border: 1px solid #fecaca;
+
+    color: #991b1b;
+}
+
+.pmkisan-notice--success {
+    background: #f0fdf4;
+
+    border: 1px solid #bbf7d0;
+
+    color: #166534;
+}
+
+.pmkisan-notices-grid {
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 16px;
+}
+
+
+/* ============================================
+   ELIGIBILITY GRID
+   ============================================ */
+
+.pmkisan-eligibility-grid {
+    list-style: none;
+
+    padding: 0;
+
+    margin: 0 0 20px;
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 16px;
+}
+
+.pmkisan-eligibility-item {
+    display: flex;
+
+    gap: 14px;
+
+    align-items: flex-start;
+
+    background: var(--color-white);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-lg);
+
+    padding: 18px;
+
+    transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+}
+
+.pmkisan-eligibility-item:hover {
+    transform: translateY(-2px);
+
+    box-shadow: var(--shadow-md);
+}
+
+.pmkisan-eligibility-icon {
+    font-size: 1.4rem;
+
+    flex-shrink: 0;
+}
+
+.pmkisan-eligibility-item strong {
+    display: block;
+
+    font-weight: var(--font-weight-semibold);
+
+    color: var(--color-primary);
+
+    margin-bottom: 4px;
+
+    font-size: var(--font-size-sm);
+}
+
+.pmkisan-eligibility-item p {
+    margin: 0;
+
+    font-size: var(--font-size-sm);
+
+    color: var(--color-text-secondary);
+
+    line-height: var(--line-height-relaxed);
+}
+
+
+/* ============================================
+   BENEFITS GRID
+   ============================================ */
+
+.pmkisan-benefits-grid {
+    list-style: none;
+
+    padding: 0;
+
+    margin: 0;
+
+    display: grid;
+
+    grid-template-columns: repeat(3, 1fr);
+
+    gap: 20px;
+}
+
+.pmkisan-benefit-card {
+    background: var(--color-gray-50);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-lg);
+
+    padding: 24px;
+
+    text-align: center;
+
+    transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+}
+
+.pmkisan-benefit-card:hover {
+    transform: translateY(-3px);
+
+    box-shadow: var(--shadow-md);
+}
+
+.pmkisan-benefit-icon {
+    font-size: 2rem;
+
+    margin-bottom: 12px;
+}
+
+.pmkisan-benefit-card h3 {
+    font-size: var(--font-size-base);
+
+    font-weight: var(--font-weight-semibold);
+
+    color: var(--color-primary);
+
     margin: 0 0 8px;
 }
 
-.benefit-card p {
-    color: #4b5563;
+.pmkisan-benefit-card p {
+    font-size: var(--font-size-sm);
+
+    color: var(--color-text-secondary);
+
+    line-height: var(--line-height-relaxed);
+
     margin: 0;
-    line-height: 1.6;
 }
 
-/* Lists */
-.scheme-eligibility ul,
-.scheme-documents ul {
+
+/* ============================================
+   DOCUMENTS
+   ============================================ */
+
+.pmkisan-doc-list {
+    list-style: none;
+
+    padding: 0;
+
     margin: 0;
-    padding-left: 22px;
+
+    display: grid;
+
+    grid-template-columns: 1fr 1fr;
+
+    gap: 12px;
 }
 
-.scheme-eligibility li,
-.scheme-documents li {
-    color: #4b5563;
-    margin-bottom: 12px;
-    line-height: 1.5;
-}
-
-/* Buttons */
-.scheme-actions {
+.pmkisan-doc-item {
     display: flex;
-    gap: 15px;
-    margin-top: 30px;
+
+    gap: 14px;
+
+    align-items: flex-start;
+
+    background: var(--color-white);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-lg);
+
+    padding: 16px;
+
+    transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
 }
 
-.scheme-actions .btn {
-    text-decoration: none;
-    padding: 14px 25px;
-    border-radius: 7px;
-    font-weight: 600;
+.pmkisan-doc-item:hover {
+    transform: translateY(-2px);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.pmkisan-doc-icon {
+    font-size: 1.4rem;
+
+    flex-shrink: 0;
+}
+
+.pmkisan-doc-label {
+    font-weight: var(--font-weight-semibold);
+
+    font-size: var(--font-size-sm);
+
+    color: var(--color-text-primary);
+
+    margin-bottom: 3px;
+}
+
+.pmkisan-doc-note {
+    font-size: var(--font-size-xs);
+
+    color: var(--color-text-muted);
+
+    line-height: var(--line-height-relaxed);
+}
+
+
+/* ============================================
+   APPLICATION STEPS
+   ============================================ */
+
+.pmkisan-steps-list {
+    list-style: none;
+
+    padding: 0;
+
+    margin: 0;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 16px;
+
+    counter-reset: none;
+}
+
+.pmkisan-step-item {
+    display: flex;
+
+    gap: 20px;
+
+    align-items: flex-start;
+
+    background: var(--color-gray-50);
+
+    border: 1px solid var(--color-border);
+
+    border-radius: var(--radius-lg);
+
+    padding: 22px;
+
+    transition:
+            transform 0.2s ease,
+            box-shadow 0.2s ease;
+}
+
+.pmkisan-step-item:hover {
+    transform: translateX(3px);
+
+    box-shadow: var(--shadow-sm);
+}
+
+.pmkisan-step-number {
+    background: var(--color-primary);
+
+    color: var(--color-white);
+
+    font-size: var(--font-size-sm);
+
+    font-weight: var(--font-weight-bold);
+
+    width: 40px;
+
+    height: 40px;
+
+    border-radius: var(--radius-full);
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-shrink: 0;
+}
+
+.pmkisan-step-body h3 {
+    font-size: var(--font-size-base);
+
+    font-weight: var(--font-weight-semibold);
+
+    color: var(--color-primary);
+
+    margin: 0 0 6px;
+}
+
+.pmkisan-step-body p {
+    font-size: var(--font-size-sm);
+
+    color: var(--color-text-secondary);
+
+    line-height: var(--line-height-relaxed);
+
+    margin: 0;
+}
+
+
+/* ============================================
+   CTA
+   ============================================ */
+
+.pmkisan-cta {
+    background: linear-gradient(
+            135deg,
+            var(--color-primary) 0%,
+            var(--color-primary-dark) 100%
+    );
+
+    color: var(--color-white);
+
+    border-radius: var(--radius-xl);
+
+    padding: 48px 36px;
+
     text-align: center;
+
+    margin-top: 8px;
 }
 
-.scheme-actions .btn-primary {
-    background: #193b68;
-    color: white;
+.pmkisan-cta h2 {
+    font-size: 1.8rem;
+
+    font-weight: var(--font-weight-bold);
+
+    margin: 0 0 12px;
 }
 
-.scheme-actions .btn-primary:hover {
-    background: #102b4d;
+.pmkisan-cta > p {
+    font-size: var(--font-size-lg);
+
+    opacity: 0.9;
+
+    margin-bottom: 28px;
 }
 
-.scheme-actions .btn-secondary {
-    background: white;
-    color: #193b68;
-    border: 2px solid #193b68;
+.pmkisan-cta-actions {
+    display: flex;
+
+    gap: 14px;
+
+    justify-content: center;
+
+    flex-wrap: wrap;
+
+    margin-bottom: 20px;
 }
 
-.scheme-actions .btn-secondary:hover {
-    background: #f0f4f8;
+.pmkisan-cta-note {
+    font-size: var(--font-size-sm);
+
+    opacity: 0.75;
+
+    max-width: 600px;
+
+    margin: 0 auto;
+
+    line-height: var(--line-height-relaxed);
 }
 
-/* Mobile */
+
+/* ============================================
+   RESPONSIVE — TABLET
+   ============================================ */
+
+@media (max-width: 1024px) {
+
+    .pmkisan-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pmkisan-quick-facts {
+        order: -1;
+    }
+
+    .pmkisan-benefits-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+
+/* ============================================
+   RESPONSIVE — MOBILE
+   ============================================ */
+
 @media (max-width: 768px) {
-    .scheme-detail-hero {
+
+    .pmkisan-hero {
         padding: 50px 20px;
     }
 
-    .scheme-detail-hero h1 {
-        font-size: 36px;
+    .pmkisan-hero h1 {
+        font-size: 2rem;
     }
 
-    .scheme-detail-hero .scheme-full-name {
-        font-size: 18px;
+    .pmkisan-section,
+    .pmkisan-overview-section {
+        padding: 24px;
     }
 
-    .scheme-info,
-    .scheme-benefits,
-    .scheme-eligibility,
-    .scheme-documents {
-        padding: 22px;
+    .pmkisan-eligibility-grid {
+        grid-template-columns: 1fr;
     }
 
-    .scheme-actions {
+    .pmkisan-doc-list {
+        grid-template-columns: 1fr;
+    }
+
+    .pmkisan-notices-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pmkisan-hero-actions {
         flex-direction: column;
     }
 
-    .scheme-actions .btn {
+    .pmkisan-hero-actions .btn {
         width: 100%;
+
+        text-align: center;
+
         box-sizing: border-box;
+    }
+}
+
+
+/* ============================================
+   RESPONSIVE — SMALL MOBILE
+   ============================================ */
+
+@media (max-width: 480px) {
+
+    .pmkisan-benefits-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pmkisan-cta-actions {
+        flex-direction: column;
+    }
+
+    .pmkisan-cta-actions .btn {
+        width: 100%;
+
+        box-sizing: border-box;
+    }
+
+    .pmkisan-step-item {
+        gap: 14px;
+
+        padding: 18px;
+    }
+
+    .pmkisan-step-number {
+        width: 36px;
+
+        height: 36px;
     }
 }
