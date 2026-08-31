@@ -11,3 +11,54 @@ Content-Type: application/json
   "address": "Kothrud, Pune",
   "schemeName": "Agriculture Subsidy"
 }
+
+
+### Create Scheme
+POST http://localhost:8080/api/v1/schemes
+Content-Type: application/json
+
+{
+  "schemeName": "TEST SCHEME",
+  "description": "Test government subsidy scheme",
+  "minAge": 18,
+  "maxAge": 60,
+  "maxAnnualIncome": 500000,
+  "maxLandHolding": 5,
+  "requiredCategory": "ALL",
+  "grantAmount": 10000,
+  "active": true
+}
+
+### Get all schemes
+GET http://localhost:8080/api/v1/schemes
+
+### Get scheme by ID
+GET http://localhost:8080/api/v1/schemes/4
+
+### Get active schemes
+GET http://localhost:8080/api/v1/schemes/active
+
+### Update Scheme
+PUT http://localhost:8080/api/v1/schemes/4
+Content-Type: application/json
+
+{
+  "schemeName": "UPDATED TEST SCHEME",
+  "description": "Updated government subsidy scheme",
+  "minAge": 21,
+  "maxAge": 60,
+  "maxAnnualIncome": 600000,
+  "maxLandHolding": 10,
+  "requiredCategory": "ALL",
+  "grantAmount": 15000,
+  "active": true
+}
+
+### Deactivate Scheme
+DELETE http://localhost:8080/api/v1/schemes/4
+
+### Verify deactivated scheme
+GET http://localhost:8080/api/v1/schemes/4
+
+### Verify active schemes
+GET http://localhost:8080/api/v1/schemes/active
