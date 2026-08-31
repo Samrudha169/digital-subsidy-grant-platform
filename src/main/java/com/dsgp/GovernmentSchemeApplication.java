@@ -1,4 +1,4 @@
-package com.dsgp.beneficiary;
+package com.dsgp;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
