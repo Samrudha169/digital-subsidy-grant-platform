@@ -62,3 +62,99 @@ GET http://localhost:8080/api/v1/schemes/4
 
 ### Verify active schemes
 GET http://localhost:8080/api/v1/schemes/active
+
+### Submit scheme application
+POST http://localhost:8080/api/v1/applications
+Content-Type: application/json
+
+{
+  "beneficiaryId": 1,
+  "schemeId": 1
+}
+
+### Verify application - Field Officer
+
+POST http://localhost:8080/api/v1/applications/1/verify
+Content-Type: application/json
+
+{
+  "verifiedBy": "FIELD_OFFICER_01",
+  "remarks": "Beneficiary documents verified successfully",
+  "approved": true
+}
+
+### Submit new application
+
+POST http://localhost:8080/api/v1/applications
+Content-Type: application/json
+
+{
+  "beneficiaryId": 1,
+  "schemeId": 1
+}
+
+###
+POST http://localhost:8080/api/v1/applications/1/verify
+Content-Type: application/json
+
+{
+  "verifiedBy": "DISTRICT_OFFICER_01",
+  "remarks": "Application verified at district level",
+  "approved": true
+}
+
+###
+GET http://localhost:8080/api/v1/applications/1
+###
+POST http://localhost:8080/api/v1/applications
+Content-Type: application/json
+
+{
+  "beneficiaryId": 2,
+  "schemeId": 1
+}
+
+###
+GET http://localhost:8080/api/v1/applications/3
+
+###
+POST http://localhost:8080/api/v1/applications/3/verify
+Content-Type: application/json
+
+{
+  "approved": true,
+  "verifiedBy": "FIELD_OFFICER_01",
+  "remarks": "Beneficiary documents verified successfully"
+}
+
+###
+POST http://localhost:8080/api/v1/applications/3/verify
+Content-Type: application/json
+
+{
+  "approved": true,
+  "verifiedBy": "DISTRICT_OFFICER_01",
+  "remarks": "Application verified at district level"
+}
+###
+POST http://localhost:8080/api/v1/applications/3/verify
+Content-Type: application/json
+
+{
+  "approved": true,
+  "verifiedBy": "FINAL_AUTHORITY_01",
+  "remarks": "Final verification completed. Application approved."
+}
+
+###
+GET http://localhost:8080/api/v1/applications/3
+
+###
+POST http://localhost:8080/api/v1/applications/6/verify
+Content-Type: application/json
+
+{
+  "verifiedBy": "FIELD_OFFICER_01",
+  "remarks": "Required income certificate is missing",
+  "approved": false
+}
