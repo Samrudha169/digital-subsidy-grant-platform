@@ -15,6 +15,26 @@ public class SchemeApplication {
 
     private Long schemeId;
 
+    // ── Eligibility and Routing fields ─────────────────────────────
+
+    /**
+     * Eligibility score calculated for the beneficiary.
+     * Range: 0 - 100
+     */
+    private Integer eligibilityScore;
+
+    /**
+     * Authority to which the application is routed
+     * based on eligibility score and grant amount.
+     *
+     * Possible values:
+     * FIELD_OFFICER
+     * VERIFYING_OFFICER
+     * DISTRICT_OFFICER
+     * FINAL_AUTHORITY
+     */
+    private String routedTo;
+
     private String status;
 
     private LocalDateTime submittedAt;
@@ -23,6 +43,7 @@ public class SchemeApplication {
 
     /**
      * Current verification level of the application.
+     *
      * 1 = Field Officer
      * 2 = Verifying Officer
      * 3 = Final Authority
@@ -30,7 +51,8 @@ public class SchemeApplication {
     private Integer verificationLevel;
 
     /**
-     * Name/ID of the officer currently handling verification.
+     * Name/ID of the officer who performed
+     * the latest verification action.
      */
     private String verifiedBy;
 
@@ -70,6 +92,22 @@ public class SchemeApplication {
 
     public void setSchemeId(Long schemeId) {
         this.schemeId = schemeId;
+    }
+
+    public Integer getEligibilityScore() {
+        return eligibilityScore;
+    }
+
+    public void setEligibilityScore(Integer eligibilityScore) {
+        this.eligibilityScore = eligibilityScore;
+    }
+
+    public String getRoutedTo() {
+        return routedTo;
+    }
+
+    public void setRoutedTo(String routedTo) {
+        this.routedTo = routedTo;
     }
 
     public String getStatus() {

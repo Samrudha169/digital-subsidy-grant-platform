@@ -13,4 +13,9 @@ public interface SchemeApplicationService {
             Long applicationId,
             VerificationRequest request
     );
+
+    SchemeApplication requestReVerification(
+            Long applicationId,
+            String remarks
+    );
 }

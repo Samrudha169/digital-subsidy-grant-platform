@@ -1,350 +1,294 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import './Eligibility.css';
+import React, { useState } from "react";
+import "./Eligibility.css";
 
-function Eligibility() {
+const Eligibility = () => {
     const [formData, setFormData] = useState({
-        state: '',
-        age: '',
-        occupation: '',
-        category: '',
-        income: ''
+        state: "",
+        ageGroup: "",
+        occupation: "",
+        category: "",
+        incomeGroup: "",
     });
 
-    const [results, setResults] = useState([]);
-    const [submitted, setSubmitted] = useState(false);
+    const [schemes, setSchemes] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const [searched, setSearched] = useState(false);
 
-    const schemes = [
-        {
-            id: 1,
-            name: 'PM-KISAN',
-            category: 'Agriculture',
-            target: 'Farmers',
-            description:
-                'Income support scheme providing ₹6,000 per year to eligible farmer families.',
-            path: '/schemes/pm-kisan'
-        },
-        {
-            id: 2,
-            name: 'National Scholarship Portal (NSP)',
-            category: 'Education',
-            target: 'Students',
-            description:
-                'Centralized platform offering various scholarships for eligible students.',
-            path: '/schemes/nsp'
-        },
-        {
-            id: 3,
-            name: 'PMEGP',
-            category: 'Business & Entrepreneurship',
-            target: 'Entrepreneurs',
-            description:
-                'Credit-linked subsidy scheme supporting self-employment through micro-enterprises.',
-            path: '/schemes/pmegp'
-        }
+    // States list
+    const states = [
+        "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh",
+        "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka",
+        "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram",
+        "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu",
+        "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+        "Andaman and Nicobar Islands", "Chandigarh", "Dadra and Nagar Haveli and Daman and Diu",
+        "Delhi", "Jammu and Kashmir", "Ladakh", "Lakshadweep", "Puducherry"
+    ];
+
+    // Age Groups
+    const ageGroups = [
+        { label: "Below 18", value: 16 },
+        { label: "18 - 25", value: 22 },
+        { label: "26 - 35", value: 30 },
+        { label: "36 - 45", value: 40 },
+        { label: "46 - 60", value: 50 },
+        { label: "Above 60", value: 65 }
+    ];
+
+    // Updated exact 5 Occupation Options
+    const occupations = [
+        "Farmer",
+        "Student",
+        "Entrepreneur",
+        "Small Business Owner",
+        "Other"
+    ];
+
+    // Social Categories
+    const categories = ["GENERAL", "OBC", "SC", "ST"];
+
+    // Income Groups
+    const incomeGroups = [
+        { label: "Below ₹1 Lakh", value: 50000 },
+        { label: "₹1 - ₹3 Lakhs", value: 200000 },
+        { label: "₹3 - ₹5 Lakhs", value: 400000 },
+        { label: "₹5 - ₹8 Lakhs", value: 650000 },
+        { label: "Above ₹8 Lakhs", value: 1000000 }
     ];
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value
-        });
+        const { name, value } = e.target;
+        setFormData((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
     };
 
-    const handleSubmit = (e) => {
+    const handleReset = () => {
+        setFormData({
+            state: "",
+            ageGroup: "",
+            occupation: "",
+            category: "",
+            incomeGroup: "",
+        });
+        setSchemes([]);
+        setError("");
+        setSearched(false);
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
+        setError("");
+        setSearched(true);
 
-        let eligibleSchemes = [];
+        // Map UI values to expected backend numbers
+        const selectedAgeGroup = ageGroups.find((g) => g.label === formData.ageGroup);
+        const selectedIncomeGroup = incomeGroups.find((g) => g.label === formData.incomeGroup);
 
-        if (formData.occupation === 'farmer') {
-            eligibleSchemes.push(schemes[0]);
+        const payload = {
+            state: formData.state,
+            age: selectedAgeGroup ? selectedAgeGroup.value : null,
+            occupation: formData.occupation,
+            category: formData.category,
+            annualIncome: selectedIncomeGroup ? selectedIncomeGroup.value : null,
+        };
+
+        try {
+            const response = await fetch("http://localhost:8080/api/v1/eligibility/check", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                throw new Error("Failed to fetch eligible schemes. Server error.");
+            }
+
+            const data = await response.json();
+            setSchemes(data);
+        } catch (err) {
+            console.error("Error fetching schemes:", err);
+            setError("Unable to connect to the backend server. Please make sure Spring Boot is running.");
+            setSchemes([]);
+        } finally {
+            setLoading(false);
         }
-
-        if (formData.occupation === 'student') {
-            eligibleSchemes.push(schemes[1]);
-        }
-
-        if (
-            formData.occupation === 'entrepreneur' ||
-            formData.occupation === 'business-owner'
-        ) {
-            eligibleSchemes.push(schemes[2]);
-        }
-
-        setResults(eligibleSchemes);
-        setSubmitted(true);
     };
 
     return (
         <div className="eligibility-page">
-
-            {/* Header */}
-            <section className="eligibility-hero">
+            <div className="eligibility-hero">
                 <div className="eligibility-hero-content">
-                    <h1>Check Your Eligibility</h1>
-                    <p>
-                        Enter your details to discover government schemes
-                        that may be suitable for you.
-                    </p>
+                    <h1>Scheme Eligibility</h1>
+                    <p>Enter your details to find government schemes you may be eligible for.</p>
                 </div>
-            </section>
+            </div>
 
-            {/* Form */}
-            <main className="eligibility-container">
-
+            <div className="eligibility-container">
                 <div className="eligibility-card">
-
-                    <div className="form-heading">
-                        <h2>Your Profile</h2>
-                        <p>
-                            Provide the following information to find relevant
-                            government schemes.
-                        </p>
-                    </div>
+                    <h2 className="form-heading">Check Your Eligibility</h2>
+                    <p className="form-subheading">
+                        Provide your details below to discover suitable government schemes.
+                    </p>
 
                     <form onSubmit={handleSubmit}>
+                        <div className="eligibility-form-grid">
+                            {/* State Select */}
+                            <div className="eligibility-form-group">
+                                <label>State / Union Territory</label>
+                                <select
+                                    name="state"
+                                    value={formData.state}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">Select State</option>
+                                    {states.map((st, idx) => (
+                                        <option key={idx} value={st}>
+                                            {st}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                        {/* State */}
-                        <div className="eligibility-form-group">
-                            <label htmlFor="state">
-                                State / Union Territory
-                            </label>
+                            {/* Age Group Select */}
+                            <div className="eligibility-form-group">
+                                <label>Age Group</label>
+                                <select
+                                    name="ageGroup"
+                                    value={formData.ageGroup}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">Select Age Group</option>
+                                    {ageGroups.map((ag, idx) => (
+                                        <option key={idx} value={ag.label}>
+                                            {ag.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
 
-                            <select
-                                id="state"
-                                name="state"
-                                value={formData.state}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">Select your state</option>
-                                <option value="andhra-pradesh">
-                                    Andhra Pradesh
-                                </option>
-                                <option value="karnataka">
-                                    Karnataka
-                                </option>
-                                <option value="maharashtra">
-                                    Maharashtra
-                                </option>
-                                <option value="tamil-nadu">
-                                    Tamil Nadu
-                                </option>
-                                <option value="delhi">
-                                    Delhi
-                                </option>
-                                <option value="other">
-                                    Other
-                                </option>
-                            </select>
+                            {/* Occupation Select */}
+                            <div className="eligibility-form-group">
+                                <label>Occupation / Status</label>
+                                <select
+                                    name="occupation"
+                                    value={formData.occupation}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">Select your occupation</option>
+                                    {occupations.map((occ, idx) => (
+                                        <option key={idx} value={occ}>
+                                            {occ}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Social Category Select */}
+                            <div className="eligibility-form-group">
+                                <label>Social Category</label>
+                                <select
+                                    name="category"
+                                    value={formData.category}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">Select Category</option>
+                                    {categories.map((cat, idx) => (
+                                        <option key={idx} value={cat}>
+                                            {cat}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Annual Income Select */}
+                            <div className="eligibility-form-group">
+                                <label>Annual Family Income</label>
+                                <select
+                                    name="incomeGroup"
+                                    value={formData.incomeGroup}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="">Select Income Group</option>
+                                    {incomeGroups.map((inc, idx) => (
+                                        <option key={idx} value={inc.label}>
+                                            {inc.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
 
-                        {/* Age */}
-                        <div className="eligibility-form-group">
-                            <label htmlFor="age">
-                                Age Group
-                            </label>
-
-                            <select
-                                id="age"
-                                name="age"
-                                value={formData.age}
-                                onChange={handleChange}
-                                required
+                        <div className="eligibility-actions">
+                            <button
+                                type="submit"
+                                className="eligibility-submit"
+                                disabled={loading}
                             >
-                                <option value="">
-                                    Select your age group
-                                </option>
-                                <option value="below-18">
-                                    Below 18
-                                </option>
-                                <option value="18-25">
-                                    18 - 25
-                                </option>
-                                <option value="26-40">
-                                    26 - 40
-                                </option>
-                                <option value="41-60">
-                                    41 - 60
-                                </option>
-                                <option value="above-60">
-                                    Above 60
-                                </option>
-                            </select>
-                        </div>
-
-                        {/* Occupation */}
-                        <div className="eligibility-form-group">
-                            <label htmlFor="occupation">
-                                Occupation / Status
-                            </label>
-
-                            <select
-                                id="occupation"
-                                name="occupation"
-                                value={formData.occupation}
-                                onChange={handleChange}
-                                required
+                                {loading ? "Searching..." : "Find Eligible Schemes"}
+                            </button>
+                            <button
+                                type="button"
+                                className="eligibility-reset"
+                                onClick={handleReset}
                             >
-                                <option value="">
-                                    Select your occupation
-                                </option>
-                                <option value="farmer">
-                                    Farmer
-                                </option>
-                                <option value="student">
-                                    Student
-                                </option>
-                                <option value="entrepreneur">
-                                    Entrepreneur
-                                </option>
-                                <option value="business-owner">
-                                    Small Business Owner
-                                </option>
-                                <option value="other">
-                                    Other
-                                </option>
-                            </select>
+                                Reset
+                            </button>
                         </div>
-
-                        {/* Social Category */}
-                        <div className="eligibility-form-group">
-                            <label htmlFor="category">
-                                Social Category
-                            </label>
-
-                            <select
-                                id="category"
-                                name="category"
-                                value={formData.category}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">
-                                    Select your category
-                                </option>
-                                <option value="general">
-                                    General
-                                </option>
-                                <option value="obc">
-                                    OBC
-                                </option>
-                                <option value="sc">
-                                    SC
-                                </option>
-                                <option value="st">
-                                    ST
-                                </option>
-                                <option value="ews">
-                                    EWS
-                                </option>
-                            </select>
-                        </div>
-
-                        {/* Income */}
-                        <div className="eligibility-form-group">
-                            <label htmlFor="income">
-                                Annual Family Income
-                            </label>
-
-                            <select
-                                id="income"
-                                name="income"
-                                value={formData.income}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="">
-                                    Select annual income
-                                </option>
-                                <option value="below-1">
-                                    Below ₹1 Lakh
-                                </option>
-                                <option value="1-3">
-                                    ₹1 - ₹3 Lakhs
-                                </option>
-                                <option value="3-5">
-                                    ₹3 - ₹5 Lakhs
-                                </option>
-                                <option value="5-10">
-                                    ₹5 - ₹10 Lakhs
-                                </option>
-                                <option value="above-10">
-                                    Above ₹10 Lakhs
-                                </option>
-                            </select>
-                        </div>
-
-                        <button
-                            type="submit"
-                            className="eligibility-submit"
-                        >
-                            Find Eligible Schemes
-                        </button>
-
                     </form>
+
+                    {error && <div className="eligibility-error">{error}</div>}
                 </div>
 
-                {/* Results */}
-                {submitted && (
-                    <section className="eligibility-results">
+                {/* Results Section */}
+                {searched && (
+                    <div className="eligibility-results">
+                        <h3 className="results-heading">
+                            {schemes.length > 0
+                                ? `Eligible Schemes (${schemes.length})`
+                                : "No Eligible Schemes Found"}
+                        </h3>
 
-                        <div className="results-heading">
-                            <h2>Eligible Schemes</h2>
-
-                            {results.length > 0 ? (
-                                <p>
-                                    Based on the information provided,
-                                    you may be eligible for the following schemes.
-                                </p>
-                            ) : (
-                                <p>
-                                    No matching schemes were found based on
-                                    the information provided.
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="eligibility-results-grid">
-
-                            {results.map((scheme) => (
-                                <div
-                                    className="eligibility-scheme-card"
-                                    key={scheme.id}
-                                >
-                                    <div className="result-card-header">
-                                        <span className="result-category">
-                                            {scheme.category}
-                                        </span>
-
-                                        <span className="result-target">
-                                            {scheme.target}
-                                        </span>
+                        {schemes.length > 0 ? (
+                            <div className="eligibility-results-grid">
+                                {schemes.map((scheme) => (
+                                    <div key={scheme.schemeId} className="eligibility-scheme-card">
+                                        <div className="result-card-header">
+                                            <span className="result-category">Government Scheme</span>
+                                            <span className="result-target">
+                        Score: {scheme.eligibilityScore}
+                      </span>
+                                        </div>
+                                        <h4>{scheme.schemeName}</h4>
+                                        <p>{scheme.description}</p>
+                                        <button className="result-button">View Details</button>
                                     </div>
-
-                                    <h3>{scheme.name}</h3>
-
+                                ))}
+                            </div>
+                        ) : (
+                            !loading && (
+                                <div className="no-schemes">
                                     <p>
-                                        {scheme.description}
+                                        Based on your selections, no schemes currently match your eligibility parameters.
                                     </p>
-
-                                    <Link
-                                        to={scheme.path}
-                                        className="result-button"
-                                    >
-                                        View Details
-                                    </Link>
                                 </div>
-                            ))}
-
-                        </div>
-
-                    </section>
+                            )
+                        )}
+                    </div>
                 )}
-
-            </main>
+            </div>
         </div>
     );
-}
+};
 
 export default Eligibility;

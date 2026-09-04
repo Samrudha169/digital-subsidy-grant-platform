@@ -5,8 +5,9 @@ function TrackApplication() {
 
     const [applicationId, setApplicationId] = useState('');
     const [status, setStatus] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         if (!applicationId.trim()) {
@@ -17,15 +18,36 @@ function TrackApplication() {
             return;
         }
 
-        /*
-         * Temporary demonstration logic.
-         * This will later be replaced with a backend API call.
-         */
+        try {
+            setLoading(true);
+            setStatus(null);
 
-        setStatus({
-            type: 'success',
-            message: `Application ${applicationId} found successfully.`
-        });
+            const response = await fetch(
+                `http://localhost:8080/api/v1/applications/${applicationId}`
+            );
+
+            if (!response.ok) {
+                throw new Error('Application not found');
+            }
+
+            const data = await response.json();
+
+            setStatus({
+                type: 'success',
+                message: `Application ${data.id} found successfully. Status: ${data.status || data.applicationStatus || 'Available'}`
+            });
+
+        } catch (error) {
+            console.error('Error tracking application:', error);
+
+            setStatus({
+                type: 'error',
+                message: `Application ${applicationId} was not found.`
+            });
+
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -90,7 +112,7 @@ function TrackApplication() {
                                     onChange={(e) =>
                                         setApplicationId(e.target.value)
                                     }
-                                    placeholder="e.g. DSGP2024001234"
+                                    placeholder="Enter Application ID"
                                     aria-label="Application ID"
                                 />
 
@@ -100,8 +122,11 @@ function TrackApplication() {
                             <button
                                 type="submit"
                                 className="track-button"
+                                disabled={loading}
                             >
-                                Track Status
+                                {loading
+                                    ? 'Checking...'
+                                    : 'Track Status'}
                             </button>
 
                         </form>

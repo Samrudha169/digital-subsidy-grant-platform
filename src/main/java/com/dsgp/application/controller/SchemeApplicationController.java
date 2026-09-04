@@ -50,4 +50,18 @@ public class SchemeApplicationController {
                 )
         );
     }
+
+    // Request re-verification of an application
+    @PostMapping("/{applicationId}/reverify")
+    public ResponseEntity<SchemeApplication> requestReVerification(
+            @PathVariable Long applicationId,
+            @RequestParam(required = false) String remarks) {
+
+        return ResponseEntity.ok(
+                schemeApplicationService.requestReVerification(
+                        applicationId,
+                        remarks
+                )
+        );
+    }
 }
