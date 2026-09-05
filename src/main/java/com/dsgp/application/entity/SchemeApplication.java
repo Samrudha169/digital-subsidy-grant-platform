@@ -1,122 +1,84 @@
 package com.dsgp.application.entity;
 
+import com.dsgp.beneficiary.entity.Beneficiary;
+import com.dsgp.beneficiary.entity.Scheme;
 import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.LocalDateTime;
 
+/**
+ * JPA entity for the {@code scheme_applications} table.
+ *
+ * <p>This is the canonical, single SchemeApplication entity for the entire
+ * platform. It is the result of merging:
+ * <ul>
+ *   <li>The original Milestone 2 entity (full JPA relationships, Lombok,
+ *       eligibility-gated workflow, applicationStatus, applicationDate)</li>
+ *   <li>Samrudha's application package move (entity lives under
+ *       {@code com.dsgp.application.entity})</li>
+ * </ul>
+ *
+ * <p><strong>Samrudha's verificationLevel / verifiedBy / verificationRemarks /
+ * verifiedAt fields are NOT retained.</strong> These are redundant:
+ * the full, immutable verification audit trail is stored in
+ * {@code verification_records} via {@link com.dsgp.verification.entity.VerificationRecord}.
+ * The authoritative workflow state is {@link #applicationStatus}.
+ *
+ * <h3>Workflow statuses (stored in applicationStatus)</h3>
+ * <pre>
+ * PENDING → UNDER_REVIEW → FIELD_APPROVED → APPROVED
+ *                       ↘ ESCALATED → DISTRICT_APPROVED → APPROVED
+ *                       ↘ REJECTED (at any stage)
+ * </pre>
+ */
 @Entity
 @Table(name = "scheme_applications")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class SchemeApplication {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Integer beneficiaryId;
-
-    private Long schemeId;
-
-    private String status;
-
-    private LocalDateTime submittedAt;
-
-    // ── Verification workflow fields ───────────────────────────────
+    /**
+     * The beneficiary who submitted this application.
+     * Loaded lazily; never nullable.
+     */
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "beneficiary_id", nullable = false)
+    private Beneficiary beneficiary;
 
     /**
-     * Current verification level of the application.
-     * 1 = Field Officer
-     * 2 = Verifying Officer
-     * 3 = Final Authority
+     * The government scheme this application is for.
+     * Loaded lazily; never nullable.
      */
-    private Integer verificationLevel;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "scheme_id", nullable = false)
+    private Scheme scheme;
 
     /**
-     * Name/ID of the officer currently handling verification.
+     * Current workflow status. One of:
+     * PENDING, UNDER_REVIEW, FIELD_APPROVED, ESCALATED,
+     * DISTRICT_APPROVED, APPROVED, REJECTED.
+     *
+     * <p>Default is {@code PENDING} (set by {@link #onCreate()} and Lombok
+     * {@code @Builder.Default}).
      */
-    private String verifiedBy;
+    @Column(name = "application_status", nullable = false, length = 20)
+    @Builder.Default
+    private String applicationStatus = "PENDING";
 
-    /**
-     * Remarks provided by the verifier.
-     */
-    @Column(length = 500)
-    private String verificationRemarks;
+    /** Timestamp when the application was submitted. Set once on insert. */
+    @Column(name = "application_date", nullable = false, updatable = false)
+    private LocalDateTime applicationDate;
 
-    /**
-     * Time when the latest verification action was performed.
-     */
-    private LocalDateTime verifiedAt;
-
-
-    // ── Getters and Setters ─────────────────────────────────────────
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Integer getBeneficiaryId() {
-        return beneficiaryId;
-    }
-
-    public void setBeneficiaryId(Integer beneficiaryId) {
-        this.beneficiaryId = beneficiaryId;
-    }
-
-    public Long getSchemeId() {
-        return schemeId;
-    }
-
-    public void setSchemeId(Long schemeId) {
-        this.schemeId = schemeId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public LocalDateTime getSubmittedAt() {
-        return submittedAt;
-    }
-
-    public void setSubmittedAt(LocalDateTime submittedAt) {
-        this.submittedAt = submittedAt;
-    }
-
-    public Integer getVerificationLevel() {
-        return verificationLevel;
-    }
-
-    public void setVerificationLevel(Integer verificationLevel) {
-        this.verificationLevel = verificationLevel;
-    }
-
-    public String getVerifiedBy() {
-        return verifiedBy;
-    }
-
-    public void setVerifiedBy(String verifiedBy) {
-        this.verifiedBy = verifiedBy;
-    }
-
-    public String getVerificationRemarks() {
-        return verificationRemarks;
-    }
-
-    public void setVerificationRemarks(String verificationRemarks) {
-        this.verificationRemarks = verificationRemarks;
-    }
-
-    public LocalDateTime getVerifiedAt() {
-        return verifiedAt;
-    }
-
-    public void setVerifiedAt(LocalDateTime verifiedAt) {
-        this.verifiedAt = verifiedAt;
+    @PrePersist
+    protected void onCreate() {
+        applicationDate = LocalDateTime.now();
     }
 }

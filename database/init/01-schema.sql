@@ -111,3 +111,66 @@ CREATE TABLE IF NOT EXISTS beneficiary_documents (
     REFERENCES beneficiary(id)
     ON DELETE CASCADE
     );
+
+
+-- =============================================================================
+-- TABLE: eligibility_results                                [Milestone 2]
+-- Stores the outcome of each eligibility evaluation run by the scoring engine.
+-- One row per (beneficiary, scheme) pair — replaced on re-evaluation.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS eligibility_results (
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    beneficiary_id      INT          NOT NULL,
+    scheme_id           BIGINT       NOT NULL,
+    scheme_name         VARCHAR(150) NOT NULL,
+    total_score         INT          NOT NULL,
+    eligibility_status  VARCHAR(15)  NOT NULL,   -- ELIGIBLE | INELIGIBLE
+    criteria_json       TEXT,                    -- JSON breakdown per criterion
+    evaluated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_eligibility_beneficiary
+        FOREIGN KEY (beneficiary_id)
+        REFERENCES beneficiary(id),
+
+    CONSTRAINT fk_eligibility_scheme
+        FOREIGN KEY (scheme_id)
+        REFERENCES schemes(id),
+
+    CONSTRAINT uq_eligibility_beneficiary_scheme
+        UNIQUE (beneficiary_id, scheme_id)
+);
+
+
+-- =============================================================================
+-- TABLE: verification_records                                [Milestone 2]
+-- Stores one row per action taken by a verification officer on an application.
+-- Provides a complete, immutable audit trail for the multi-level approval chain.
+--
+-- Stages:  FIELD | DISTRICT | FINANCE
+-- Actions: APPROVE | REJECT | ESCALATE
+--
+-- Status transitions (stored in scheme_applications.application_status):
+--   PENDING           → UNDER_REVIEW       (startVerification)
+--   UNDER_REVIEW      → FIELD_APPROVED     (Field APPROVE)
+--   UNDER_REVIEW      → ESCALATED          (Field ESCALATE)
+--   UNDER_REVIEW      → REJECTED           (Field REJECT)
+--   FIELD_APPROVED    → APPROVED           (Finance APPROVE)
+--   FIELD_APPROVED    → REJECTED           (Finance REJECT)
+--   ESCALATED         → DISTRICT_APPROVED  (District APPROVE)
+--   ESCALATED         → REJECTED           (District REJECT)
+--   DISTRICT_APPROVED → APPROVED           (Finance APPROVE)
+--   DISTRICT_APPROVED → REJECTED           (Finance REJECT)
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS verification_records (
+    id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
+    scheme_application_id   BIGINT       NOT NULL,
+    stage                   VARCHAR(10)  NOT NULL,   -- FIELD | DISTRICT | FINANCE
+    action_taken            VARCHAR(10)  NOT NULL,   -- APPROVE | REJECT | ESCALATE
+    performed_by            VARCHAR(100) NOT NULL,
+    performed_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    remarks                 TEXT,
+
+    CONSTRAINT fk_verification_application
+        FOREIGN KEY (scheme_application_id)
+        REFERENCES scheme_applications(id)
+);

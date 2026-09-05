@@ -416,3 +416,247 @@
         font-size: var(--font-size-xl);
     }
 }
+
+
+/* ========================================
+   LOADING SPINNER
+======================================== */
+
+.track-spinner {
+    width: 40px;
+    height: 40px;
+    margin: 0 auto;
+    border: 4px solid var(--color-border);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: track-spin 0.8s linear infinite;
+}
+
+@keyframes track-spin {
+    to { transform: rotate(360deg); }
+}
+
+
+/* ========================================
+   TRACK BUTTON DISABLED
+======================================== */
+
+.track-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+
+/* ========================================
+   APPLICATION DETAIL PANEL
+======================================== */
+
+.track-detail-panel {
+    margin-top: var(--spacing-2xl);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+/* Status row at the top of the detail panel */
+.track-detail-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background-color: var(--color-gray-50);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.track-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0;
+}
+
+.track-detail-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.track-detail-field:nth-child(even) {
+    border-right: none;
+}
+
+.track-detail-field:nth-last-child(-n+2) {
+    border-bottom: none;
+}
+
+.track-detail-label {
+    font-size: var(--font-size-xs, 0.75rem);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.track-detail-value {
+    font-size: var(--font-size-base);
+    color: var(--color-text-primary);
+    font-weight: var(--font-weight-medium, 500);
+}
+
+.track-detail-value small {
+    font-weight: normal;
+    color: var(--color-text-muted);
+    margin-left: 4px;
+}
+
+
+/* ========================================
+   STATUS BADGE
+======================================== */
+
+.status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+}
+
+.status-pending    { background: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+.status-review     { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+.status-field      { background: #dcfce7; color: #14532d; border: 1px solid #86efac; }
+.status-escalated  { background: #ffedd5; color: #9a3412; border: 1px solid #fdba74; }
+.status-district   { background: #e0e7ff; color: #3730a3; border: 1px solid #a5b4fc; }
+.status-approved   { background: #dcfce7; color: #14532d; border: 1px solid #4ade80; font-weight: 700; }
+.status-rejected   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+
+
+/* ========================================
+   VERIFICATION HISTORY TABLE
+======================================== */
+
+.track-history {
+    padding: var(--spacing-xl);
+    border-top: 1px solid var(--color-border);
+}
+
+.track-history-title {
+    font-size: var(--font-size-lg);
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-lg);
+}
+
+.track-history-empty {
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-sm);
+    text-align: center;
+    margin: 0;
+}
+
+.track-history-table-wrap {
+    overflow-x: auto;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border);
+}
+
+.track-history-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+}
+
+.track-history-table thead th {
+    background-color: var(--color-gray-50);
+    color: var(--color-text-secondary);
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.7rem;
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+}
+
+.track-history-table tbody td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    vertical-align: top;
+}
+
+.track-history-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.track-history-table tbody tr:hover {
+    background-color: var(--color-gray-50);
+}
+
+.track-history-remarks {
+    max-width: 200px;
+    word-break: break-word;
+    color: var(--color-text-secondary) !important;
+    font-style: italic;
+}
+
+
+/* Stage badges */
+.stage-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.stage-field    { background: #dbeafe; color: #1e40af; }
+.stage-district { background: #e0e7ff; color: #3730a3; }
+.stage-finance  { background: #fef3c7; color: #92400e; }
+
+
+/* Action badges */
+.action-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: var(--font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.action-approve  { background: #dcfce7; color: #14532d; }
+.action-reject   { background: #fee2e2; color: #991b1b; }
+.action-escalate { background: #ffedd5; color: #9a3412; }
+
+
+/* Responsive detail grid */
+@media (max-width: 600px) {
+    .track-detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .track-detail-field {
+        border-right: none;
+    }
+
+    .track-detail-field:nth-last-child(-n+2) {
+        border-bottom: 1px solid var(--color-border);
+    }
+
+    .track-detail-field:last-child {
+        border-bottom: none;
+    }
+
+    .track-history-remarks {
+        max-width: 120px;
+    }
+}

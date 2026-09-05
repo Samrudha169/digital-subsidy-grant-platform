@@ -1,61 +1,76 @@
 package com.dsgp.scheme.controller;
 
-import com.dsgp.beneficiary.entity.Scheme;
+import com.dsgp.scheme.dto.SchemeRequest;
+import com.dsgp.scheme.dto.SchemeResponse;
 import com.dsgp.scheme.service.SchemeService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * REST controller for government scheme management.
+ *
+ * <p>Base path: {@code /schemes} (full path: {@code /api/v1/schemes}).
+ *
+ * <p>Endpoints:
+ * <ul>
+ *   <li>{@code POST   /schemes}      — create a new scheme (201 Created)</li>
+ *   <li>{@code GET    /schemes}      — list all active schemes (200 OK)</li>
+ *   <li>{@code GET    /schemes/{id}} — get scheme by ID (200 OK)</li>
+ *   <li>{@code PUT    /schemes/{id}} — update scheme (200 OK)</li>
+ *   <li>{@code DELETE /schemes/{id}} — soft-deactivate scheme (204 No Content)</li>
+ * </ul>
+ */
 @RestController
 @RequestMapping("/schemes")
+@RequiredArgsConstructor
 public class SchemeController {
 
     private final SchemeService schemeService;
 
-    public SchemeController(SchemeService schemeService) {
-        this.schemeService = schemeService;
-    }
+    // ── POST /schemes ─────────────────────────────────────────────────────────
 
-    // Create a new scheme
     @PostMapping
-    public ResponseEntity<Scheme> createScheme(@RequestBody Scheme scheme) {
-        return ResponseEntity.ok(schemeService.createScheme(scheme));
+    public ResponseEntity<SchemeResponse> createScheme(
+            @Valid @RequestBody SchemeRequest request) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(schemeService.createScheme(request));
     }
 
-    // Get all schemes
+    // ── GET /schemes ──────────────────────────────────────────────────────────
+
     @GetMapping
-    public ResponseEntity<List<Scheme>> getAllSchemes() {
-        return ResponseEntity.ok(schemeService.getAllSchemes());
+    public ResponseEntity<List<SchemeResponse>> getAllSchemes() {
+        return ResponseEntity.ok(schemeService.getAllActiveSchemes());
     }
 
-    // Get scheme by ID
+    // ── GET /schemes/{id} ────────────────────────────────────────────────────
+
     @GetMapping("/{id}")
-    public ResponseEntity<Scheme> getSchemeById(@PathVariable Long id) {
+    public ResponseEntity<SchemeResponse> getSchemeById(@PathVariable Long id) {
         return ResponseEntity.ok(schemeService.getSchemeById(id));
     }
 
-    // Get only active schemes
-    @GetMapping("/active")
-    public ResponseEntity<List<Scheme>> getActiveSchemes() {
-        return ResponseEntity.ok(schemeService.getActiveSchemes());
-    }
+    // ── PUT /schemes/{id} ────────────────────────────────────────────────────
 
-    // Update a scheme
     @PutMapping("/{id}")
-    public ResponseEntity<Scheme> updateScheme(
+    public ResponseEntity<SchemeResponse> updateScheme(
             @PathVariable Long id,
-            @RequestBody Scheme scheme) {
+            @Valid @RequestBody SchemeRequest request) {
 
-        return ResponseEntity.ok(
-                schemeService.updateScheme(id, scheme)
-        );
+        return ResponseEntity.ok(schemeService.updateScheme(id, request));
     }
 
-    // Deactivate a scheme
+    // ── DELETE /schemes/{id} ─────────────────────────────────────────────────
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteScheme(@PathVariable Long id) {
-        schemeService.deleteScheme(id);
+    public ResponseEntity<Void> deactivateScheme(@PathVariable Long id) {
+        schemeService.deactivateScheme(id);
         return ResponseEntity.noContent().build();
     }
 }

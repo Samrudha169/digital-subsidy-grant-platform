@@ -1,6 +1,9 @@
 package com.dsgp.config;
 
 import com.dsgp.beneficiary.exception.*;
+import com.dsgp.application.exception.ApplicationException;
+import com.dsgp.eligibility.exception.EligibilityCheckException;
+import com.dsgp.scheme.exception.SchemeNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -86,6 +89,57 @@ public class GlobalExceptionHandler {
         log.warn("Duplicate document type upload attempt: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), null));
+    }
+
+    // ── Eligibility Module Exceptions ─────────────────────────────────────────
+
+    @ExceptionHandler(EligibilityCheckException.class)
+    public ResponseEntity<ApiErrorResponse> handleEligibilityCheck(
+            EligibilityCheckException ex, HttpServletRequest request) {
+        log.warn("Eligibility check failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(build(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI(), null));
+    }
+
+    // ── Scheme Module Exceptions ──────────────────────────────────────────────
+
+    @ExceptionHandler(SchemeNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleSchemeNotFound(
+            SchemeNotFoundException ex, HttpServletRequest request) {
+        log.warn("Scheme not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(build(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI(), null));
+    }
+
+    // ── Application Module Exceptions ─────────────────────────────────────────
+
+    /**
+     * Application business-rule violations (ineligible, duplicate, eligibility
+     * not yet checked) — HTTP 422 Unprocessable Entity.
+     */
+    @ExceptionHandler(ApplicationException.class)
+    public ResponseEntity<ApiErrorResponse> handleApplicationException(
+            ApplicationException ex, HttpServletRequest request) {
+        log.warn("Application submission rejected: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(),
+                        request.getRequestURI(), null));
+    }
+
+    // ── Verification Module Exceptions ────────────────────────────────────────
+
+    /**
+     * Thrown when an officer attempts an invalid state transition in the
+     * verification workflow — HTTP 400 Bad Request.
+     */
+    @ExceptionHandler(com.dsgp.verification.exception.InvalidVerificationTransitionException.class)
+    public ResponseEntity<ApiErrorResponse> handleInvalidVerificationTransition(
+            com.dsgp.verification.exception.InvalidVerificationTransitionException ex,
+            HttpServletRequest request) {
+        log.warn("Invalid verification transition: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(build(HttpStatus.BAD_REQUEST, ex.getMessage(),
+                        request.getRequestURI(), null));
     }
 
     // ── Validation Exceptions ─────────────────────────────────────────────────
