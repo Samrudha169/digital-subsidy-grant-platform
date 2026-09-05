@@ -158,3 +158,49 @@ Content-Type: application/json
   "remarks": "Required income certificate is missing",
   "approved": false
 }
+
+
+
+###
+GET http://localhost:8080/api/v1/schemes/active
+
+###
+POST http://localhost:8080/api/v1/applications
+Content-Type: application/json
+
+{
+  "beneficiaryId": 3,
+  "schemeId": 4
+}
+
+###
+POST http://localhost:8080/api/v1/applications/7/reverify?remarks=Documents%20need%20to%20be%20checked%20again
+
+###
+POST http://localhost:8080/api/v1/applications/7/verify
+Content-Type: application/json
+
+{
+  "approved": true,
+  "verifiedBy": "FIELD_OFFICER_01",
+  "remarks": "Documents verified successfully"
+}
+
+###
+POST http://localhost:8080/api/v1/applications
+Content-Type: application/json
+
+{
+  "beneficiaryId": 4,
+  "schemeId": 4
+}
+
+###
+
+GET http://localhost:8080/api/v1/schemes
+
+###
+http://localhost:8080/api/v1/schemes
+
+###
+curl.exe http://localhost:8080/api/v1/schemes

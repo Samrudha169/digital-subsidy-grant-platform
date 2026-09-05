@@ -32,11 +32,18 @@ public class Scheme {
     @Column(name = "required_category")
     private String requiredCategory;
 
+    @Column(name = "required_state")
+    private String requiredState;
+
+    @Column(name = "required_occupation")
+    private String requiredOccupation;
+
     @Column(name = "grant_amount")
     private BigDecimal grantAmount;
 
     @Column(nullable = false)
     private Boolean active = true;
+
 
     // Getters and Setters
 
@@ -102,6 +109,22 @@ public class Scheme {
 
     public void setRequiredCategory(String requiredCategory) {
         this.requiredCategory = requiredCategory;
+    }
+
+    public String getRequiredState() {
+        return requiredState;
+    }
+
+    public void setRequiredState(String requiredState) {
+        this.requiredState = requiredState;
+    }
+
+    public String getRequiredOccupation() {
+        return requiredOccupation;
+    }
+
+    public void setRequiredOccupation(String requiredOccupation) {
+        this.requiredOccupation = requiredOccupation;
     }
 
     public BigDecimal getGrantAmount() {

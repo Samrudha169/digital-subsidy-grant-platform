@@ -97,6 +97,9 @@ public class Beneficiary {
     @Column(name = "state", length = 100)
     private String state;
 
+    @Column(name = "occupation", length = 100)
+    private String occupation;
+
     @Column(name = "pin_code", length = 6)
     private String pinCode;
 

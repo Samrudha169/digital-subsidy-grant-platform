@@ -59,4 +59,13 @@ public class SchemeApplicationServiceImpl implements SchemeApplicationService {
                 "Use POST /api/v1/verification/applications/{id}/... via VerificationServiceImpl. " +
                 "SchemeApplicationServiceImpl.verifyApplication is not active.");
     }
+    @Override
+    public SchemeApplication requestReVerification(
+            Long applicationId,
+            String remarks) {
+
+        throw new UnsupportedOperationException(
+                "Use the VerificationService workflow to request re-verification."
+        );
+    }
 }

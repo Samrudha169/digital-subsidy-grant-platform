@@ -10,6 +10,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 /**
  * Foundation security configuration for the DSGP platform.
@@ -20,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
  *   <li>BCrypt password encoder bean</li>
  *   <li>Method-level security enabled ({@code @PreAuthorize} support)</li>
  *   <li>All requests are temporarily permitted during the architecture setup phase</li>
+ *   <li>CORS enabled for the DSGP React frontend</li>
  * </ul>
  *
  * <p><strong>Roles defined in the architecture:</strong>
@@ -54,26 +60,70 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF — using stateless JWT authentication
-            .csrf(AbstractHttpConfigurer::disable)
+                // Enable CORS for the React frontend
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // Stateless session — no HTTP session will be created
-            .sessionManagement(session ->
-                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                // Disable CSRF — using stateless JWT authentication
+                .csrf(AbstractHttpConfigurer::disable)
 
-            // Permit all requests during architecture setup phase.
-            // TODO: Replace with role-based rules in Security implementation phase:
-            //   .requestMatchers("/api/v1/auth/**").permitAll()
-            //   .requestMatchers("/api/v1/admin/**").hasRole("ADMINISTRATOR")
-            //   .requestMatchers("/api/v1/beneficiary/**").hasAnyRole("FIELD_OFFICER", "ADMINISTRATOR")
-            //   .anyRequest().authenticated()
-            .authorizeHttpRequests(auth ->
-                auth.anyRequest().permitAll());
+                // Stateless session — no HTTP session will be created
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // Permit all requests during architecture setup phase.
+                // TODO: Replace with role-based rules in Security implementation phase:
+                //   .requestMatchers("/api/v1/auth/**").permitAll()
+                //   .requestMatchers("/api/v1/admin/**").hasRole("ADMINISTRATOR")
+                //   .requestMatchers("/api/v1/beneficiary/**").hasAnyRole("FIELD_OFFICER", "ADMINISTRATOR")
+                //   .anyRequest().authenticated()
+                .authorizeHttpRequests(auth ->
+                        auth.anyRequest().permitAll());
 
         // TODO: Add JWT authentication filter here in Security implementation phase:
         //   http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * CORS configuration for the DSGP frontend.
+     *
+     * <p>Allows the React/Vite frontend running on localhost:5173
+     * to communicate with the Spring Boot backend running on localhost:8080.
+     *
+     * @return CORS configuration source
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        configuration.setAllowedOrigins(
+                Arrays.asList("http://localhost:5173")
+        );
+
+        configuration.setAllowedMethods(
+                Arrays.asList(
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "PATCH",
+                        "OPTIONS"
+                )
+        );
+
+        configuration.setAllowedHeaders(
+                Arrays.asList("*")
+        );
+
+        configuration.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
     }
 
     /**
