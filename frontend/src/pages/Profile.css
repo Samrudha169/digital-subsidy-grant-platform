@@ -1,0 +1,317 @@
+import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getBeneficiaryById } from '../services/api';
+import './Profile.css';
+
+function Profile() {
+    const navigate = useNavigate();
+
+const [beneficiary, setBeneficiary] = useState(null);
+const [loading, setLoading] = useState(true);
+const [error, setError] = useState('');
+
+useEffect(() => {
+    const beneficiaryId = localStorage.getItem('beneficiaryId');
+    const isLoggedIn = localStorage.getItem('isLoggedIn');
+
+    if (!beneficiaryId || isLoggedIn !== 'true') {
+navigate('/login');
+    return;
+}
+
+    const loadProfile = async () => {
+try {
+    const data = await getBeneficiaryById(beneficiaryId);
+setBeneficiary(data);
+} catch (err) {
+console.error('Profile error:', err);
+setError('Unable to load your profile.');
+} finally {
+  setLoading(false);
+  }
+};
+
+loadProfile();
+}, [navigate]);
+
+    if (loading) {
+    return (
+    <div className="profile-page">
+    <div className="profile-loading">
+    Loading your profile...
+    </div>
+    </div>
+);
+}
+
+    if (error) {
+    return (
+    <div className="profile-page">
+    <div className="profile-error">
+{error}
+</div>
+</div>
+);
+}
+
+    return (
+    <div className="profile-page">
+
+    <header className="profile-header">
+    <div className="profile-header-container">
+
+    <Link to="/dashboard" className="profile-brand">
+    <h1>DSGP</h1>
+    <p>Digital Subsidy & Grant Platform</p>
+    </Link>
+
+    <Link
+    to="/dashboard"
+    className="profile-back-link"
+    >
+    Back to Dashboard
+    </Link>
+
+    </div>
+    </header>
+
+    <main className="profile-main">
+
+    <div className="profile-container">
+
+    <section className="profile-title-section">
+    <h2>My Profile</h2>
+    <p>
+    View your registered personal and beneficiary
+    information.
+    </p>
+    </section>
+
+    <section className="profile-card">
+
+    <div className="profile-card-header">
+
+    <div className="profile-avatar">
+{beneficiary?.fullName
+    ?.charAt(0)
+    ?.toUpperCase() || 'B'}
+</div>
+
+<div>
+<h3>
+{beneficiary?.fullName || 'Beneficiary'}
+</h3>
+
+<p>
+{beneficiary?.email ||
+'No email available'}
+</p>
+</div>
+
+</div>
+
+<div className="profile-section">
+
+<h3>Personal Information</h3>
+
+<div className="profile-grid">
+
+<ProfileField
+label="Full Name"
+value={beneficiary?.fullName}
+/>
+
+<ProfileField
+label="First Name"
+value={beneficiary?.firstName}
+/>
+
+<ProfileField
+label="Last Name"
+value={beneficiary?.lastName}
+/>
+
+<ProfileField
+label="Date of Birth"
+value={beneficiary?.dateOfBirth}
+/>
+
+<ProfileField
+label="Age"
+value={beneficiary?.age}
+/>
+
+<ProfileField
+label="Gender"
+value={beneficiary?.gender}
+/>
+
+</div>
+
+</div>
+
+<div className="profile-section">
+
+<h3>Contact & Identity</h3>
+
+<div className="profile-grid">
+
+<ProfileField
+label="Email"
+value={beneficiary?.email}
+/>
+
+<ProfileField
+label="Mobile Number"
+value={beneficiary?.mobileNumber}
+/>
+
+<ProfileField
+label="Contact"
+value={beneficiary?.contact}
+/>
+
+<ProfileField
+label="Government ID"
+value={beneficiary?.govId}
+/>
+
+<ProfileField
+label="Aadhaar Number"
+value={beneficiary?.aadhaarNumber}
+/>
+
+</div>
+
+</div>
+
+<div className="profile-section">
+
+<h3>Address</h3>
+
+<div className="profile-grid">
+
+<ProfileField
+label="Address"
+value={beneficiary?.address}
+/>
+
+<ProfileField
+label="Village"
+value={beneficiary?.village}
+/>
+
+<ProfileField
+label="Taluka"
+value={beneficiary?.taluka}
+/>
+
+<ProfileField
+label="District"
+value={beneficiary?.district}
+/>
+
+<ProfileField
+label="State"
+value={beneficiary?.state}
+/>
+
+<ProfileField
+label="PIN Code"
+value={beneficiary?.pinCode}
+/>
+
+</div>
+
+</div>
+
+<div className="profile-section">
+
+<h3>Financial & Scheme Information</h3>
+
+<div className="profile-grid">
+
+<ProfileField
+label="Occupation"
+value={beneficiary?.occupation}
+/>
+
+<ProfileField
+label="Annual Income"
+value={beneficiary?.annualIncome}
+/>
+
+<ProfileField
+label="Land Holding"
+value={beneficiary?.landHolding}
+/>
+
+<ProfileField
+label="Category"
+value={beneficiary?.category}
+/>
+
+<ProfileField
+label="Scheme"
+value={beneficiary?.schemeName}
+/>
+
+</div>
+
+</div>
+
+<div className="profile-section">
+
+<h3>Account Status</h3>
+
+<div className="profile-grid">
+
+<ProfileField
+label="Registration Status"
+value={beneficiary?.registrationStatus}
+/>
+
+<ProfileField
+label="Identity Verified"
+value={
+beneficiary?.identityVerified
+    ? 'Verified'
+    : 'Not Verified'
+}
+/>
+
+</div>
+
+</div>
+
+</section>
+
+</div>
+
+</main>
+
+</div>
+);
+}
+
+function ProfileField({ label, value }) {
+    return (
+    <div className="profile-field">
+
+    <span className="profile-field-label">
+{label}
+</span>
+
+<span className="profile-field-value">
+{value !== null &&
+value !== undefined &&
+value !== ''
+? value
+: 'Not provided'}
+</span>
+
+</div>
+);
+}
+
+export default Profile;

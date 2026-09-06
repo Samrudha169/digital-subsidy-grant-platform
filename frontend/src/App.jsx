@@ -19,6 +19,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Dashboard from './pages/Dashboard';
+import Profile from './pages/Profile';
 
 function App() {
 
@@ -166,6 +167,10 @@ function App() {
                                 }}
                             />
                         }
+                    />
+                    <Route
+                        path="/profile"
+                        element={<Profile />}
                     />
 
 

@@ -16,6 +16,7 @@ function buildPayload(formData) {
         govId:      formData.govId.trim(),
         contact:    formData.mobile.trim(),   // frontend "mobile" → backend "contact"
         email:      formData.email.trim(),
+        password:   formData.password,
         age:        parseInt(formData.age, 10),
         address:    formData.address.trim(),
         schemeName: formData.schemeName.trim(),
@@ -101,6 +102,7 @@ function Register() {
         govId:        '',
         mobile:       '',   // maps to backend "contact"
         email:        '',
+        password:     '',
         age:          '',
         address:      '',
         schemeName:   '',
@@ -363,6 +365,21 @@ function Register() {
                                     value={formData.email}
                                     onChange={handleChange}
                                     placeholder="you@example.com"
+                                    required
+                                />
+                            </div>
+                            <div className="register-form-group">
+                                <label htmlFor="password">
+                                    Password
+                                </label>
+
+                                <input
+                                    type="password"
+                                    id="password"
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleChange}
+                                    placeholder="Create a password"
                                     required
                                 />
                             </div>
