@@ -1,320 +1,720 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import './Register.css';
 
-/* ── API base (Vite proxy forwards /api → localhost:8080) ─── */
+/* ── API base ─────────────────────────────────────────────── */
 const API_BASE = '/api/v1';
 
+
 /* ══════════════════════════════════════════════════════════════
-   buildPayload — maps formData → BeneficiaryRegistrationRequest
-   Mandatory fields are always included.
-   Optional fields are only included when non-empty.
+   BUILD PAYLOAD
 ══════════════════════════════════════════════════════════════ */
 function buildPayload(formData) {
     const payload = {
-        fullName:   formData.fullName.trim(),
-        govId:      formData.govId.trim(),
-        contact:    formData.mobile.trim(),   // frontend "mobile" → backend "contact"
-        email:      formData.email.trim(),
-        password:   formData.password,
-        age:        parseInt(formData.age, 10),
-        address:    formData.address.trim(),
-        schemeName: formData.schemeName.trim(),
+        fullName: formData.fullName.trim(),
+        govId: formData.govId.trim(),
+        contact: formData.mobile.trim(),
+        email: formData.email.trim(),
+        password: formData.password,
+        age: parseInt(formData.age, 10),
+        address: formData.address.trim(),
+        schemeName: formData.schemeName,
+
+        aadhaarNumber: formData.aadhaarNumber.trim(),
+        mobileNumber: formData.mobileNumber.trim(),
+        dateOfBirth: formData.dateOfBirth,
+        gender: formData.gender,
+        village: formData.village,
+        taluka: formData.taluka,
+        district: formData.district,
+        state: formData.state,
+        pinCode: formData.pinCode.trim(),
+        annualIncome: parseFloat(formData.annualIncome),
+        category: formData.category
     };
 
-    const optionalString = (key, value) => {
-        const trimmed = (value || '').trim();
-        if (trimmed) payload[key] = trimmed;
-    };
-
-    optionalString('aadhaarNumber', formData.aadhaarNumber);
-    optionalString('mobileNumber',  formData.mobileNumber);
-    optionalString('village',       formData.village);
-    optionalString('taluka',        formData.taluka);
-    optionalString('district',      formData.district);
-    optionalString('state',         formData.state);
-    optionalString('pinCode',       formData.pinCode);
-
-    if (formData.dateOfBirth) payload.dateOfBirth = formData.dateOfBirth;
-    if (formData.gender)      payload.gender      = formData.gender;
-    if (formData.category)    payload.category    = formData.category;
-
-    const income = (formData.annualIncome || '').trim();
-    if (income) payload.annualIncome = parseFloat(income);
-
-    const land = (formData.landHolding || '').trim();
-    if (land) payload.landHolding = parseFloat(land);
+    // Land holding is the ONLY optional field
+    if (formData.landHolding.trim()) {
+        payload.landHolding = parseFloat(formData.landHolding);
+    }
 
     return payload;
 }
 
+
 /* ══════════════════════════════════════════════════════════════
-   Client-side validation — returns an array of error strings.
-   Empty array = valid.
+   CLIENT-SIDE VALIDATION
 ══════════════════════════════════════════════════════════════ */
 function validate(formData) {
     const errors = [];
 
-    if (!formData.fullName.trim())
+    if (!formData.fullName.trim()) {
         errors.push('Full name is required.');
-    if (!formData.govId.trim())
+    }
+
+    if (!formData.govId.trim()) {
         errors.push('Government ID is required.');
-    if (!/^\d{10}$/.test(formData.mobile.trim()))
+    }
+
+    if (!/^\d{10}$/.test(formData.mobile.trim())) {
         errors.push('Contact number must be exactly 10 digits.');
-    if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email))
+    }
+
+    if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
         errors.push('A valid email address is required.');
+    }
+
+    if (!formData.password || formData.password.length < 6) {
+        errors.push('Password must be at least 6 characters.');
+    }
+
     const age = parseInt(formData.age, 10);
-    if (!formData.age || isNaN(age) || age < 1 || age > 120)
+
+    if (!formData.age || isNaN(age) || age < 1 || age > 120) {
         errors.push('Age must be a number between 1 and 120.');
-    if (!formData.address.trim())
+    }
+
+    if (!formData.address.trim()) {
         errors.push('Address is required.');
-    if (!formData.schemeName.trim())
+    }
+
+    if (!formData.schemeName) {
         errors.push('Scheme name is required.');
-    if (!formData.terms)
-        errors.push('You must agree to the Terms of Service.');
+    }
 
-    // Optional Aadhaar — if provided must be 12 digits
-    const aadhaar = (formData.aadhaarNumber || '').trim();
-    if (aadhaar && !/^\d{12}$/.test(aadhaar))
+    if (!/^\d{12}$/.test(formData.aadhaarNumber.trim())) {
         errors.push('Aadhaar number must be exactly 12 digits.');
+    }
 
-    // Optional mobile number — if provided must start 6-9 and be 10 digits
-    const mob = (formData.mobileNumber || '').trim();
-    if (mob && !/^[6-9]\d{9}$/.test(mob))
-        errors.push('Mobile number must be a valid 10-digit Indian number starting with 6–9.');
+    if (!/^[6-9]\d{9}$/.test(formData.mobileNumber.trim())) {
+        errors.push(
+            'Mobile number must be a valid 10-digit Indian number starting with 6–9.'
+        );
+    }
 
-    // Optional PIN code — if provided must be 6 digits
-    const pin = (formData.pinCode || '').trim();
-    if (pin && !/^\d{6}$/.test(pin))
+    if (!formData.dateOfBirth) {
+        errors.push('Date of birth is required.');
+    }
+
+    if (!formData.gender) {
+        errors.push('Gender is required.');
+    }
+
+    if (!formData.category) {
+        errors.push('Social category is required.');
+    }
+
+    if (!formData.village) {
+        errors.push('Village is required.');
+    }
+
+    if (!formData.taluka) {
+        errors.push('Taluka is required.');
+    }
+
+    if (!formData.district) {
+        errors.push('District is required.');
+    }
+
+    if (!formData.state) {
+        errors.push('State is required.');
+    }
+
+    if (!/^\d{6}$/.test(formData.pinCode.trim())) {
         errors.push('PIN code must be exactly 6 digits.');
+    }
+
+    if (
+        !formData.annualIncome ||
+        isNaN(parseFloat(formData.annualIncome)) ||
+        parseFloat(formData.annualIncome) < 0
+    ) {
+        errors.push('Annual income is required and must be a valid amount.');
+    }
+
+    // Land holding is optional
+    if (
+        formData.landHolding.trim() &&
+        (
+            isNaN(parseFloat(formData.landHolding)) ||
+            parseFloat(formData.landHolding) < 0
+        )
+    ) {
+        errors.push('Land holding must be a valid positive number.');
+    }
+
+    if (!formData.terms) {
+        errors.push('You must agree to the Terms of Service.');
+    }
 
     return errors;
 }
+
 
 /* ══════════════════════════════════════════════════════════════
    MAIN COMPONENT
 ══════════════════════════════════════════════════════════════ */
 function Register() {
 
-    const [formData, setFormData] = useState({
-        // Mandatory fields
-        fullName:     '',
-        govId:        '',
-        mobile:       '',   // maps to backend "contact"
-        email:        '',
-        password:     '',
-        age:          '',
-        address:      '',
-        schemeName:   '',
-        terms:        false,
+    const navigate = useNavigate();
 
-        // Optional eligibility fields
+    const [formData, setFormData] = useState({
+
+        // Required basic fields
+        fullName: '',
+        govId: '',
+        mobile: '',
+        email: '',
+        password: '',
+        age: '',
+        address: '',
+        schemeName: '',
+
+        // Required identity fields
         aadhaarNumber: '',
-        mobileNumber:  '',
-        dateOfBirth:   '',
-        gender:        '',
-        village:       '',
-        taluka:        '',
-        district:      '',
-        state:         '',
-        pinCode:       '',
-        annualIncome:  '',
-        landHolding:   '',
-        category:      '',
+        mobileNumber: '',
+        dateOfBirth: '',
+        gender: '',
+        category: '',
+
+        // Required address fields
+        village: '',
+        taluka: '',
+        district: '',
+        state: '',
+        pinCode: '',
+
+        // Required financial field
+        annualIncome: '',
+
+        // ONLY OPTIONAL FIELD
+        landHolding: '',
+
+        // Terms
+        terms: false
     });
 
-    const [loading,       setLoading]       = useState(false);
-    const [clientErrors,  setClientErrors]  = useState([]);   // validation errors
-    const [serverError,   setServerError]   = useState('');   // server error message
-    const [successData,   setSuccessData]   = useState(null); // { id, fullName }
+    /* ── Location dropdown data ───────────────────────────── */
+    const [states, setStates] = useState([]);
+    const [districts, setDistricts] = useState([]);
+    const [talukas, setTalukas] = useState([]);
+    const [villages, setVillages] = useState([]);
 
-    /* ── Field change handler ── */
+    const [loading, setLoading] = useState(false);
+    const [clientErrors, setClientErrors] = useState([]);
+    const [serverError, setServerError] = useState('');
+
+    const [locationLoading, setLocationLoading] = useState({
+        states: false,
+        districts: false,
+        talukas: false,
+        villages: false
+    });
+
+
+    /* ══════════════════════════════════════════════════════════
+       LOAD STATES
+    ══════════════════════════════════════════════════════════ */
+    useEffect(() => {
+
+        const loadStates = async () => {
+
+            setLocationLoading(prev => ({
+                ...prev,
+                states: true
+            }));
+
+            try {
+
+                const res = await fetch(
+                    `${API_BASE}/locations/states`
+                );
+
+                if (!res.ok) {
+                    throw new Error('Failed to load states.');
+                }
+
+                const data = await res.json();
+
+                setStates(data);
+
+            } catch (error) {
+
+                console.error('Error loading states:', error);
+
+                setServerError(
+                    'Could not load states. Make sure the backend is running.'
+                );
+
+            } finally {
+
+                setLocationLoading(prev => ({
+                    ...prev,
+                    states: false
+                }));
+
+            }
+        };
+
+        loadStates();
+
+    }, []);
+
+
+    /* ══════════════════════════════════════════════════════════
+       LOAD DISTRICTS WHEN STATE CHANGES
+    ══════════════════════════════════════════════════════════ */
+    useEffect(() => {
+
+        if (!formData.state) {
+            setDistricts([]);
+            setTalukas([]);
+            setVillages([]);
+            return;
+        }
+
+        const selectedState = states.find(
+            state => state.name === formData.state
+        );
+
+        if (!selectedState) {
+            return;
+        }
+
+        const loadDistricts = async () => {
+
+            setLocationLoading(prev => ({
+                ...prev,
+                districts: true
+            }));
+
+            try {
+
+                const res = await fetch(
+                    `${API_BASE}/locations/districts/${selectedState.id}`
+                );
+
+                if (!res.ok) {
+                    throw new Error('Failed to load districts.');
+                }
+
+                const data = await res.json();
+
+                setDistricts(data);
+
+            } catch (error) {
+
+                console.error('Error loading districts:', error);
+
+                setDistricts([]);
+
+                setServerError(
+                    'Could not load districts.'
+                );
+
+            } finally {
+
+                setLocationLoading(prev => ({
+                    ...prev,
+                    districts: false
+                }));
+
+            }
+        };
+
+        loadDistricts();
+
+    }, [formData.state, states]);
+
+
+    /* ══════════════════════════════════════════════════════════
+       LOAD TALUKAS WHEN DISTRICT CHANGES
+    ══════════════════════════════════════════════════════════ */
+    useEffect(() => {
+
+        if (!formData.district) {
+            setTalukas([]);
+            setVillages([]);
+            return;
+        }
+
+        const selectedDistrict = districts.find(
+            district => district.name === formData.district
+        );
+
+        if (!selectedDistrict) {
+            return;
+        }
+
+        const loadTalukas = async () => {
+
+            setLocationLoading(prev => ({
+                ...prev,
+                talukas: true
+            }));
+
+            try {
+
+                const res = await fetch(
+                    `${API_BASE}/locations/talukas/${selectedDistrict.id}`
+                );
+
+                if (!res.ok) {
+                    throw new Error('Failed to load talukas.');
+                }
+
+                const data = await res.json();
+
+                setTalukas(data);
+
+            } catch (error) {
+
+                console.error('Error loading talukas:', error);
+
+                setTalukas([]);
+
+                setServerError(
+                    'Could not load talukas.'
+                );
+
+            } finally {
+
+                setLocationLoading(prev => ({
+                    ...prev,
+                    talukas: false
+                }));
+
+            }
+        };
+
+        loadTalukas();
+
+    }, [formData.district, districts]);
+
+
+    /* ══════════════════════════════════════════════════════════
+       LOAD VILLAGES WHEN TALUKA CHANGES
+    ══════════════════════════════════════════════════════════ */
+    useEffect(() => {
+
+        if (!formData.taluka) {
+            setVillages([]);
+            return;
+        }
+
+        const selectedTaluka = talukas.find(
+            taluka => taluka.name === formData.taluka
+        );
+
+        if (!selectedTaluka) {
+            return;
+        }
+
+        const loadVillages = async () => {
+
+            setLocationLoading(prev => ({
+                ...prev,
+                villages: true
+            }));
+
+            try {
+
+                const res = await fetch(
+                    `${API_BASE}/locations/villages/${selectedTaluka.id}`
+                );
+
+                if (!res.ok) {
+                    throw new Error('Failed to load villages.');
+                }
+
+                const data = await res.json();
+
+                setVillages(data);
+
+            } catch (error) {
+
+                console.error('Error loading villages:', error);
+
+                setVillages([]);
+
+                setServerError(
+                    'Could not load villages.'
+                );
+
+            } finally {
+
+                setLocationLoading(prev => ({
+                    ...prev,
+                    villages: false
+                }));
+
+            }
+        };
+
+        loadVillages();
+
+    }, [formData.taluka, talukas]);
+
+
+    /* ══════════════════════════════════════════════════════════
+       FIELD CHANGE HANDLER
+    ══════════════════════════════════════════════════════════ */
     const handleChange = (e) => {
+
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value,
-        }));
-        // Clear errors on edit
-        if (clientErrors.length) setClientErrors([]);
-        if (serverError)         setServerError('');
+
+        /*
+         * When a parent location changes, clear all
+         * dependent locations.
+         */
+        if (name === 'state') {
+
+            setFormData(prev => ({
+                ...prev,
+                state: value,
+                district: '',
+                taluka: '',
+                village: ''
+            }));
+
+        } else if (name === 'district') {
+
+            setFormData(prev => ({
+                ...prev,
+                district: value,
+                taluka: '',
+                village: ''
+            }));
+
+        } else if (name === 'taluka') {
+
+            setFormData(prev => ({
+                ...prev,
+                taluka: value,
+                village: ''
+            }));
+
+        } else {
+
+            setFormData(prev => ({
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            }));
+
+        }
+
+        if (clientErrors.length) {
+            setClientErrors([]);
+        }
+
+        if (serverError) {
+            setServerError('');
+        }
     };
 
-    /* ── Submit handler ── */
+
+    /* ══════════════════════════════════════════════════════════
+       SUBMIT HANDLER
+    ══════════════════════════════════════════════════════════ */
     const handleSubmit = async (e) => {
+
         e.preventDefault();
-        setSuccessData(null);
+
         setServerError('');
 
         const errors = validate(formData);
+
         if (errors.length > 0) {
             setClientErrors(errors);
             return;
         }
-        setClientErrors([]);
 
+        setClientErrors([]);
         setLoading(true);
+
         try {
+
             const payload = buildPayload(formData);
 
-            const res = await fetch(`${API_BASE}/beneficiaries`, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify(payload),
-            });
+            const res = await fetch(
+                `${API_BASE}/beneficiaries`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                }
+            );
 
             const body = await res.json().catch(() => ({}));
 
             if (!res.ok) {
-                // 409 Conflict = duplicate, 400 = validation, 500 = server error
-                const msg = body.message || body.error
-                    || `Registration failed (HTTP ${res.status}).`;
+
+                const msg =
+                    body.message ||
+                    body.error ||
+                    `Registration failed (HTTP ${res.status}).`;
+
                 setServerError(msg);
                 return;
             }
 
-            // Success — backend returns BeneficiaryResponse with id
-            setSuccessData({ id: body.id, fullName: body.fullName || formData.fullName.trim() });
+            alert(
+                'Registration successful! Please login with your email and password.'
+            );
 
-        } catch {
+            navigate('/login');
+
+        } catch (error) {
+
+            console.error('Registration error:', error);
+
             setServerError(
                 'Could not reach the server. Make sure the Spring Boot backend is running on port 8080.'
             );
+
         } finally {
+
             setLoading(false);
         }
     };
 
-    /* ════════════════════════════════════════════════════════════
-       SUCCESS VIEW — shown after successful registration
-    ════════════════════════════════════════════════════════════ */
-    if (successData) {
-        return (
-            <div className="register-page">
 
-                <header className="register-header">
-                    <div className="register-header-container">
-                        <Link to="/" className="register-brand">
-                            <h1>DSGP</h1>
-                            <p>Digital Subsidy &amp; Grant Platform</p>
-                        </Link>
-                        <Link to="/" className="register-home-link">Back to Home</Link>
-                    </div>
-                </header>
-
-                <main className="register-main">
-                    <div className="register-card">
-                        <div className="register-success">
-
-                            <div className="register-success-icon">✅</div>
-
-                            <h3>Registration Successful!</h3>
-
-                            <p>
-                                Welcome, <strong>{successData.fullName}</strong>.
-                                Your beneficiary profile has been created.
-                            </p>
-
-                            <p>Your Beneficiary ID is:</p>
-
-                            <div className="register-success-id">
-                                #{successData.id}
-                            </div>
-
-                            <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-muted)' }}>
-                                Keep this ID safe — you will need it to check eligibility
-                                and track your applications.
-                            </p>
-
-                            <div className="register-success-actions">
-                                <Link
-                                    to="/eligibility"
-                                    className="register-success-primary"
-                                >
-                                    Check Scheme Eligibility →
-                                </Link>
-                                <Link
-                                    to="/"
-                                    className="register-success-secondary"
-                                >
-                                    Return to Home
-                                </Link>
-                            </div>
-
-                        </div>
-                    </div>
-                </main>
-
-                <footer className="register-footer">
-                    <p>&copy; 2024 Digital Subsidy &amp; Grant Platform (DSGP)</p>
-                </footer>
-
-            </div>
-        );
-    }
-
-    /* ════════════════════════════════════════════════════════════
-       REGISTRATION FORM VIEW
-    ════════════════════════════════════════════════════════════ */
     return (
         <div className="register-page">
 
             {/* Header */}
             <header className="register-header">
+
                 <div className="register-header-container">
-                    <Link to="/" className="register-brand">
+
+                    <Link
+                        to="/"
+                        className="register-brand"
+                    >
                         <h1>DSGP</h1>
-                        <p>Digital Subsidy &amp; Grant Platform</p>
+
+                        <p>
+                            Digital Subsidy &amp; Grant Platform
+                        </p>
                     </Link>
-                    <Link to="/" className="register-home-link">Back to Home</Link>
+
+                    <Link
+                        to="/"
+                        className="register-home-link"
+                    >
+                        Back to Home
+                    </Link>
+
                 </div>
+
             </header>
 
 
             {/* Main */}
             <main className="register-main">
+
                 <div className="register-card">
 
                     <div className="register-card-header">
-                        <h2>Create Account</h2>
-                        <p>Register as a beneficiary to access government schemes.</p>
+
+                        <h2>
+                            Create Account
+                        </h2>
+
+                        <p>
+                            Register as a beneficiary to access government schemes.
+                        </p>
+
                     </div>
 
 
-                    {/* ── Client-side validation errors ── */}
+                    {/* Client-side errors */}
                     {clientErrors.length > 0 && (
-                        <div className="register-alert register-alert-error" role="alert">
-                            <span className="register-alert-icon">⚠️</span>
+
+                        <div
+                            className="register-alert register-alert-error"
+                            role="alert"
+                        >
+
+                            <span className="register-alert-icon">
+                                ⚠️
+                            </span>
+
                             <div className="register-alert-body">
-                                <strong>Please fix the following:</strong>
+
+                                <strong>
+                                    Please fix the following:
+                                </strong>
+
                                 <ul>
                                     {clientErrors.map((err, i) => (
-                                        <li key={i}>{err}</li>
+                                        <li key={i}>
+                                            {err}
+                                        </li>
                                     ))}
                                 </ul>
+
                             </div>
+
                         </div>
+
                     )}
 
-                    {/* ── Server error ── */}
+
+                    {/* Server error */}
                     {serverError && (
-                        <div className="register-alert register-alert-error" role="alert">
-                            <span className="register-alert-icon">❌</span>
+
+                        <div
+                            className="register-alert register-alert-error"
+                            role="alert"
+                        >
+
+                            <span className="register-alert-icon">
+                                ❌
+                            </span>
+
                             <div className="register-alert-body">
-                                <strong>Registration failed</strong>
-                                <span>{serverError}</span>
+
+                                <strong>
+                                    Registration failed
+                                </strong>
+
+                                <span>
+                                    {serverError}
+                                </span>
+
                             </div>
+
                         </div>
+
                     )}
 
 
-                    <form className="register-form" onSubmit={handleSubmit} noValidate>
+                    <form
+                        className="register-form"
+                        onSubmit={handleSubmit}
+                        noValidate
+                    >
 
-                        {/* ── SECTION: Basic Information ── */}
-                        <p className="register-section-label">Basic Information</p>
 
+                        {/* ══════════════════════════════════════
+                            BASIC INFORMATION
+                        ══════════════════════════════════════ */}
+
+                        <p className="register-section-label">
+                            Basic Information
+                        </p>
+
+
+                        {/* Full Name */}
                         <div className="register-form-group">
-                            <label htmlFor="fullName">Full Name <span aria-hidden="true">*</span></label>
+
+                            <label htmlFor="fullName">
+                                Full Name <span>*</span>
+                            </label>
+
                             <input
                                 id="fullName"
                                 name="fullName"
@@ -324,11 +724,19 @@ function Register() {
                                 placeholder="e.g. Ravi Kumar"
                                 required
                             />
+
                         </div>
 
+
+                        {/* Government ID + Age */}
                         <div className="register-form-row">
+
                             <div className="register-form-group">
-                                <label htmlFor="govId">Government ID <span aria-hidden="true">*</span></label>
+
+                                <label htmlFor="govId">
+                                    Government ID <span>*</span>
+                                </label>
+
                                 <input
                                     id="govId"
                                     name="govId"
@@ -338,9 +746,16 @@ function Register() {
                                     placeholder="Aadhaar / Voter ID"
                                     required
                                 />
+
                             </div>
+
+
                             <div className="register-form-group">
-                                <label htmlFor="age">Age <span aria-hidden="true">*</span></label>
+
+                                <label htmlFor="age">
+                                    Age <span>*</span>
+                                </label>
+
                                 <input
                                     id="age"
                                     name="age"
@@ -352,12 +767,21 @@ function Register() {
                                     placeholder="e.g. 35"
                                     required
                                 />
+
                             </div>
+
                         </div>
 
+
+                        {/* Email + Password + Contact */}
                         <div className="register-form-row">
+
                             <div className="register-form-group">
-                                <label htmlFor="email">Email Address <span aria-hidden="true">*</span></label>
+
+                                <label htmlFor="email">
+                                    Email Address <span>*</span>
+                                </label>
+
                                 <input
                                     id="email"
                                     name="email"
@@ -367,24 +791,35 @@ function Register() {
                                     placeholder="you@example.com"
                                     required
                                 />
+
                             </div>
+
+
                             <div className="register-form-group">
+
                                 <label htmlFor="password">
-                                    Password
+                                    Password <span>*</span>
                                 </label>
 
                                 <input
-                                    type="password"
                                     id="password"
                                     name="password"
+                                    type="password"
                                     value={formData.password}
                                     onChange={handleChange}
                                     placeholder="Create a password"
                                     required
                                 />
+
                             </div>
+
+
                             <div className="register-form-group">
-                                <label htmlFor="mobile">Contact Number <span aria-hidden="true">*</span></label>
+
+                                <label htmlFor="mobile">
+                                    Contact Number <span>*</span>
+                                </label>
+
                                 <input
                                     id="mobile"
                                     name="mobile"
@@ -392,13 +827,22 @@ function Register() {
                                     value={formData.mobile}
                                     onChange={handleChange}
                                     placeholder="10-digit number"
+                                    maxLength="10"
                                     required
                                 />
+
                             </div>
+
                         </div>
 
+
+                        {/* Address */}
                         <div className="register-form-group">
-                            <label htmlFor="address">Address <span aria-hidden="true">*</span></label>
+
+                            <label htmlFor="address">
+                                Address <span>*</span>
+                            </label>
+
                             <input
                                 id="address"
                                 name="address"
@@ -408,10 +852,17 @@ function Register() {
                                 placeholder="Full residential address"
                                 required
                             />
+
                         </div>
 
+
+                        {/* Scheme */}
                         <div className="register-form-group">
-                            <label htmlFor="schemeName">Scheme of Interest <span aria-hidden="true">*</span></label>
+
+                            <label htmlFor="schemeName">
+                                Scheme of Interest <span>*</span>
+                            </label>
+
                             <select
                                 id="schemeName"
                                 name="schemeName"
@@ -419,20 +870,46 @@ function Register() {
                                 onChange={handleChange}
                                 required
                             >
-                                <option value="">Select a scheme</option>
-                                <option value="PM-KISAN Samman Nidhi">PM-KISAN Samman Nidhi</option>
-                                <option value="National Scholarship Portal">National Scholarship Portal (NSP)</option>
-                                <option value="Prime Minister's Employment Generation Programme">PMEGP</option>
+
+                                <option value="">
+                                    Select a scheme
+                                </option>
+
+                                <option value="PM-KISAN Samman Nidhi">
+                                    PM-KISAN Samman Nidhi
+                                </option>
+
+                                <option value="National Scholarship Portal">
+                                    National Scholarship Portal (NSP)
+                                </option>
+
+                                <option value="Prime Minister's Employment Generation Programme">
+                                    PMEGP
+                                </option>
+
                             </select>
+
                         </div>
 
 
-                        {/* ── SECTION: Identity & Demographics (Optional) ── */}
-                        <p className="register-section-label">Identity &amp; Demographics (Optional)</p>
+                        {/* ══════════════════════════════════════
+                            IDENTITY & DEMOGRAPHICS
+                        ══════════════════════════════════════ */}
 
+                        <p className="register-section-label">
+                            Identity &amp; Demographics
+                        </p>
+
+
+                        {/* Aadhaar + Mobile */}
                         <div className="register-form-row">
+
                             <div className="register-form-group">
-                                <label htmlFor="aadhaarNumber">Aadhaar Number</label>
+
+                                <label htmlFor="aadhaarNumber">
+                                    Aadhaar Number <span>*</span>
+                                </label>
+
                                 <input
                                     id="aadhaarNumber"
                                     name="aadhaarNumber"
@@ -441,121 +918,317 @@ function Register() {
                                     onChange={handleChange}
                                     placeholder="12-digit Aadhaar"
                                     maxLength="12"
+                                    required
                                 />
+
                             </div>
+
+
                             <div className="register-form-group">
-                                <label htmlFor="mobileNumber">Mobile Number</label>
+
+                                <label htmlFor="mobileNumber">
+                                    Mobile Number <span>*</span>
+                                </label>
+
                                 <input
                                     id="mobileNumber"
                                     name="mobileNumber"
                                     type="tel"
                                     value={formData.mobileNumber}
                                     onChange={handleChange}
-                                    placeholder="10-digit (starts 6-9)"
+                                    placeholder="10-digit number"
                                     maxLength="10"
+                                    required
                                 />
+
                             </div>
+
                         </div>
 
+
+                        {/* DOB + Gender */}
                         <div className="register-form-row">
+
                             <div className="register-form-group">
-                                <label htmlFor="dateOfBirth">Date of Birth</label>
+
+                                <label htmlFor="dateOfBirth">
+                                    Date of Birth <span>*</span>
+                                </label>
+
                                 <input
                                     id="dateOfBirth"
                                     name="dateOfBirth"
                                     type="date"
                                     value={formData.dateOfBirth}
                                     onChange={handleChange}
+                                    required
                                 />
+
                             </div>
+
+
                             <div className="register-form-group">
-                                <label htmlFor="gender">Gender</label>
+
+                                <label htmlFor="gender">
+                                    Gender <span>*</span>
+                                </label>
+
                                 <select
                                     id="gender"
                                     name="gender"
                                     value={formData.gender}
                                     onChange={handleChange}
+                                    required
                                 >
-                                    <option value="">Select gender</option>
-                                    <option value="MALE">Male</option>
-                                    <option value="FEMALE">Female</option>
-                                    <option value="OTHER">Other</option>
+
+                                    <option value="">
+                                        Select gender
+                                    </option>
+
+                                    <option value="MALE">
+                                        Male
+                                    </option>
+
+                                    <option value="FEMALE">
+                                        Female
+                                    </option>
+
+                                    <option value="OTHER">
+                                        Other
+                                    </option>
+
                                 </select>
+
                             </div>
+
                         </div>
 
+
+                        {/* Category */}
                         <div className="register-form-group">
-                            <label htmlFor="category">Social Category</label>
+
+                            <label htmlFor="category">
+                                Social Category <span>*</span>
+                            </label>
+
                             <select
                                 id="category"
                                 name="category"
                                 value={formData.category}
                                 onChange={handleChange}
+                                required
                             >
-                                <option value="">Select category</option>
-                                <option value="GENERAL">General</option>
-                                <option value="OBC">OBC</option>
-                                <option value="SC">SC</option>
-                                <option value="ST">ST</option>
+
+                                <option value="">
+                                    Select category
+                                </option>
+
+                                <option value="GENERAL">
+                                    General
+                                </option>
+
+                                <option value="OBC">
+                                    OBC
+                                </option>
+
+                                <option value="SC">
+                                    SC
+                                </option>
+
+                                <option value="ST">
+                                    ST
+                                </option>
+
                             </select>
+
                         </div>
 
 
-                        {/* ── SECTION: Address Details (Optional) ── */}
-                        <p className="register-section-label">Address Details (Optional)</p>
+                        {/* ══════════════════════════════════════
+                            ADDRESS DETAILS
+                        ══════════════════════════════════════ */}
 
+                        <p className="register-section-label">
+                            Address Details
+                        </p>
+
+
+                        {/* Village + Taluka */}
                         <div className="register-form-row">
+
                             <div className="register-form-group">
-                                <label htmlFor="village">Village</label>
-                                <input
+
+                                <label htmlFor="village">
+                                    Village <span>*</span>
+                                </label>
+
+                                <select
                                     id="village"
                                     name="village"
-                                    type="text"
                                     value={formData.village}
                                     onChange={handleChange}
-                                    placeholder="Village name"
-                                />
+                                    required
+                                    disabled={
+                                        !formData.taluka ||
+                                        locationLoading.villages
+                                    }
+                                >
+
+                                    <option value="">
+                                        {locationLoading.villages
+                                            ? 'Loading villages...'
+                                            : !formData.taluka
+                                                ? 'Select taluka first'
+                                                : 'Select village'
+                                        }
+                                    </option>
+
+                                    {villages.map((village) => (
+                                        <option
+                                            key={village.id}
+                                            value={village.name}
+                                        >
+                                            {village.name}
+                                        </option>
+                                    ))}
+
+                                </select>
+
                             </div>
+
+
                             <div className="register-form-group">
-                                <label htmlFor="taluka">Taluka</label>
-                                <input
+
+                                <label htmlFor="taluka">
+                                    Taluka <span>*</span>
+                                </label>
+
+                                <select
                                     id="taluka"
                                     name="taluka"
-                                    type="text"
                                     value={formData.taluka}
                                     onChange={handleChange}
-                                    placeholder="Taluka / Block"
-                                />
+                                    required
+                                    disabled={
+                                        !formData.district ||
+                                        locationLoading.talukas
+                                    }
+                                >
+
+                                    <option value="">
+                                        {locationLoading.talukas
+                                            ? 'Loading talukas...'
+                                            : !formData.district
+                                                ? 'Select district first'
+                                                : 'Select taluka'
+                                        }
+                                    </option>
+
+                                    {talukas.map((taluka) => (
+                                        <option
+                                            key={taluka.id}
+                                            value={taluka.name}
+                                        >
+                                            {taluka.name}
+                                        </option>
+                                    ))}
+
+                                </select>
+
                             </div>
+
                         </div>
 
+
+                        {/* District + State */}
                         <div className="register-form-row">
+
                             <div className="register-form-group">
-                                <label htmlFor="district">District</label>
-                                <input
+
+                                <label htmlFor="district">
+                                    District <span>*</span>
+                                </label>
+
+                                <select
                                     id="district"
                                     name="district"
-                                    type="text"
                                     value={formData.district}
                                     onChange={handleChange}
-                                    placeholder="District"
-                                />
+                                    required
+                                    disabled={
+                                        !formData.state ||
+                                        locationLoading.districts
+                                    }
+                                >
+
+                                    <option value="">
+                                        {locationLoading.districts
+                                            ? 'Loading districts...'
+                                            : !formData.state
+                                                ? 'Select state first'
+                                                : 'Select district'
+                                        }
+                                    </option>
+
+                                    {districts.map((district) => (
+                                        <option
+                                            key={district.id}
+                                            value={district.name}
+                                        >
+                                            {district.name}
+                                        </option>
+                                    ))}
+
+                                </select>
+
                             </div>
+
+
                             <div className="register-form-group">
-                                <label htmlFor="state">State</label>
-                                <input
+
+                                <label htmlFor="state">
+                                    State <span>*</span>
+                                </label>
+
+                                <select
                                     id="state"
                                     name="state"
-                                    type="text"
                                     value={formData.state}
                                     onChange={handleChange}
-                                    placeholder="State"
-                                />
+                                    required
+                                    disabled={locationLoading.states}
+                                >
+
+                                    <option value="">
+                                        {locationLoading.states
+                                            ? 'Loading states...'
+                                            : 'Select state'
+                                        }
+                                    </option>
+
+                                    {states.map((state) => (
+                                        <option
+                                            key={state.id}
+                                            value={state.name}
+                                        >
+                                            {state.name}
+                                        </option>
+                                    ))}
+
+                                </select>
+
                             </div>
+
                         </div>
 
+
+                        {/* PIN */}
                         <div className="register-form-group">
-                            <label htmlFor="pinCode">PIN Code</label>
+
+                            <label htmlFor="pinCode">
+                                PIN Code <span>*</span>
+                            </label>
+
                             <input
                                 id="pinCode"
                                 name="pinCode"
@@ -564,16 +1237,30 @@ function Register() {
                                 onChange={handleChange}
                                 placeholder="6-digit PIN code"
                                 maxLength="6"
+                                required
                             />
+
                         </div>
 
 
-                        {/* ── SECTION: Financial Information (Optional) ── */}
-                        <p className="register-section-label">Financial Information (Optional)</p>
+                        {/* ══════════════════════════════════════
+                            FINANCIAL INFORMATION
+                        ══════════════════════════════════════ */}
+
+                        <p className="register-section-label">
+                            Financial Information
+                        </p>
+
 
                         <div className="register-form-row">
+
+                            {/* Annual Income - REQUIRED */}
                             <div className="register-form-group">
-                                <label htmlFor="annualIncome">Annual Income (₹)</label>
+
+                                <label htmlFor="annualIncome">
+                                    Annual Income (₹) <span>*</span>
+                                </label>
+
                                 <input
                                     id="annualIncome"
                                     name="annualIncome"
@@ -583,10 +1270,19 @@ function Register() {
                                     value={formData.annualIncome}
                                     onChange={handleChange}
                                     placeholder="e.g. 120000"
+                                    required
                                 />
+
                             </div>
+
+
+                            {/* Land Holding - ONLY OPTIONAL */}
                             <div className="register-form-group">
-                                <label htmlFor="landHolding">Land Holding (acres)</label>
+
+                                <label htmlFor="landHolding">
+                                    Land Holding (acres)
+                                </label>
+
                                 <input
                                     id="landHolding"
                                     name="landHolding"
@@ -597,54 +1293,98 @@ function Register() {
                                     onChange={handleChange}
                                     placeholder="e.g. 1.5"
                                 />
+
+                                <small>
+                                    Optional
+                                </small>
+
                             </div>
+
                         </div>
 
 
-                        {/* ── Terms ── */}
+                        {/* ══════════════════════════════════════
+                            TERMS
+                        ══════════════════════════════════════ */}
+
                         <label className="register-terms">
+
                             <input
                                 type="checkbox"
                                 name="terms"
                                 checked={formData.terms}
                                 onChange={handleChange}
                             />
+
                             <span>
+
                                 I agree to the{' '}
-                                <Link to="/terms">Terms of Service</Link>
+
+                                <Link to="/terms">
+                                    Terms of Service
+                                </Link>
+
                                 {' '}and{' '}
-                                <Link to="/privacy">Privacy Policy</Link>.
+
+                                <Link to="/privacy">
+                                    Privacy Policy
+                                </Link>.
+
                             </span>
+
                         </label>
 
 
-                        {/* ── Submit ── */}
+                        {/* Submit */}
                         <button
                             id="register-submit-btn"
                             type="submit"
                             className="register-button"
                             disabled={loading}
                         >
-                            {loading && <span className="register-button-spinner" aria-hidden="true" />}
-                            {loading ? 'Registering…' : 'Create Account'}
+
+                            {loading && (
+                                <span
+                                    className="register-button-spinner"
+                                    aria-hidden="true"
+                                />
+                            )}
+
+                            {loading
+                                ? 'Registering…'
+                                : 'Create Account'
+                            }
+
                         </button>
 
                     </form>
 
 
-                    {/* ── Already have an account? ── */}
+                    {/* Login link */}
                     <div className="register-login">
-                        <p>Already have an account?</p>
-                        <Link to="/login">Sign In</Link>
+
+                        <p>
+                            Already have an account?
+                        </p>
+
+                        <Link to="/login">
+                            Sign In
+                        </Link>
+
                     </div>
 
                 </div>
+
             </main>
 
 
             {/* Footer */}
             <footer className="register-footer">
-                <p>&copy; 2024 Digital Subsidy &amp; Grant Platform (DSGP)</p>
+
+                <p>
+                    &copy; 2024 Digital Subsidy &amp; Grant Platform (DSGP)
+                </p>
+
             </footer>
 
         </div>

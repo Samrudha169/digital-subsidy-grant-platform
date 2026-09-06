@@ -1,317 +1,219 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { getBeneficiaryById } from '../services/api';
-import './Profile.css';
-
-function Profile() {
-    const navigate = useNavigate();
-
-const [beneficiary, setBeneficiary] = useState(null);
-const [loading, setLoading] = useState(true);
-const [error, setError] = useState('');
-
-useEffect(() => {
-    const beneficiaryId = localStorage.getItem('beneficiaryId');
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
-
-    if (!beneficiaryId || isLoggedIn !== 'true') {
-navigate('/login');
-    return;
+.profile-page {
+    min-height: 100vh;
+    background: #f5f7fb;
+    padding: 30px;
 }
 
-    const loadProfile = async () => {
-try {
-    const data = await getBeneficiaryById(beneficiaryId);
-setBeneficiary(data);
-} catch (err) {
-console.error('Profile error:', err);
-setError('Unable to load your profile.');
-} finally {
-  setLoading(false);
-  }
-};
-
-loadProfile();
-}, [navigate]);
-
-    if (loading) {
-    return (
-    <div className="profile-page">
-    <div className="profile-loading">
-    Loading your profile...
-    </div>
-    </div>
-);
+.profile-container {
+    max-width: 1100px;
+    margin: 0 auto;
 }
 
-    if (error) {
-    return (
-    <div className="profile-page">
-    <div className="profile-error">
-{error}
-</div>
-</div>
-);
+.profile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
 }
 
-    return (
-    <div className="profile-page">
-
-    <header className="profile-header">
-    <div className="profile-header-container">
-
-    <Link to="/dashboard" className="profile-brand">
-    <h1>DSGP</h1>
-    <p>Digital Subsidy & Grant Platform</p>
-    </Link>
-
-    <Link
-    to="/dashboard"
-    className="profile-back-link"
-    >
-    Back to Dashboard
-    </Link>
-
-    </div>
-    </header>
-
-    <main className="profile-main">
-
-    <div className="profile-container">
-
-    <section className="profile-title-section">
-    <h2>My Profile</h2>
-    <p>
-    View your registered personal and beneficiary
-    information.
-    </p>
-    </section>
-
-    <section className="profile-card">
-
-    <div className="profile-card-header">
-
-    <div className="profile-avatar">
-{beneficiary?.fullName
-    ?.charAt(0)
-    ?.toUpperCase() || 'B'}
-</div>
-
-<div>
-<h3>
-{beneficiary?.fullName || 'Beneficiary'}
-</h3>
-
-<p>
-{beneficiary?.email ||
-'No email available'}
-</p>
-</div>
-
-</div>
-
-<div className="profile-section">
-
-<h3>Personal Information</h3>
-
-<div className="profile-grid">
-
-<ProfileField
-label="Full Name"
-value={beneficiary?.fullName}
-/>
-
-<ProfileField
-label="First Name"
-value={beneficiary?.firstName}
-/>
-
-<ProfileField
-label="Last Name"
-value={beneficiary?.lastName}
-/>
-
-<ProfileField
-label="Date of Birth"
-value={beneficiary?.dateOfBirth}
-/>
-
-<ProfileField
-label="Age"
-value={beneficiary?.age}
-/>
-
-<ProfileField
-label="Gender"
-value={beneficiary?.gender}
-/>
-
-</div>
-
-</div>
-
-<div className="profile-section">
-
-<h3>Contact & Identity</h3>
-
-<div className="profile-grid">
-
-<ProfileField
-label="Email"
-value={beneficiary?.email}
-/>
-
-<ProfileField
-label="Mobile Number"
-value={beneficiary?.mobileNumber}
-/>
-
-<ProfileField
-label="Contact"
-value={beneficiary?.contact}
-/>
-
-<ProfileField
-label="Government ID"
-value={beneficiary?.govId}
-/>
-
-<ProfileField
-label="Aadhaar Number"
-value={beneficiary?.aadhaarNumber}
-/>
-
-</div>
-
-</div>
-
-<div className="profile-section">
-
-<h3>Address</h3>
-
-<div className="profile-grid">
-
-<ProfileField
-label="Address"
-value={beneficiary?.address}
-/>
-
-<ProfileField
-label="Village"
-value={beneficiary?.village}
-/>
-
-<ProfileField
-label="Taluka"
-value={beneficiary?.taluka}
-/>
-
-<ProfileField
-label="District"
-value={beneficiary?.district}
-/>
-
-<ProfileField
-label="State"
-value={beneficiary?.state}
-/>
-
-<ProfileField
-label="PIN Code"
-value={beneficiary?.pinCode}
-/>
-
-</div>
-
-</div>
-
-<div className="profile-section">
-
-<h3>Financial & Scheme Information</h3>
-
-<div className="profile-grid">
-
-<ProfileField
-label="Occupation"
-value={beneficiary?.occupation}
-/>
-
-<ProfileField
-label="Annual Income"
-value={beneficiary?.annualIncome}
-/>
-
-<ProfileField
-label="Land Holding"
-value={beneficiary?.landHolding}
-/>
-
-<ProfileField
-label="Category"
-value={beneficiary?.category}
-/>
-
-<ProfileField
-label="Scheme"
-value={beneficiary?.schemeName}
-/>
-
-</div>
-
-</div>
-
-<div className="profile-section">
-
-<h3>Account Status</h3>
-
-<div className="profile-grid">
-
-<ProfileField
-label="Registration Status"
-value={beneficiary?.registrationStatus}
-/>
-
-<ProfileField
-label="Identity Verified"
-value={
-beneficiary?.identityVerified
-    ? 'Verified'
-    : 'Not Verified'
-}
-/>
-
-</div>
-
-</div>
-
-</section>
-
-</div>
-
-</main>
-
-</div>
-);
+.profile-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1f2937;
 }
 
-function ProfileField({ label, value }) {
-    return (
-    <div className="profile-field">
-
-    <span className="profile-field-label">
-{label}
-</span>
-
-<span className="profile-field-value">
-{value !== null &&
-value !== undefined &&
-value !== ''
-? value
-: 'Not provided'}
-</span>
-
-</div>
-);
+.profile-subtitle {
+    color: #6b7280;
+    margin-top: 5px;
 }
 
-export default Profile;
+.profile-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.profile-button {
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    background: #2563eb;
+    color: white;
+}
+
+.profile-button:hover {
+    background: #1d4ed8;
+}
+
+.profile-card {
+    background: white;
+    border-radius: 14px;
+    padding: 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+}
+
+.profile-top {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.profile-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #2563eb;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    font-weight: 700;
+}
+
+.profile-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: #111827;
+}
+
+.profile-id {
+    color: #6b7280;
+    margin-top: 5px;
+}
+
+.profile-completion {
+    margin-top: 20px;
+}
+
+.profile-completion-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.profile-progress {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.profile-progress-bar {
+    height: 100%;
+    background: #2563eb;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.profile-section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 20px;
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+}
+
+.profile-field {
+    padding: 14px;
+    background: #f9fafb;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+}
+
+.profile-field-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.profile-field-value {
+    font-size: 15px;
+    color: #111827;
+    word-break: break-word;
+}
+
+.profile-status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.profile-status.success {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.profile-status.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.profile-status.error {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.profile-loading {
+    text-align: center;
+    padding: 60px;
+    color: #6b7280;
+    font-size: 18px;
+}
+
+.profile-error {
+    text-align: center;
+    padding: 40px;
+    color: #dc2626;
+    background: white;
+    border-radius: 12px;
+}
+
+.profile-back {
+    display: inline-block;
+    margin-bottom: 20px;
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.profile-back:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+    .profile-page {
+        padding: 20px;
+    }
+
+    .profile-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-top {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
