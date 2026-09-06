@@ -96,6 +96,7 @@ class BeneficiaryControllerTest {
         legacyRequest.setAge(38);
         legacyRequest.setAddress("Village Uruli Kanchan, Pune");
         legacyRequest.setSchemeName("PM-KISAN");
+        legacyRequest.setPassword("password123");
 
         extendedRequest = new BeneficiaryRegistrationRequest();
         extendedRequest.setFullName("Sita Devi");
@@ -117,6 +118,7 @@ class BeneficiaryControllerTest {
         extendedRequest.setAnnualIncome(new BigDecimal("85000.00"));
         extendedRequest.setLandHolding(new BigDecimal("1.5"));
         extendedRequest.setCategory(Category.OBC);
+        extendedRequest.setPassword("password123");
 
         legacyResponse = BeneficiaryResponse.builder()
                 .id(1)

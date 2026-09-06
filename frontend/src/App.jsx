@@ -1,4 +1,5 @@
 import { Link, Routes, Route } from 'react-router-dom';
+import { useState } from 'react';
 import './App.css';
 
 import Home from './pages/Home';
@@ -17,10 +18,14 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import Dashboard from './pages/Dashboard';
 
 function App() {
 
-    // Navigation links
+    const [isLoggedIn, setIsLoggedIn] = useState(
+        localStorage.getItem('isLoggedIn') === 'true'
+    );
+
     const navLinks = [
         { name: 'Home', path: '/' },
         { name: 'Find Schemes', path: '/schemes' },
@@ -32,20 +37,12 @@ function App() {
     return (
         <div className="dsgp-app">
 
-            {/* ================= HEADER ================= */}
-
             <header className="header">
-
                 <div className="site-header">
-
                     <div className="header-inner">
-
                         <div className="header-container">
 
-                            {/* BRAND */}
-
                             <div className="brand">
-
                                 <Link
                                     to="/"
                                     style={{
@@ -61,16 +58,11 @@ function App() {
                                         Digital Subsidy & Grant Platform
                                     </p>
                                 </Link>
-
                             </div>
-
-
-                            {/* NAVIGATION */}
 
                             <nav className="nav">
 
                                 {navLinks.map((link, index) => (
-
                                     <Link
                                         key={index}
                                         to={link.path}
@@ -78,43 +70,40 @@ function App() {
                                     >
                                         {link.name}
                                     </Link>
-
                                 ))}
 
-
-                                <Link
-                                    to="/login"
-                                    className="nav-link nav-login"
-                                >
-                                    Login / Register
-                                </Link>
+                                {isLoggedIn ? (
+                                    <Link
+                                        to="/dashboard"
+                                        className="nav-link nav-login"
+                                    >
+                                        Dashboard
+                                    </Link>
+                                ) : (
+                                    <Link
+                                        to="/login"
+                                        className="nav-link nav-login"
+                                    >
+                                        Login / Register
+                                    </Link>
+                                )}
 
                             </nav>
 
                         </div>
-
                     </div>
-
                 </div>
-
             </header>
 
-
-            {/* ================= PAGES ================= */}
 
             <main>
 
                 <Routes>
 
-                    {/* HOME */}
-
                     <Route
                         path="/"
                         element={<Home />}
                     />
-
-
-                    {/* SCHEMES */}
 
                     <Route
                         path="/schemes"
@@ -136,9 +125,6 @@ function App() {
                         element={<PMEGP />}
                     />
 
-
-                    {/* OTHER PAGES */}
-
                     <Route
                         path="/eligibility"
                         element={<Eligibility />}
@@ -154,10 +140,34 @@ function App() {
                         element={<About />}
                     />
 
+
                     <Route
                         path="/login"
-                        element={<Login />}
+                        element={
+                            <Login
+                                onLogin={() => setIsLoggedIn(true)}
+                            />
+                        }
                     />
+
+
+                    <Route
+                        path="/register"
+                        element={<Register />}
+                    />
+
+
+                    <Route
+                        path="/dashboard"
+                        element={
+                            <Dashboard
+                                onLogout={() => {
+                                    setIsLoggedIn(false);
+                                }}
+                            />
+                        }
+                    />
+
 
                     <Route
                         path="/help"
@@ -174,16 +184,20 @@ function App() {
                         element={<Contact />}
                     />
 
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-
                     <Route
                         path="/forgot-password"
                         element={<ForgotPassword />}
                     />
 
-                    <Route path="/privacy" element={<Privacy />} />
-                    <Route path="/terms" element={<Terms />} />
+                    <Route
+                        path="/privacy"
+                        element={<Privacy />}
+                    />
+
+                    <Route
+                        path="/terms"
+                        element={<Terms />}
+                    />
 
                 </Routes>
 

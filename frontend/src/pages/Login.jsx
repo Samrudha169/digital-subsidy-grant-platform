@@ -1,13 +1,17 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import './Login.css';
 
-function Login() {
+function Login({ onLogin }) {
+    const navigate = useNavigate();
+
     const [formData, setFormData] = useState({
         email: '',
         password: '',
         remember: false
     });
+
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -18,12 +22,123 @@ function Login() {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setLoading(true);
 
-        console.log('Login submitted:', formData);
+        try {
+            const response = await fetch(
+                'http://localhost:8080/api/v1/auth/login',
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: formData.email,
+                        password: formData.password
+                    })
+                }
+            );
 
-        // Backend login functionality will be added later.
+            // Read response safely
+            const responseText = await response.text();
+
+            let data = {};
+
+            if (responseText) {
+                try {
+                    data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error(
+                        'Invalid JSON response:',
+                        responseText
+                    );
+
+                    throw new Error(
+                        `Server returned an invalid response (HTTP ${response.status})`
+                    );
+                }
+            }
+
+            console.log(
+                'Login response:',
+                response.status,
+                data
+            );
+
+            // Backend returned an error
+            if (!response.ok) {
+                alert(
+                    data.message ||
+                    `Login failed. Server returned HTTP ${response.status}`
+                );
+                return;
+            }
+
+            // Login successful
+            if (data.success) {
+
+                localStorage.setItem(
+                    'beneficiaryId',
+                    data.beneficiaryId
+                );
+
+                localStorage.setItem(
+                    'beneficiaryName',
+                    data.name
+                );
+
+                localStorage.setItem(
+                    'isLoggedIn',
+                    'true'
+                );
+
+                // Remember email
+                if (formData.remember) {
+                    localStorage.setItem(
+                        'rememberedEmail',
+                        formData.email
+                    );
+                } else {
+                    localStorage.removeItem(
+                        'rememberedEmail'
+                    );
+                }
+
+                // Update login state in App.jsx
+                if (onLogin) {
+                    onLogin();
+                }
+
+                alert('Login successful!');
+
+                // Go to dashboard
+                navigate('/dashboard');
+
+            } else {
+
+                alert(
+                    data.message ||
+                    'Invalid email or password'
+                );
+            }
+
+        } catch (error) {
+
+            console.error(
+                'Login error:',
+                error
+            );
+
+            alert(
+                `Login request failed: ${error.message}`
+            );
+
+        } finally {
+
+            setLoading(false);
+        }
     };
 
     return (
@@ -33,12 +148,21 @@ function Login() {
             <header className="login-header">
                 <div className="login-header-container">
 
-                    <Link to="/" className="login-brand">
+                    <Link
+                        to="/"
+                        className="login-brand"
+                    >
                         <h1>DSGP</h1>
-                        <p>Digital Subsidy & Grant Platform</p>
+
+                        <p>
+                            Digital Subsidy & Grant Platform
+                        </p>
                     </Link>
 
-                    <Link to="/" className="login-home-link">
+                    <Link
+                        to="/"
+                        className="login-home-link"
+                    >
                         Back to Home
                     </Link>
 
@@ -52,11 +176,15 @@ function Login() {
                 <div className="login-card">
 
                     <div className="login-card-header">
-                        <h2>Welcome Back</h2>
+
+                        <h2>
+                            Welcome Back
+                        </h2>
 
                         <p>
                             Login to access your DSGP account
                         </p>
+
                     </div>
 
 
@@ -138,8 +266,11 @@ function Login() {
                         <button
                             type="submit"
                             className="login-button"
+                            disabled={loading}
                         >
-                            Login
+                            {loading
+                                ? 'Logging in...'
+                                : 'Login'}
                         </button>
 
                     </form>
@@ -159,15 +290,16 @@ function Login() {
                     </div>
 
 
-                    {/* Demo Notice */}
+                    {/* Secure Login Notice */}
                     <div className="login-demo-notice">
 
-                        <strong>Academic Project</strong>
+                        <strong>
+                            Secure Login
+                        </strong>
 
                         <p>
-                            Login functionality is currently for
-                            demonstration purposes. Backend authentication
-                            will be connected later.
+                            Your email and password are securely
+                            verified by the DSGP backend.
                         </p>
 
                     </div>
@@ -181,7 +313,8 @@ function Login() {
             <footer className="login-footer">
 
                 <p>
-                    &copy; 2024 Digital Subsidy & Grant Platform (DSGP)
+                    &copy; 2024 Digital Subsidy & Grant Platform
+                    (DSGP)
                 </p>
 
             </footer>

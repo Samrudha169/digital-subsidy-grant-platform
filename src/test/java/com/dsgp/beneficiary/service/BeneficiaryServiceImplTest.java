@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -33,8 +34,9 @@ import static org.mockito.BDDMockito.*;
  * Unit tests for {@link BeneficiaryServiceImpl}.
  *
  * <p>Uses Mockito to isolate the service from the database.
- * Covers Milestone 1 (CRUD behaviour, duplicate checks, not-found)
- * and Milestone 2 (extended eligibility field persistence, patch update).
+ * Covers Milestone 1 (CRUD behaviour, duplicate checks, not-found),
+ * Milestone 2 (extended eligibility field persistence, patch update),
+ * and password encoding during beneficiary registration.
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("BeneficiaryServiceImpl")
@@ -42,6 +44,9 @@ class BeneficiaryServiceImplTest {
 
     @Mock
     private BeneficiaryRepository repository;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private BeneficiaryServiceImpl service;
@@ -54,6 +59,7 @@ class BeneficiaryServiceImplTest {
 
     @BeforeEach
     void setUp() {
+
         // Minimal 7-field legacy request (Milestone 1 format)
         legacyRequest = new BeneficiaryRegistrationRequest();
         legacyRequest.setFullName("Ravi Kumar");
@@ -63,6 +69,7 @@ class BeneficiaryServiceImplTest {
         legacyRequest.setAge(38);
         legacyRequest.setAddress("Village Uruli Kanchan, Pune");
         legacyRequest.setSchemeName("PM-KISAN");
+        legacyRequest.setPassword("password123");
 
         // Extended request with eligibility fields (Milestone 2 format)
         extendedRequest = new BeneficiaryRegistrationRequest();
@@ -73,6 +80,8 @@ class BeneficiaryServiceImplTest {
         extendedRequest.setAge(30);
         extendedRequest.setAddress("Village Wai, Satara");
         extendedRequest.setSchemeName("NSP");
+        extendedRequest.setPassword("password123");
+
         extendedRequest.setAadhaarNumber("123456789012");
         extendedRequest.setMobileNumber("7654321098");
         extendedRequest.setDateOfBirth(LocalDate.of(1994, 6, 15));
@@ -112,25 +121,53 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("persists legacy 7-field request successfully")
         void register_legacyRequest_success() {
-            given(repository.existsByGovId("AABCD1234E")).willReturn(false);
-            given(repository.existsByContact("9876543210")).willReturn(false);
-            given(repository.save(any(Beneficiary.class))).willReturn(savedBeneficiary);
 
-            BeneficiaryResponse response = service.registerBeneficiary(legacyRequest);
+            given(repository.existsByGovId("AABCD1234E"))
+                    .willReturn(false);
+
+            given(repository.existsByContact("9876543210"))
+                    .willReturn(false);
+
+            given(passwordEncoder.encode("password123"))
+                    .willReturn("encoded-password");
+
+            given(repository.save(any(Beneficiary.class)))
+                    .willReturn(savedBeneficiary);
+
+            BeneficiaryResponse response =
+                    service.registerBeneficiary(legacyRequest);
 
             assertThat(response.getId()).isEqualTo(1);
             assertThat(response.getFullName()).isEqualTo("Ravi Kumar");
             assertThat(response.getGovId()).isEqualTo("AABCD1234E");
-            then(repository).should().save(any(Beneficiary.class));
+
+            then(passwordEncoder)
+                    .should()
+                    .encode("password123");
+
+            then(repository)
+                    .should()
+                    .save(any(Beneficiary.class));
         }
 
         @Test
         @DisplayName("persists extended eligibility fields when provided")
         void register_extendedRequest_persistsAllFields() {
-            given(repository.existsByGovId("BBACD9876F")).willReturn(false);
-            given(repository.existsByContact("8765432109")).willReturn(false);
-            given(repository.existsByAadhaarNumber("123456789012")).willReturn(false);
-            given(repository.existsByMobileNumber("7654321098")).willReturn(false);
+
+            given(repository.existsByGovId("BBACD9876F"))
+                    .willReturn(false);
+
+            given(repository.existsByContact("8765432109"))
+                    .willReturn(false);
+
+            given(repository.existsByAadhaarNumber("123456789012"))
+                    .willReturn(false);
+
+            given(repository.existsByMobileNumber("7654321098"))
+                    .willReturn(false);
+
+            given(passwordEncoder.encode("password123"))
+                    .willReturn("encoded-password");
 
             Beneficiary extendedSaved = Beneficiary.builder()
                     .id(2)
@@ -157,69 +194,140 @@ class BeneficiaryServiceImplTest {
                     .identityVerified(false)
                     .build();
 
-            given(repository.save(any(Beneficiary.class))).willReturn(extendedSaved);
+            given(repository.save(any(Beneficiary.class)))
+                    .willReturn(extendedSaved);
 
-            BeneficiaryResponse response = service.registerBeneficiary(extendedRequest);
+            BeneficiaryResponse response =
+                    service.registerBeneficiary(extendedRequest);
 
-            assertThat(response.getAadhaarNumber()).isEqualTo("123456789012");
-            assertThat(response.getMobileNumber()).isEqualTo("7654321098");
-            assertThat(response.getGender()).isEqualTo(Gender.FEMALE);
-            assertThat(response.getDistrict()).isEqualTo("Satara");
-            assertThat(response.getAnnualIncome()).isEqualByComparingTo("85000.00");
-            assertThat(response.getLandHolding()).isEqualByComparingTo("1.5");
-            assertThat(response.getCategory()).isEqualTo(Category.OBC);
-            assertThat(response.getRegistrationStatus()).isEqualTo(RegistrationStatus.PENDING);
-            assertThat(response.isIdentityVerified()).isFalse();
+            assertThat(response.getAadhaarNumber())
+                    .isEqualTo("123456789012");
+
+            assertThat(response.getMobileNumber())
+                    .isEqualTo("7654321098");
+
+            assertThat(response.getGender())
+                    .isEqualTo(Gender.FEMALE);
+
+            assertThat(response.getDistrict())
+                    .isEqualTo("Satara");
+
+            assertThat(response.getAnnualIncome())
+                    .isEqualByComparingTo("85000.00");
+
+            assertThat(response.getLandHolding())
+                    .isEqualByComparingTo("1.5");
+
+            assertThat(response.getCategory())
+                    .isEqualTo(Category.OBC);
+
+            assertThat(response.getRegistrationStatus())
+                    .isEqualTo(RegistrationStatus.PENDING);
+
+            assertThat(response.isIdentityVerified())
+                    .isFalse();
+
+            then(passwordEncoder)
+                    .should()
+                    .encode("password123");
         }
 
         @Test
         @DisplayName("throws DuplicateAadhaarException when govId already exists")
         void register_duplicateGovId_throws() {
-            given(repository.existsByGovId("AABCD1234E")).willReturn(true);
 
-            assertThatThrownBy(() -> service.registerBeneficiary(legacyRequest))
+            given(repository.existsByGovId("AABCD1234E"))
+                    .willReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.registerBeneficiary(legacyRequest)
+            )
                     .isInstanceOf(DuplicateAadhaarException.class);
 
-            then(repository).should(never()).save(any());
+            then(repository)
+                    .should(never())
+                    .save(any());
+
+            then(passwordEncoder)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
         @DisplayName("throws DuplicateMobileException when contact already exists")
         void register_duplicateContact_throws() {
-            given(repository.existsByGovId("AABCD1234E")).willReturn(false);
-            given(repository.existsByContact("9876543210")).willReturn(true);
 
-            assertThatThrownBy(() -> service.registerBeneficiary(legacyRequest))
+            given(repository.existsByGovId("AABCD1234E"))
+                    .willReturn(false);
+
+            given(repository.existsByContact("9876543210"))
+                    .willReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.registerBeneficiary(legacyRequest)
+            )
                     .isInstanceOf(DuplicateMobileException.class);
 
-            then(repository).should(never()).save(any());
+            then(repository)
+                    .should(never())
+                    .save(any());
+
+            then(passwordEncoder)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
         @DisplayName("throws DuplicateAadhaarException when aadhaarNumber already exists")
         void register_duplicateAadhaar_throws() {
-            given(repository.existsByGovId("BBACD9876F")).willReturn(false);
-            given(repository.existsByContact("8765432109")).willReturn(false);
-            given(repository.existsByAadhaarNumber("123456789012")).willReturn(true);
 
-            assertThatThrownBy(() -> service.registerBeneficiary(extendedRequest))
+            given(repository.existsByGovId("BBACD9876F"))
+                    .willReturn(false);
+
+            given(repository.existsByContact("8765432109"))
+                    .willReturn(false);
+
+            given(repository.existsByAadhaarNumber("123456789012"))
+                    .willReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.registerBeneficiary(extendedRequest)
+            )
                     .isInstanceOf(DuplicateAadhaarException.class);
 
-            then(repository).should(never()).save(any());
+            then(repository)
+                    .should(never())
+                    .save(any());
+
+            then(passwordEncoder)
+                    .shouldHaveNoInteractions();
         }
 
         @Test
         @DisplayName("throws DuplicateMobileException when mobileNumber already exists")
         void register_duplicateMobile_throws() {
-            given(repository.existsByGovId("BBACD9876F")).willReturn(false);
-            given(repository.existsByContact("8765432109")).willReturn(false);
-            given(repository.existsByAadhaarNumber("123456789012")).willReturn(false);
-            given(repository.existsByMobileNumber("7654321098")).willReturn(true);
 
-            assertThatThrownBy(() -> service.registerBeneficiary(extendedRequest))
+            given(repository.existsByGovId("BBACD9876F"))
+                    .willReturn(false);
+
+            given(repository.existsByContact("8765432109"))
+                    .willReturn(false);
+
+            given(repository.existsByAadhaarNumber("123456789012"))
+                    .willReturn(false);
+
+            given(repository.existsByMobileNumber("7654321098"))
+                    .willReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.registerBeneficiary(extendedRequest)
+            )
                     .isInstanceOf(DuplicateMobileException.class);
 
-            then(repository).should(never()).save(any());
+            then(repository)
+                    .should(never())
+                    .save(any());
+
+            then(passwordEncoder)
+                    .shouldHaveNoInteractions();
         }
     }
 
@@ -234,9 +342,12 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("returns response when beneficiary exists")
         void getById_found_returnsResponse() {
-            given(repository.findById(1)).willReturn(Optional.of(savedBeneficiary));
 
-            BeneficiaryResponse response = service.getBeneficiaryById(1);
+            given(repository.findById(1))
+                    .willReturn(Optional.of(savedBeneficiary));
+
+            BeneficiaryResponse response =
+                    service.getBeneficiaryById(1);
 
             assertThat(response.getId()).isEqualTo(1);
             assertThat(response.getFullName()).isEqualTo("Ravi Kumar");
@@ -245,9 +356,13 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("throws BeneficiaryNotFoundException when id not found")
         void getById_notFound_throws() {
-            given(repository.findById(99)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getBeneficiaryById(99))
+            given(repository.findById(99))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.getBeneficiaryById(99)
+            )
                     .isInstanceOf(BeneficiaryNotFoundException.class);
         }
     }
@@ -263,20 +378,27 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("returns response when govId matches")
         void getByGovId_found_returnsResponse() {
+
             given(repository.findByGovId("AABCD1234E"))
                     .willReturn(Optional.of(savedBeneficiary));
 
-            BeneficiaryResponse response = service.getBeneficiaryByGovId("AABCD1234E");
+            BeneficiaryResponse response =
+                    service.getBeneficiaryByGovId("AABCD1234E");
 
-            assertThat(response.getGovId()).isEqualTo("AABCD1234E");
+            assertThat(response.getGovId())
+                    .isEqualTo("AABCD1234E");
         }
 
         @Test
         @DisplayName("throws BeneficiaryNotFoundException when govId not found")
         void getByGovId_notFound_throws() {
-            given(repository.findByGovId("UNKNOWN")).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getBeneficiaryByGovId("UNKNOWN"))
+            given(repository.findByGovId("UNKNOWN"))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.getBeneficiaryByGovId("UNKNOWN")
+            )
                     .isInstanceOf(BeneficiaryNotFoundException.class);
         }
     }
@@ -292,25 +414,34 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("returns mapped list of all beneficiaries")
         void getAll_returnsList() {
-            given(repository.findAll()).willReturn(List.of(savedBeneficiary));
 
-            List<BeneficiaryResponse> responses = service.getAllBeneficiaries();
+            given(repository.findAll())
+                    .willReturn(List.of(savedBeneficiary));
 
-            assertThat(responses).hasSize(1);
-            assertThat(responses.get(0).getFullName()).isEqualTo("Ravi Kumar");
+            List<BeneficiaryResponse> responses =
+                    service.getAllBeneficiaries();
+
+            assertThat(responses)
+                    .hasSize(1);
+
+            assertThat(responses.get(0).getFullName())
+                    .isEqualTo("Ravi Kumar");
         }
 
         @Test
         @DisplayName("returns empty list when no beneficiaries exist")
         void getAll_empty_returnsEmptyList() {
-            given(repository.findAll()).willReturn(List.of());
 
-            assertThat(service.getAllBeneficiaries()).isEmpty();
+            given(repository.findAll())
+                    .willReturn(List.of());
+
+            assertThat(service.getAllBeneficiaries())
+                    .isEmpty();
         }
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // updateBeneficiary — legacy path (BeneficiaryRegistrationRequest)
+    // updateBeneficiary — legacy path
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
@@ -320,28 +451,36 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("updates legacy fields successfully")
         void update_legacy_success() {
-            // govId and contact are unchanged in legacyRequest vs savedBeneficiary,
-            // so the duplicate-check guards are skipped — no existsBy stubs needed.
-            given(repository.findById(1)).willReturn(Optional.of(savedBeneficiary));
-            given(repository.save(any(Beneficiary.class))).willReturn(savedBeneficiary);
 
-            BeneficiaryResponse response = service.updateBeneficiary(1, legacyRequest);
+            given(repository.findById(1))
+                    .willReturn(Optional.of(savedBeneficiary));
 
-            assertThat(response.getFullName()).isEqualTo("Ravi Kumar");
+            given(repository.save(any(Beneficiary.class)))
+                    .willReturn(savedBeneficiary);
+
+            BeneficiaryResponse response =
+                    service.updateBeneficiary(1, legacyRequest);
+
+            assertThat(response.getFullName())
+                    .isEqualTo("Ravi Kumar");
         }
 
         @Test
         @DisplayName("throws BeneficiaryNotFoundException when id not found")
         void update_notFound_throws() {
-            given(repository.findById(99)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.updateBeneficiary(99, legacyRequest))
+            given(repository.findById(99))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.updateBeneficiary(99, legacyRequest)
+            )
                     .isInstanceOf(BeneficiaryNotFoundException.class);
         }
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    // updateBeneficiary — Milestone 2 patch path (BeneficiaryUpdateRequest)
+    // updateBeneficiary — Milestone 2 patch path
     // ════════════════════════════════════════════════════════════════════════
 
     @Nested
@@ -351,56 +490,83 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("applies only non-null fields in patch update")
         void update_patch_appliesOnlyNonNull() {
-            BeneficiaryUpdateRequest patchReq = new BeneficiaryUpdateRequest();
-            patchReq.setAnnualIncome(new BigDecimal("120000.00"));
+
+            BeneficiaryUpdateRequest patchReq =
+                    new BeneficiaryUpdateRequest();
+
+            patchReq.setAnnualIncome(
+                    new BigDecimal("120000.00")
+            );
+
             patchReq.setCategory(Category.SC);
 
-            Beneficiary saved = Beneficiary.builder()
-                    .id(1)
-                    .fullName("Ravi Kumar")
-                    .govId("AABCD1234E")
-                    .contact("9876543210")
-                    .email("ravi@example.com")
-                    .age(38)
-                    .address("Village Uruli Kanchan, Pune")
-                    .schemeName("PM-KISAN")
-                    .annualIncome(new BigDecimal("120000.00"))
-                    .category(Category.SC)
-                    .registrationStatus(RegistrationStatus.PENDING)
-                    .identityVerified(false)
-                    .build();
+            given(repository.findById(1))
+                    .willReturn(Optional.of(savedBeneficiary));
 
-            given(repository.findById(1)).willReturn(Optional.of(savedBeneficiary));
-            given(repository.save(any(Beneficiary.class))).willReturn(saved);
+            given(repository.save(any(Beneficiary.class)))
+                    .willReturn(savedBeneficiary);
 
-            BeneficiaryResponse response = service.updateBeneficiary(1, patchReq);
+            BeneficiaryResponse response =
+                    service.updateBeneficiary(1, patchReq);
 
-            assertThat(response.getAnnualIncome()).isEqualByComparingTo("120000.00");
-            assertThat(response.getCategory()).isEqualTo(Category.SC);
+            assertThat(response.getAnnualIncome())
+                    .isEqualByComparingTo("120000.00");
+
+            assertThat(response.getCategory())
+                    .isEqualTo(Category.SC);
+
             // Original fields should still be present
-            assertThat(response.getFullName()).isEqualTo("Ravi Kumar");
+            assertThat(response.getFullName())
+                    .isEqualTo("Ravi Kumar");
+
+            // Fields not included in the patch remain unchanged
+            assertThat(response.getGovId())
+                    .isEqualTo("AABCD1234E");
+
+            assertThat(response.getEmail())
+                    .isEqualTo("ravi@example.com");
         }
 
         @Test
         @DisplayName("throws DuplicateMobileException when new mobile already taken")
         void update_patch_duplicateMobile_throws() {
-            BeneficiaryUpdateRequest patchReq = new BeneficiaryUpdateRequest();
+
+            BeneficiaryUpdateRequest patchReq =
+                    new BeneficiaryUpdateRequest();
+
             patchReq.setMobileNumber("9999999999");
 
-            savedBeneficiary.setMobileNumber("8888888888"); // different from request
-            given(repository.findById(1)).willReturn(Optional.of(savedBeneficiary));
-            given(repository.existsByMobileNumber("9999999999")).willReturn(true);
+            savedBeneficiary.setMobileNumber("8888888888");
 
-            assertThatThrownBy(() -> service.updateBeneficiary(1, patchReq))
+            given(repository.findById(1))
+                    .willReturn(Optional.of(savedBeneficiary));
+
+            given(repository.existsByMobileNumber("9999999999"))
+                    .willReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.updateBeneficiary(1, patchReq)
+            )
                     .isInstanceOf(DuplicateMobileException.class);
+
+            then(repository)
+                    .should(never())
+                    .save(any());
         }
 
         @Test
         @DisplayName("throws BeneficiaryNotFoundException when id not found")
         void update_patch_notFound_throws() {
-            given(repository.findById(99)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.updateBeneficiary(99, new BeneficiaryUpdateRequest()))
+            given(repository.findById(99))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.updateBeneficiary(
+                            99,
+                            new BeneficiaryUpdateRequest()
+                    )
+            )
                     .isInstanceOf(BeneficiaryNotFoundException.class);
         }
     }
@@ -416,19 +582,27 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("deletes beneficiary when it exists")
         void delete_existing_success() {
-            given(repository.findById(1)).willReturn(Optional.of(savedBeneficiary));
+
+            given(repository.findById(1))
+                    .willReturn(Optional.of(savedBeneficiary));
 
             service.deleteBeneficiary(1);
 
-            then(repository).should().delete(savedBeneficiary);
+            then(repository)
+                    .should()
+                    .delete(savedBeneficiary);
         }
 
         @Test
         @DisplayName("throws BeneficiaryNotFoundException when id not found")
         void delete_notFound_throws() {
-            given(repository.findById(99)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.deleteBeneficiary(99))
+            given(repository.findById(99))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.deleteBeneficiary(99)
+            )
                     .isInstanceOf(BeneficiaryNotFoundException.class);
         }
     }

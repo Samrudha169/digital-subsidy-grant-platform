@@ -138,4 +138,14 @@ public class BeneficiaryRegistrationRequest {
      * Used for category-based eligibility and subsidy rate determination.
      */
     private Category category;
+
+    // ── Authentication ───────────────────────────────────────────────────────
+
+    @NotBlank(message = "Password is required")
+    @Size(
+            min = 6,
+            max = 100,
+            message = "Password must be between 6 and 100 characters"
+    )
+    private String password;
 }
