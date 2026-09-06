@@ -31,7 +31,7 @@ function Schemes() {
                 setError('');
 
                 const response = await fetch(
-                    'http://localhost:8080/api/v1/schemes'
+                    '/api/v1/schemes'
                 );
 
                 if (!response.ok) {

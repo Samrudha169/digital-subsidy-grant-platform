@@ -4,6 +4,8 @@ import com.dsgp.application.dto.ApplicationRequest;
 import com.dsgp.application.dto.ApplicationResponse;
 import com.dsgp.application.exception.ApplicationException;
 import com.dsgp.application.service.ApplicationService;
+import com.dsgp.application.service.SchemeApplicationService;
+import com.dsgp.eligibility.repository.EligibilityResultRepository;
 import com.dsgp.GovernmentSchemeApplication;
 import com.dsgp.beneficiary.exception.BeneficiaryNotFoundException;
 import com.dsgp.beneficiary.security.SecurityConfig;
@@ -50,6 +52,14 @@ class ApplicationControllerTest {
 
     @MockBean
     private ApplicationService applicationService;
+
+    // Required by ApplicationController constructor after the GET /applications/{id} fix
+    @MockBean
+    private SchemeApplicationService schemeApplicationService;
+
+    // Required by ApplicationController constructor after the GET /applications/{id} fix
+    @MockBean
+    private EligibilityResultRepository eligibilityResultRepository;
 
     private ObjectMapper objectMapper;
 
