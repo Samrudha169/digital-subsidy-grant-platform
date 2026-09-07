@@ -259,21 +259,24 @@
 }
 
 /* ============================================
-   BUTTON
+   ACTION BUTTONS
    ============================================ */
 
-.scheme-view-btn {
+.scheme-card-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    margin-top: auto;
+}
+
+.scheme-view-btn,
+.scheme-apply-btn {
     display: flex;
     align-items: center;
     justify-content: center;
 
-    width: 100%;
-
-    margin-top: auto;
+    flex: 1;
 
     padding: var(--spacing-md);
-
-    background-color: var(--color-primary);
 
     color: var(--color-white);
 
@@ -287,9 +290,34 @@
 
     min-height: 48px;
 
+    box-sizing: border-box;
+
     transition: var(--transition-base);
 }
 
+
+/* VIEW DETAILS */
+
+.scheme-view-btn {
+    background-color: var(--color-primary);
+}
+
+.scheme-view-btn:hover {
+    background-color: var(--color-primary-light);
+    transform: translateY(-2px);
+}
+
+
+/* APPLY NOW */
+
+.scheme-apply-btn {
+    background-color: var(--color-success);
+}
+
+.scheme-apply-btn:hover {
+    filter: brightness(0.9);
+    transform: translateY(-2px);
+}
 .scheme-view-btn:hover {
     background-color: var(--color-primary-light);
     transform: translateY(-2px);
@@ -318,6 +346,9 @@
    ============================================ */
 
 @media (max-width: 768px) {
+    .scheme-card-actions {
+        flex-direction: column;
+    }
 
     .schemes-hero {
         padding: var(--spacing-3xl) 0;

@@ -2,146 +2,164 @@ import { Link } from 'react-router-dom';
 import './PMKisan.css';
 
 function PMKisan() {
+
     const quickFacts = [
-        { label: 'Scheme Type', value: 'Income Support Scheme' },
-        { label: 'Ministry', value: 'Ministry of Agriculture & Farmers Welfare' },
-        { label: 'Target Beneficiaries', value: 'Eligible Farmer Families' },
-        { label: 'Financial Benefit', value: '₹6,000 per year' },
-        { label: 'Installments', value: '3 equal installments' },
-        { label: 'Transfer Mode', value: 'Direct Benefit Transfer (DBT)' },
-        { label: 'Application Mode', value: 'Online / Assisted' },
+        {
+            label: 'Scheme',
+            value: 'PM-KISAN'
+        },
+        {
+            label: 'Full Name',
+            value: 'Pradhan Mantri Kisan Samman Nidhi'
+        },
+        {
+            label: 'Category',
+            value: 'Agriculture'
+        },
+        {
+            label: 'Target Beneficiaries',
+            value: 'Farmers'
+        },
+        {
+            label: 'Financial Assistance',
+            value: '₹6,000 per year'
+        },
+        {
+            label: 'Payment Method',
+            value: 'Direct Benefit Transfer'
+        }
     ];
 
     const eligibilityItems = [
         {
-            icon: '🌾',
+            icon: '👨‍🌾',
             title: 'Eligible Farmer Families',
-            desc: 'The scheme provides income support to eligible farmer families meeting the applicable government conditions.',
+            desc: 'The scheme is intended for eligible farmer families satisfying the applicable PM-KISAN conditions.'
+        },
+        {
+            icon: '🎂',
+            title: 'Age Requirement',
+            desc: 'For this DSGP demonstration, the configured eligibility range is 18 to 70 years.'
+        },
+        {
+            icon: '💰',
+            title: 'Annual Income',
+            desc: 'For this DSGP demonstration, annual family income should not exceed ₹3,00,000.'
+        },
+        {
+            icon: '🌾',
+            title: 'Land Holding',
+            desc: 'For this DSGP demonstration, land holding should not exceed 5 acres.'
         },
         {
             icon: '🚜',
-            title: 'Landholding Farmers',
-            desc: 'The applicant should meet the applicable landholding and land-record requirements under the scheme.',
+            title: 'Occupation',
+            desc: 'The configured DSGP eligibility rule requires the beneficiary occupation to be Farmer.'
         },
         {
             icon: '🇮🇳',
-            title: 'Indian Farmers',
-            desc: 'The applicant must satisfy the applicable requirements prescribed by the Government of India.',
-        },
-        {
-            icon: '🏦',
-            title: 'Valid Bank Account',
-            desc: 'A valid bank account is required so that eligible financial assistance can be transferred through DBT.',
-        },
-        {
-            icon: '🪪',
-            title: 'Valid Identification',
-            desc: 'Applicants need valid identification and other details required for registration and verification.',
-        },
-        {
-            icon: '📋',
-            title: 'Verified Land Records',
-            desc: 'Land ownership or cultivation-related records may be required for verification according to applicable rules.',
-        },
+            title: 'Applicable Conditions',
+            desc: 'Other exclusions, verification requirements and government conditions may also apply.'
+        }
     ];
 
     const benefits = [
         {
             icon: '💰',
             title: '₹6,000 Annual Support',
-            desc: 'Eligible farmer families receive financial assistance of ₹6,000 per year under the scheme.',
+            desc: 'Eligible farmer families receive financial assistance of ₹6,000 per year under the scheme.'
         },
         {
             icon: '💳',
             title: 'Three Installments',
-            desc: 'The annual assistance is provided in three equal installments of ₹2,000 each.',
+            desc: 'The annual assistance is provided in three equal installments of ₹2,000 each.'
         },
         {
             icon: '🏦',
             title: 'Direct Bank Transfer',
-            desc: 'Approved financial assistance is transferred directly to the beneficiary bank account through DBT.',
+            desc: 'Approved financial assistance is transferred directly to the beneficiary bank account through DBT.'
         },
         {
             icon: '🌱',
             title: 'Support for Farmers',
-            desc: 'The scheme provides income support to eligible farmer families to assist with agricultural and household needs.',
+            desc: 'The scheme provides income support to eligible farmer families to assist with agricultural and household needs.'
         },
         {
             icon: '📱',
             title: 'Online Status Checking',
-            desc: 'Beneficiaries can use the relevant online services to check registration and payment-related status.',
+            desc: 'Beneficiaries can use the relevant online services to check registration and payment-related status.'
         },
         {
             icon: '🔄',
             title: 'Periodic Payments',
-            desc: 'Eligible beneficiaries receive installments according to the payment cycle and applicable verification requirements.',
-        },
+            desc: 'Eligible beneficiaries receive installments according to the payment cycle and applicable verification requirements.'
+        }
     ];
 
     const documents = [
         {
             icon: '🪪',
             label: 'Aadhaar Card',
-            note: 'Valid Aadhaar details required for identification and verification.',
+            note: 'Valid Aadhaar details required for identification and verification.'
         },
         {
             icon: '🏦',
             label: 'Bank Account Details',
-            note: 'Bank account information required for receiving DBT payments.',
+            note: 'Bank account information required for receiving DBT payments.'
         },
         {
             icon: '🌾',
             label: 'Land Ownership Records',
-            note: 'Applicable land records or ownership documents for beneficiary verification.',
+            note: 'Applicable land records or ownership documents for beneficiary verification.'
         },
         {
             icon: '📱',
             label: 'Mobile Number',
-            note: 'Active mobile number for registration, communication, and status-related services.',
+            note: 'Active mobile number for registration, communication, and status-related services.'
         },
         {
             icon: '📄',
             label: 'Identity / Address Details',
-            note: 'Additional identification or address information may be required where applicable.',
+            note: 'Additional identification or address information may be required where applicable.'
         },
         {
             icon: '📋',
             label: 'Other Supporting Documents',
-            note: 'Additional documents may be requested by the concerned authorities during verification.',
-        },
+            note: 'Additional documents may be requested by the concerned authorities during verification.'
+        }
     ];
 
     const steps = [
         {
             num: '01',
             title: 'Check Your Eligibility',
-            desc: 'Review the applicable PM-KISAN eligibility conditions and ensure that you meet the requirements before registration.',
+            desc: 'Review the applicable PM-KISAN eligibility conditions and ensure that you meet the requirements before registration.'
         },
         {
             num: '02',
             title: 'Complete Beneficiary Registration',
-            desc: 'Enter the required personal, identification, land, and bank account details through the applicable registration process.',
+            desc: 'Enter the required personal, identification, land, and bank account details through the applicable registration process.'
         },
         {
             num: '03',
             title: 'Submit Required Details',
-            desc: 'Provide the required documents and information for verification by the concerned authorities.',
+            desc: 'Provide the required documents and information for verification by the concerned authorities.'
         },
         {
             num: '04',
             title: 'Verification',
-            desc: 'The submitted information and land-related records are verified through the applicable government process.',
+            desc: 'The submitted information and land-related records are verified through the applicable government process.'
         },
         {
             num: '05',
             title: 'Approval',
-            desc: 'Once the beneficiary is found eligible and the required verification is completed, the application can proceed for payment.',
+            desc: 'Once the beneficiary is found eligible and the required verification is completed, the application can proceed for payment.'
         },
         {
             num: '06',
             title: 'Receive Payment',
-            desc: 'Eligible beneficiaries receive the applicable installment directly into their registered bank account through DBT.',
-        },
+            desc: 'Eligible beneficiaries receive the applicable installment directly into their registered bank account through DBT.'
+        }
     ];
 
     return (
@@ -180,6 +198,13 @@ function PMKisan() {
                         >
                             How to Apply
                         </a>
+
+                        <Link
+                            to="/eligibility?scheme=PM-KISAN"
+                            className="btn btn-primary"
+                        >
+                            Apply Now
+                        </Link>
 
                         <Link
                             to="/schemes"
@@ -668,10 +693,10 @@ function PMKisan() {
                     <div className="pmkisan-cta-actions">
 
                         <Link
-                            to="/eligibility"
+                            to="/eligibility?scheme=PM-KISAN"
                             className="btn btn-primary"
                         >
-                            Check Eligibility
+                            Check Eligibility & Apply
                         </Link>
 
                         <Link

@@ -6,7 +6,6 @@ import com.dsgp.beneficiary.entity.RegistrationStatus;
 import com.dsgp.beneficiary.entity.Scheme;
 import com.dsgp.beneficiary.repository.BeneficiaryRepository;
 import com.dsgp.beneficiary.repository.SchemeRepository;
-import com.dsgp.eligibility.dto.CriterionResult;
 import com.dsgp.eligibility.dto.EligibilityCheckRequest;
 import com.dsgp.eligibility.dto.EligibilityResultResponse;
 import com.dsgp.eligibility.entity.EligibilityResult;
@@ -27,23 +26,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Optional;
 
-import static com.dsgp.eligibility.service.EligibilityScoringEngine.*;
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
-/**
- * Unit tests for {@link EligibilityScoringEngine}.
- *
- * <p>Tests are split into two groups:
- * <ol>
- *   <li>Per-criterion evaluators — each method is tested with null/pass/fail
- *       inputs in isolation, verifying points and detail strings.</li>
- *   <li>Full {@code checkEligibility} integration — end-to-end evaluation
- *       with mock repositories, verifying score aggregation, status
- *       determination, and persistence.</li>
- * </ol>
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("EligibilityScoringEngine")
 class EligibilityScoringEngineTest {
@@ -63,454 +51,779 @@ class EligibilityScoringEngineTest {
     @InjectMocks
     private EligibilityScoringEngine engine;
 
-    // ── Shared fixtures ──────────────────────────────────────────────────────
+    private Beneficiary beneficiary;
 
-    /** A fully eligible beneficiary — meets all criteria. */
-    private Beneficiary eligibleBeneficiary;
+    private Scheme pmKisan;
 
-    /** A scheme with realistic eligibility criteria. */
-    private Scheme strictScheme;
+    private Scheme nsp;
 
-    /** A scheme with no restrictions — all criteria auto-satisfied. */
-    private Scheme openScheme;
+    private Scheme pmegp;
 
     @BeforeEach
     void setUp() {
-        eligibleBeneficiary = Beneficiary.builder()
+
+        beneficiary = Beneficiary.builder()
                 .id(101)
                 .fullName("Priya Sharma")
                 .govId("PAN12345")
                 .contact("9876543210")
                 .email("priya@example.com")
-                .age(35)
+                .password("test-password")
+                .age(25)
                 .address("Village Wai, Satara")
                 .schemeName("PM-KISAN")
-                .annualIncome(new BigDecimal("85000"))
-                .landHolding(new BigDecimal("1.5"))
+                .occupation("Farmer")
+                .annualIncome(new BigDecimal("100000"))
+                .landHolding(new BigDecimal("1.0"))
                 .category(Category.OBC)
                 .registrationStatus(RegistrationStatus.ACTIVE)
                 .identityVerified(true)
                 .build();
 
-        strictScheme = new Scheme();
-        strictScheme.setId(5L);
-        strictScheme.setSchemeName("PM-KISAN Samman Nidhi");
-        strictScheme.setMinAge(18);
-        strictScheme.setMaxAge(60);
-        strictScheme.setMaxAnnualIncome(new BigDecimal("150000"));
-        strictScheme.setMaxLandHolding(new BigDecimal("2.0"));
-        strictScheme.setRequiredCategory("OBC");
-        strictScheme.setGrantAmount(new BigDecimal("6000"));
-        strictScheme.setActive(true);
+        // ------------------------------------------------------------
+        // PM-KISAN
+        // ------------------------------------------------------------
 
-        openScheme = new Scheme();
-        openScheme.setId(99L);
-        openScheme.setSchemeName("Open Welfare Scheme");
-        openScheme.setActive(true);
-        // All thresholds null → all criteria auto-satisfied → max score = 100
+        pmKisan = new Scheme();
+
+        pmKisan.setId(1L);
+        pmKisan.setSchemeName("PM-KISAN");
+        pmKisan.setMinAge(18);
+        pmKisan.setMaxAge(70);
+        pmKisan.setMaxAnnualIncome(new BigDecimal("300000"));
+        pmKisan.setMaxLandHolding(new BigDecimal("5"));
+        pmKisan.setRequiredCategory("ALL");
+        pmKisan.setRequiredOccupation("Farmer");
+        pmKisan.setGrantAmount(new BigDecimal("6000"));
+        pmKisan.setActive(true);
+
+        // ------------------------------------------------------------
+        // NSP
+        // ------------------------------------------------------------
+
+        nsp = new Scheme();
+
+        nsp.setId(2L);
+        nsp.setSchemeName("NSP");
+        nsp.setMinAge(15);
+        nsp.setMaxAge(30);
+        nsp.setMaxAnnualIncome(new BigDecimal("250000"));
+        nsp.setRequiredCategory("ALL");
+        nsp.setRequiredOccupation("Student");
+        nsp.setGrantAmount(new BigDecimal("20000"));
+        nsp.setActive(true);
+
+        // ------------------------------------------------------------
+        // PMEGP
+        // ------------------------------------------------------------
+
+        pmegp = new Scheme();
+
+        pmegp.setId(3L);
+        pmegp.setSchemeName("PMEGP");
+        pmegp.setMinAge(18);
+        pmegp.setMaxAge(55);
+        pmegp.setMaxAnnualIncome(new BigDecimal("800000"));
+        pmegp.setRequiredCategory("ALL");
+        pmegp.setRequiredOccupation("ALL");
+        pmegp.setGrantAmount(new BigDecimal("100000"));
+        pmegp.setActive(true);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // evaluateAge
-    // ════════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // PM-KISAN TESTS
+    // ========================================================================
 
     @Nested
-    @DisplayName("evaluateAge()")
-    class EvaluateAge {
+    @DisplayName("PM-KISAN")
+    class PmKisanTests {
 
         @Test
-        @DisplayName("awards full 20 points when scheme has no age restriction")
-        void noRestriction_awardsFullPoints() {
-            CriterionResult result = engine.evaluateAge(eligibleBeneficiary, openScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_AGE);
-            assertThat(result.isPassed()).isTrue();
+        @DisplayName("fully eligible PM-KISAN beneficiary gets 100 points")
+        void fullyEligible_gets100Points() {
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmKisan);
+
+            assertThat(response.getTotalScore())
+                    .isEqualTo(100);
+
+            assertThat(response.getEligibilityStatus())
+                    .isEqualTo(EligibilityStatus.ELIGIBLE);
+
+            assertThat(response.isEligible())
+                    .isTrue();
         }
 
         @Test
-        @DisplayName("awards full 20 points when beneficiary age is within range")
-        void withinRange_awardsFullPoints() {
-            CriterionResult result = engine.evaluateAge(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_AGE);
-            assertThat(result.isPassed()).isTrue();
-            assertThat(result.getDetail()).contains("35");
+        @DisplayName("PM-KISAN income scoring gives lower points for higher income")
+        void incomeScoring() {
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("100000"));
+
+            EligibilityResultResponse lowIncome =
+                    check(beneficiary, pmKisan);
+
+            assertThat(
+                    lowIncome.getCriteria()
+                            .get("incomeCheck")
+                            .getPoints()
+            ).isEqualTo(25);
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("150000"));
+
+            EligibilityResultResponse mediumIncome =
+                    check(beneficiary, pmKisan);
+
+            assertThat(
+                    mediumIncome.getCriteria()
+                            .get("incomeCheck")
+                            .getPoints()
+            ).isEqualTo(20);
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("250000"));
+
+            EligibilityResultResponse higherIncome =
+                    check(beneficiary, pmKisan);
+
+            assertThat(
+                    higherIncome.getCriteria()
+                            .get("incomeCheck")
+                            .getPoints()
+            ).isEqualTo(10);
         }
 
         @Test
-        @DisplayName("awards 0 points when beneficiary is too young")
-        void tooYoung_awardsZeroPoints() {
-            eligibleBeneficiary.setAge(15);
-            CriterionResult result = engine.evaluateAge(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
+        @DisplayName("PM-KISAN income above 3 lakh fails mandatory condition")
+        void incomeAboveLimit_isIneligible() {
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("350000"));
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmKisan);
+
+            assertThat(response.getCriteria()
+                    .get("incomeCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+
+            assertThat(response.getEligibilityStatus())
+                    .isEqualTo(EligibilityStatus.INELIGIBLE);
         }
 
         @Test
-        @DisplayName("awards 0 points when beneficiary is too old")
-        void tooOld_awardsZeroPoints() {
-            eligibleBeneficiary.setAge(65);
-            CriterionResult result = engine.evaluateAge(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
+        @DisplayName("PM-KISAN land scoring gives lower points for higher land holding")
+        void landScoring() {
+
+            beneficiary.setLandHolding(
+                    new BigDecimal("1"));
+
+            EligibilityResultResponse oneAcre =
+                    check(beneficiary, pmKisan);
+
+            assertThat(oneAcre.getCriteria()
+                    .get("landCheck")
+                    .getPoints())
+                    .isEqualTo(25);
+
+            beneficiary.setLandHolding(
+                    new BigDecimal("3"));
+
+            EligibilityResultResponse threeAcres =
+                    check(beneficiary, pmKisan);
+
+            assertThat(threeAcres.getCriteria()
+                    .get("landCheck")
+                    .getPoints())
+                    .isEqualTo(15);
+
+            beneficiary.setLandHolding(
+                    new BigDecimal("5"));
+
+            EligibilityResultResponse fiveAcres =
+                    check(beneficiary, pmKisan);
+
+            assertThat(fiveAcres.getCriteria()
+                    .get("landCheck")
+                    .getPoints())
+                    .isEqualTo(5);
         }
 
         @Test
-        @DisplayName("awards 0 points when beneficiary age is null")
-        void nullAge_awardsZeroPoints() {
-            eligibleBeneficiary.setAge(null);
-            CriterionResult result = engine.evaluateAge(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
+        @DisplayName("PM-KISAN land above 5 acres is ineligible")
+        void landAboveLimit_isIneligible() {
+
+            beneficiary.setLandHolding(
+                    new BigDecimal("5.1"));
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmKisan);
+
+            assertThat(response.getCriteria()
+                    .get("landCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
         }
 
         @Test
-        @DisplayName("awards full points when only minAge is set and beneficiary qualifies")
-        void onlyMinAge_beneficiaryQualifies() {
-            strictScheme.setMaxAge(null);
-            eligibleBeneficiary.setAge(70);
-            CriterionResult result = engine.evaluateAge(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_AGE);
-            assertThat(result.isPassed()).isTrue();
+        @DisplayName("PM-KISAN requires Farmer occupation")
+        void nonFarmer_isIneligible() {
+
+            beneficiary.setOccupation("Student");
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmKisan);
+
+            assertThat(response.getCriteria()
+                    .get("occupationCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("PM-KISAN age scoring changes according to age range")
+        void ageScoring() {
+
+            beneficiary.setAge(25);
+
+            EligibilityResultResponse young =
+                    check(beneficiary, pmKisan);
+
+            assertThat(young.getCriteria()
+                    .get("ageCheck")
+                    .getPoints())
+                    .isEqualTo(15);
+
+            beneficiary.setAge(40);
+
+            EligibilityResultResponse middle =
+                    check(beneficiary, pmKisan);
+
+            assertThat(middle.getCriteria()
+                    .get("ageCheck")
+                    .getPoints())
+                    .isEqualTo(12);
+
+            beneficiary.setAge(55);
+
+            EligibilityResultResponse older =
+                    check(beneficiary, pmKisan);
+
+            assertThat(older.getCriteria()
+                    .get("ageCheck")
+                    .getPoints())
+                    .isEqualTo(9);
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // evaluateIncome
-    // ════════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // NSP TESTS
+    // ========================================================================
 
     @Nested
-    @DisplayName("evaluateIncome()")
-    class EvaluateIncome {
-
-        @Test
-        @DisplayName("awards full 30 points when scheme has no income restriction")
-        void noRestriction_awardsFullPoints() {
-            CriterionResult result = engine.evaluateIncome(eligibleBeneficiary, openScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_INCOME);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards full 30 points when income is at threshold (boundary)")
-        void atThreshold_awardsFullPoints() {
-            eligibleBeneficiary.setAnnualIncome(new BigDecimal("150000"));
-            CriterionResult result = engine.evaluateIncome(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_INCOME);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards full 30 points when income is below threshold")
-        void belowThreshold_awardsFullPoints() {
-            CriterionResult result = engine.evaluateIncome(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_INCOME);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when income exceeds threshold")
-        void exceedsThreshold_awardsZeroPoints() {
-            eligibleBeneficiary.setAnnualIncome(new BigDecimal("200000"));
-            CriterionResult result = engine.evaluateIncome(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when beneficiary income is null")
-        void nullIncome_awardsZeroPoints() {
-            eligibleBeneficiary.setAnnualIncome(null);
-            CriterionResult result = engine.evaluateIncome(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // evaluateLand
-    // ════════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("evaluateLand()")
-    class EvaluateLand {
-
-        @Test
-        @DisplayName("awards full 20 points when scheme has no land restriction")
-        void noRestriction_awardsFullPoints() {
-            CriterionResult result = engine.evaluateLand(eligibleBeneficiary, openScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_LAND);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards full 20 points when land is within limit")
-        void withinLimit_awardsFullPoints() {
-            CriterionResult result = engine.evaluateLand(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_LAND);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when land exceeds limit")
-        void exceedsLimit_awardsZeroPoints() {
-            eligibleBeneficiary.setLandHolding(new BigDecimal("5.0"));
-            CriterionResult result = engine.evaluateLand(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when beneficiary land holding is null")
-        void nullLand_awardsZeroPoints() {
-            eligibleBeneficiary.setLandHolding(null);
-            CriterionResult result = engine.evaluateLand(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // evaluateCategory
-    // ════════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("evaluateCategory()")
-    class EvaluateCategory {
-
-        @Test
-        @DisplayName("awards full 20 points when scheme has no category restriction")
-        void noRestriction_awardsFullPoints() {
-            CriterionResult result = engine.evaluateCategory(eligibleBeneficiary, openScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_CATEGORY);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards full 20 points when category matches (case-insensitive)")
-        void categoryMatches_awardsFullPoints() {
-            CriterionResult result = engine.evaluateCategory(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(POINTS_CATEGORY);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when category does not match")
-        void categoryMismatch_awardsZeroPoints() {
-            eligibleBeneficiary.setCategory(Category.GENERAL);
-            CriterionResult result = engine.evaluateCategory(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when beneficiary category is null")
-        void nullCategory_awardsZeroPoints() {
-            eligibleBeneficiary.setCategory(null);
-            CriterionResult result = engine.evaluateCategory(eligibleBeneficiary, strictScheme);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // evaluateIdentity
-    // ════════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("evaluateIdentity()")
-    class EvaluateIdentity {
-
-        @Test
-        @DisplayName("awards 10 points when identity is verified")
-        void verified_awardsFullPoints() {
-            CriterionResult result = engine.evaluateIdentity(eligibleBeneficiary);
-            assertThat(result.getPoints()).isEqualTo(POINTS_IDENTITY);
-            assertThat(result.isPassed()).isTrue();
-        }
-
-        @Test
-        @DisplayName("awards 0 points when identity is not verified")
-        void notVerified_awardsZeroPoints() {
-            eligibleBeneficiary.setIdentityVerified(false);
-            CriterionResult result = engine.evaluateIdentity(eligibleBeneficiary);
-            assertThat(result.getPoints()).isEqualTo(0);
-            assertThat(result.isPassed()).isFalse();
-        }
-    }
-
-    // ════════════════════════════════════════════════════════════════════════
-    // checkEligibility — full engine integration
-    // ════════════════════════════════════════════════════════════════════════
-
-    @Nested
-    @DisplayName("checkEligibility()")
-    class CheckEligibility {
-
-        private EligibilityCheckRequest request;
+    @DisplayName("NSP")
+    class NspTests {
 
         @BeforeEach
-        void setUpRequest() {
-            request = new EligibilityCheckRequest();
-            request.setBeneficiaryId(101);
-            request.setSchemeId(5L);
+        void configureNspBeneficiary() {
+
+            beneficiary.setAge(18);
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("100000"));
+            beneficiary.setOccupation("Student");
+            beneficiary.setLandHolding(null);
         }
 
         @Test
-        @DisplayName("returns ELIGIBLE (100/100) when all criteria pass and open scheme")
-        void allCriteriaPass_openScheme_returnsEligible100() {
-            request.setSchemeId(99L);
+        @DisplayName("fully eligible NSP beneficiary gets 100 points")
+        void fullyEligible_gets100Points() {
+
+            EligibilityResultResponse response =
+                    check(beneficiary, nsp);
+
+            assertThat(response.getTotalScore())
+                    .isEqualTo(100);
+
+            assertThat(response.getEligibilityStatus())
+                    .isEqualTo(EligibilityStatus.ELIGIBLE);
+
+            assertThat(response.isEligible())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("NSP does not require land holding")
+        void landIsNotRequired() {
+
+            beneficiary.setLandHolding(null);
+
+            EligibilityResultResponse response =
+                    check(beneficiary, nsp);
+
+            assertThat(response.getTotalScore())
+                    .isEqualTo(100);
+
+            assertThat(response.getCriteria())
+                    .doesNotContainKey("landCheck");
+        }
+
+        @Test
+        @DisplayName("NSP income scoring gives lower points for higher income")
+        void incomeScoring() {
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("100000"));
+
+            EligibilityResultResponse lowIncome =
+                    check(beneficiary, nsp);
+
+            assertThat(lowIncome.getCriteria()
+                    .get("incomeCheck")
+                    .getPoints())
+                    .isEqualTo(30);
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("150000"));
+
+            EligibilityResultResponse mediumIncome =
+                    check(beneficiary, nsp);
+
+            assertThat(mediumIncome.getCriteria()
+                    .get("incomeCheck")
+                    .getPoints())
+                    .isEqualTo(25);
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("220000"));
+
+            EligibilityResultResponse higherIncome =
+                    check(beneficiary, nsp);
+
+            assertThat(higherIncome.getCriteria()
+                    .get("incomeCheck")
+                    .getPoints())
+                    .isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("NSP requires Student occupation")
+        void nonStudent_isIneligible() {
+
+            beneficiary.setOccupation("Farmer");
+
+            EligibilityResultResponse response =
+                    check(beneficiary, nsp);
+
+            assertThat(response.getCriteria()
+                    .get("occupationCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("NSP age outside 15-30 is ineligible")
+        void ageOutsideRange_isIneligible() {
+
+            beneficiary.setAge(35);
+
+            EligibilityResultResponse response =
+                    check(beneficiary, nsp);
+
+            assertThat(response.getCriteria()
+                    .get("ageCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("NSP income above 2.5 lakh is ineligible")
+        void incomeAboveLimit_isIneligible() {
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("300000"));
+
+            EligibilityResultResponse response =
+                    check(beneficiary, nsp);
+
+            assertThat(response.getCriteria()
+                    .get("incomeCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+        }
+    }
+
+    // ========================================================================
+    // PMEGP TESTS
+    // ========================================================================
+
+    @Nested
+    @DisplayName("PMEGP")
+    class PmegpTests {
+
+        @BeforeEach
+        void configurePmegpBeneficiary() {
+
+            beneficiary.setAge(25);
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("200000"));
+            beneficiary.setOccupation("Business");
+            beneficiary.setLandHolding(null);
+        }
+
+        @Test
+        @DisplayName("fully eligible PMEGP beneficiary gets 100 points")
+        void fullyEligible_gets100Points() {
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmegp);
+
+            assertThat(response.getTotalScore())
+                    .isEqualTo(100);
+
+            assertThat(response.getEligibilityStatus())
+                    .isEqualTo(EligibilityStatus.ELIGIBLE);
+
+            assertThat(response.isEligible())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("PMEGP does not require land holding")
+        void landIsNotRequired() {
+
+            beneficiary.setLandHolding(null);
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmegp);
+
+            assertThat(response.getCriteria())
+                    .doesNotContainKey("landCheck");
+        }
+
+        @Test
+        @DisplayName("PMEGP accepts different occupations")
+        void differentOccupations_areAccepted() {
+
+            beneficiary.setOccupation("Business");
+
+            EligibilityResultResponse business =
+                    check(beneficiary, pmegp);
+
+            assertThat(business.getCriteria()
+                    .get("occupationCheck")
+                    .isPassed())
+                    .isTrue();
+
+            beneficiary.setOccupation("Farmer");
+
+            EligibilityResultResponse farmer =
+                    check(beneficiary, pmegp);
+
+            assertThat(farmer.getCriteria()
+                    .get("occupationCheck")
+                    .isPassed())
+                    .isTrue();
+
+            beneficiary.setOccupation("Teacher");
+
+            EligibilityResultResponse teacher =
+                    check(beneficiary, pmegp);
+
+            assertThat(teacher.getCriteria()
+                    .get("occupationCheck")
+                    .isPassed())
+                    .isTrue();
+        }
+
+        @Test
+        @DisplayName("PMEGP income scoring gives lower points for higher income")
+        void incomeScoring() {
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("200000"));
+
+            EligibilityResultResponse lowIncome =
+                    check(beneficiary, pmegp);
+
+            assertThat(lowIncome.getCriteria()
+                    .get("incomeCheck")
+                    .getPoints())
+                    .isEqualTo(30);
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("400000"));
+
+            EligibilityResultResponse mediumIncome =
+                    check(beneficiary, pmegp);
+
+            assertThat(mediumIncome.getCriteria()
+                    .get("incomeCheck")
+                    .getPoints())
+                    .isEqualTo(25);
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("700000"));
+
+            EligibilityResultResponse higherIncome =
+                    check(beneficiary, pmegp);
+
+            assertThat(higherIncome.getCriteria()
+                    .get("incomeCheck")
+                    .getPoints())
+                    .isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("PMEGP income above 8 lakh is ineligible")
+        void incomeAboveLimit_isIneligible() {
+
+            beneficiary.setAnnualIncome(
+                    new BigDecimal("900000"));
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmegp);
+
+            assertThat(response.getCriteria()
+                    .get("incomeCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("PMEGP age outside 18-55 is ineligible")
+        void ageOutsideRange_isIneligible() {
+
+            beneficiary.setAge(60);
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmegp);
+
+            assertThat(response.getCriteria()
+                    .get("ageCheck")
+                    .isPassed())
+                    .isFalse();
+
+            assertThat(response.isEligible())
+                    .isFalse();
+        }
+    }
+
+    // ========================================================================
+    // COMMON TESTS
+    // ========================================================================
+
+    @Nested
+    @DisplayName("Common eligibility behaviour")
+    class CommonTests {
+
+        @Test
+        @DisplayName("unverified identity gives zero identity points")
+        void unverifiedIdentity_givesZeroPoints() {
+
+            beneficiary.setIdentityVerified(false);
+
+            EligibilityResultResponse response =
+                    check(beneficiary, pmKisan);
+
+            assertThat(response.getCriteria()
+                    .get("identityCheck")
+                    .getPoints())
+                    .isEqualTo(0);
+
+            assertThat(response.getCriteria()
+                    .get("identityCheck")
+                    .isPassed())
+                    .isFalse();
+        }
+
+        @Test
+        @DisplayName("beneficiary not found throws exception")
+        void beneficiaryNotFound_throwsException() {
+
+            EligibilityCheckRequest request =
+                    createRequest(101, 1L);
+
             given(beneficiaryRepository.findById(101))
-                    .willReturn(Optional.of(eligibleBeneficiary));
-            given(schemeRepository.findById(99L))
-                    .willReturn(Optional.of(openScheme));
-            given(resultRepository.findByBeneficiaryIdAndSchemeId(101, 99L))
                     .willReturn(Optional.empty());
-            given(resultRepository.save(any(EligibilityResult.class)))
-                    .willAnswer(inv -> {
-                        EligibilityResult r = inv.getArgument(0);
-                        r.setId(1L);
-                        return r;
-                    });
 
-            EligibilityResultResponse response = engine.checkEligibility(request);
-
-            assertThat(response.getTotalScore()).isEqualTo(100);
-            assertThat(response.getEligibilityStatus()).isEqualTo(EligibilityStatus.ELIGIBLE);
-            assertThat(response.isEligible()).isTrue();
-            assertThat(response.getCriteria()).containsKeys(
-                    "ageCheck", "incomeCheck", "landCheck", "categoryCheck", "identityCheck");
+            assertThatThrownBy(
+                    () -> engine.checkEligibility(request)
+            )
+                    .isInstanceOf(
+                            EligibilityCheckException.class
+                    )
+                    .hasMessageContaining(
+                            "Beneficiary not found"
+                    );
         }
 
         @Test
-        @DisplayName("returns ELIGIBLE (100/100) when all criteria pass for strict scheme")
-        void allCriteriaPass_strictScheme_returnsEligible() {
-            given(beneficiaryRepository.findById(101))
-                    .willReturn(Optional.of(eligibleBeneficiary));
-            given(schemeRepository.findById(5L))
-                    .willReturn(Optional.of(strictScheme));
-            given(resultRepository.findByBeneficiaryIdAndSchemeId(101, 5L))
-                    .willReturn(Optional.empty());
-            given(resultRepository.save(any(EligibilityResult.class)))
-                    .willAnswer(inv -> {
-                        EligibilityResult r = inv.getArgument(0);
-                        r.setId(2L);
-                        return r;
-                    });
+        @DisplayName("scheme not found throws exception")
+        void schemeNotFound_throwsException() {
 
-            EligibilityResultResponse response = engine.checkEligibility(request);
-
-            assertThat(response.getTotalScore()).isEqualTo(100);
-            assertThat(response.getEligibilityStatus()).isEqualTo(EligibilityStatus.ELIGIBLE);
-        }
-
-        @Test
-        @DisplayName("returns INELIGIBLE when income fails (score = 70 < threshold only if identity also fails → 60)")
-        void identityAndIncomeFailGivesIneligible() {
-            // Age (20) + Land (20) + Category (20) = 60 — just on threshold.
-            // Income fails → 30 pts lost. Identity fails → 10 pts lost. Score = 50.
-            eligibleBeneficiary.setAnnualIncome(new BigDecimal("999999"));
-            eligibleBeneficiary.setIdentityVerified(false);
+            EligibilityCheckRequest request =
+                    createRequest(101, 1L);
 
             given(beneficiaryRepository.findById(101))
-                    .willReturn(Optional.of(eligibleBeneficiary));
-            given(schemeRepository.findById(5L))
-                    .willReturn(Optional.of(strictScheme));
-            given(resultRepository.findByBeneficiaryIdAndSchemeId(101, 5L))
+                    .willReturn(Optional.of(beneficiary));
+
+            given(schemeRepository.findById(1L))
                     .willReturn(Optional.empty());
-            given(resultRepository.save(any(EligibilityResult.class)))
-                    .willAnswer(inv -> {
-                        EligibilityResult r = inv.getArgument(0);
-                        r.setId(3L);
-                        return r;
-                    });
 
-            EligibilityResultResponse response = engine.checkEligibility(request);
-
-            assertThat(response.getTotalScore()).isEqualTo(60);
-            // 60 is exactly the threshold — ELIGIBLE
-            assertThat(response.getEligibilityStatus()).isEqualTo(EligibilityStatus.ELIGIBLE);
-            assertThat(response.getCriteria().get("incomeCheck").isPassed()).isFalse();
-            assertThat(response.getCriteria().get("identityCheck").isPassed()).isFalse();
+            assertThatThrownBy(
+                    () -> engine.checkEligibility(request)
+            )
+                    .isInstanceOf(
+                            EligibilityCheckException.class
+                    )
+                    .hasMessageContaining(
+                            "Scheme not found"
+                    );
         }
 
         @Test
-        @DisplayName("returns INELIGIBLE when score is 50 (three criteria fail)")
-        void threeCriteriaFail_scoreIs50_ineligible() {
-            // Age (20) + Land (20) + Category (20) → pass = 60, but:
-            // Income fails → lose 30. Score = 20+20+20 = 60... need 3 to fail
-            // Age fail, Income fail, Identity fail → 0+0+20+20+0 = 40
-            eligibleBeneficiary.setAge(70); // fails age [18-60]
-            eligibleBeneficiary.setAnnualIncome(new BigDecimal("999999")); // fails income
-            eligibleBeneficiary.setIdentityVerified(false); // fails identity
-            // Land(20) + Category(20) = 40
-
-            given(beneficiaryRepository.findById(101)).willReturn(Optional.of(eligibleBeneficiary));
-            given(schemeRepository.findById(5L)).willReturn(Optional.of(strictScheme));
-            given(resultRepository.findByBeneficiaryIdAndSchemeId(101, 5L))
-                    .willReturn(Optional.empty());
-            given(resultRepository.save(any(EligibilityResult.class)))
-                    .willAnswer(inv -> {
-                        EligibilityResult r = inv.getArgument(0);
-                        r.setId(4L);
-                        return r;
-                    });
-
-            EligibilityResultResponse response = engine.checkEligibility(request);
-
-            assertThat(response.getTotalScore()).isEqualTo(40);
-            assertThat(response.getEligibilityStatus()).isEqualTo(EligibilityStatus.INELIGIBLE);
-            assertThat(response.isEligible()).isFalse();
-        }
-
-        @Test
-        @DisplayName("throws EligibilityCheckException when beneficiary not found")
-        void beneficiaryNotFound_throws() {
-            given(beneficiaryRepository.findById(101)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> engine.checkEligibility(request))
-                    .isInstanceOf(EligibilityCheckException.class)
-                    .hasMessageContaining("Beneficiary not found");
-        }
-
-        @Test
-        @DisplayName("throws EligibilityCheckException when scheme not found")
-        void schemeNotFound_throws() {
-            given(beneficiaryRepository.findById(101))
-                    .willReturn(Optional.of(eligibleBeneficiary));
-            given(schemeRepository.findById(5L)).willReturn(Optional.empty());
-
-            assertThatThrownBy(() -> engine.checkEligibility(request))
-                    .isInstanceOf(EligibilityCheckException.class)
-                    .hasMessageContaining("Scheme not found");
-        }
-
-        @Test
-        @DisplayName("replaces existing result on re-evaluation")
+        @DisplayName("existing eligibility result is replaced during re-evaluation")
         void reEvaluation_replacesExistingResult() {
-            EligibilityResult existing = EligibilityResult.builder()
-                    .id(10L)
-                    .beneficiaryId(101)
-                    .schemeId(5L)
-                    .schemeName("Old Scheme Name")
-                    .totalScore(40)
-                    .eligibilityStatus(EligibilityStatus.INELIGIBLE)
-                    .build();
+
+            EligibilityResult existing =
+                    EligibilityResult.builder()
+                            .id(10L)
+                            .beneficiaryId(101)
+                            .schemeId(1L)
+                            .schemeName("PM-KISAN")
+                            .totalScore(40)
+                            .eligibilityStatus(
+                                    EligibilityStatus.INELIGIBLE
+                            )
+                            .build();
+
+            EligibilityCheckRequest request =
+                    createRequest(101, 1L);
 
             given(beneficiaryRepository.findById(101))
-                    .willReturn(Optional.of(eligibleBeneficiary));
-            given(schemeRepository.findById(5L))
-                    .willReturn(Optional.of(strictScheme));
-            given(resultRepository.findByBeneficiaryIdAndSchemeId(101, 5L))
-                    .willReturn(Optional.of(existing)); // Existing result found
+                    .willReturn(Optional.of(beneficiary));
+
+            given(schemeRepository.findById(1L))
+                    .willReturn(Optional.of(pmKisan));
+
+            // IMPORTANT:
+            // Return the existing result so the engine updates
+            // this same entity instead of creating a new one.
+            given(resultRepository
+                    .findByBeneficiaryIdAndSchemeId(101, 1L))
+                    .willReturn(Optional.of(existing));
+
             given(resultRepository.save(any(EligibilityResult.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
+                    .willAnswer(invocation ->
+                            invocation.getArgument(0));
 
-            EligibilityResultResponse response = engine.checkEligibility(request);
+            EligibilityResultResponse response =
+                    engine.checkEligibility(request);
 
-            // The new evaluation should give 100 (all pass)
-            assertThat(response.getTotalScore()).isEqualTo(100);
-            assertThat(response.getEligibilityStatus()).isEqualTo(EligibilityStatus.ELIGIBLE);
-            // save() was called with the same entity (updated in place)
-            then(resultRepository).should().save(existing);
+            // The beneficiary is fully eligible for PM-KISAN.
+            assertThat(response.getTotalScore())
+                    .isEqualTo(100);
+
+            assertThat(response.getEligibilityStatus())
+                    .isEqualTo(EligibilityStatus.ELIGIBLE);
+
+            assertThat(response.isEligible())
+                    .isTrue();
+
+            // The SAME existing entity must be updated and saved.
+            assertThat(existing.getTotalScore())
+                    .isEqualTo(100);
+
+            assertThat(existing.getEligibilityStatus())
+                    .isEqualTo(EligibilityStatus.ELIGIBLE);
+
+            then(resultRepository)
+                    .should()
+                    .save(existing);
         }
+    }
+
+    // ========================================================================
+    // TEST HELPERS
+    // ========================================================================
+
+    private EligibilityResultResponse check(
+            Beneficiary beneficiary,
+            Scheme scheme) {
+
+        EligibilityCheckRequest request =
+                createRequest(
+                        beneficiary.getId(),
+                        scheme.getId()
+                );
+
+        given(beneficiaryRepository
+                .findById(beneficiary.getId()))
+                .willReturn(Optional.of(beneficiary));
+
+        given(schemeRepository
+                .findById(scheme.getId()))
+                .willReturn(Optional.of(scheme));
+
+        given(resultRepository
+                .findByBeneficiaryIdAndSchemeId(
+                        beneficiary.getId(),
+                        scheme.getId()
+                ))
+                .willReturn(Optional.empty());
+
+        given(resultRepository.save(
+                any(EligibilityResult.class)))
+                .willAnswer(invocation -> {
+
+                    EligibilityResult result =
+                            invocation.getArgument(0);
+
+                    if (result.getId() == null) {
+                        result.setId(1L);
+                    }
+
+                    return result;
+                });
+
+        return engine.checkEligibility(request);
+    }
+
+    private EligibilityCheckRequest createRequest(
+            Integer beneficiaryId,
+            Long schemeId) {
+
+        EligibilityCheckRequest request =
+                new EligibilityCheckRequest();
+
+        request.setBeneficiaryId(beneficiaryId);
+        request.setSchemeId(schemeId);
+
+        return request;
     }
 }

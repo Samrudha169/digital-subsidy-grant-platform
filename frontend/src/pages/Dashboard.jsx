@@ -136,22 +136,36 @@ function Dashboard({ onLogout }) {
 
                     <section className="dashboard-welcome">
 
-                        <div>
+                        <div className="dashboard-welcome-content">
 
-                            <p className="dashboard-welcome-label">
-                                Welcome back,
-                            </p>
+                            <div>
 
-                            <h2>
-                                {beneficiary?.fullName ||
-                                    localStorage.getItem('beneficiaryName') ||
-                                    'Beneficiary'}
-                            </h2>
+                                <p className="dashboard-welcome-label">
+                                    Welcome back,
+                                </p>
 
-                            <p>
-                                Manage your profile, applications and
-                                government scheme information from here.
-                            </p>
+                                <h2>
+                                    {beneficiary?.fullName ||
+                                        localStorage.getItem('beneficiaryName') ||
+                                        'Beneficiary'}
+                                </h2>
+
+                                <p>
+                                    Manage your profile, applications and
+                                    government scheme information from here.
+                                </p>
+
+                            </div>
+
+
+                            {/* APPLY FOR SCHEME */}
+
+                            <Link
+                                to="/schemes"
+                                className="dashboard-apply-button"
+                            >
+                                Apply for a Scheme →
+                            </Link>
 
                         </div>
 

@@ -13,12 +13,17 @@ function buildPayload(formData) {
     const payload = {
         fullName: formData.fullName.trim(),
         govId: formData.govId.trim(),
-        contact: formData.mobile.trim(),
+
+        // Use the single mobile number for contact
+        contact: formData.mobileNumber.trim(),
+
         email: formData.email.trim(),
         password: formData.password,
         age: parseInt(formData.age, 10),
         address: formData.address.trim(),
-        schemeName: formData.schemeName,
+
+        // No scheme is selected during registration
+        schemeName: 'Not Selected',
 
         aadhaarNumber: formData.aadhaarNumber.trim(),
         mobileNumber: formData.mobileNumber.trim(),
@@ -56,8 +61,10 @@ function validate(formData) {
         errors.push('Government ID is required.');
     }
 
-    if (!/^\d{10}$/.test(formData.mobile.trim())) {
-        errors.push('Contact number must be exactly 10 digits.');
+    if (!/^[6-9]\d{9}$/.test(formData.mobileNumber.trim())) {
+        errors.push(
+            'Mobile number must be a valid 10-digit Indian number starting with 6–9.'
+        );
     }
 
     if (!formData.email.trim() || !/\S+@\S+\.\S+/.test(formData.email)) {
@@ -78,18 +85,8 @@ function validate(formData) {
         errors.push('Address is required.');
     }
 
-    if (!formData.schemeName) {
-        errors.push('Scheme name is required.');
-    }
-
     if (!/^\d{12}$/.test(formData.aadhaarNumber.trim())) {
         errors.push('Aadhaar number must be exactly 12 digits.');
-    }
-
-    if (!/^[6-9]\d{9}$/.test(formData.mobileNumber.trim())) {
-        errors.push(
-            'Mobile number must be a valid 10-digit Indian number starting with 6–9.'
-        );
     }
 
     if (!formData.dateOfBirth) {
@@ -163,12 +160,10 @@ function Register() {
         // Required basic fields
         fullName: '',
         govId: '',
-        mobile: '',
         email: '',
         password: '',
         age: '',
         address: '',
-        schemeName: '',
 
         // Required identity fields
         aadhaarNumber: '',
@@ -515,7 +510,7 @@ function Register() {
 
     /* ══════════════════════════════════════════════════════════
        SUBMIT HANDLER
-    ══════════════════════════════════════════════════════════ */
+    ══════════════════════════════════════════════════════════════ */
     const handleSubmit = async (e) => {
 
         e.preventDefault();
@@ -773,7 +768,7 @@ function Register() {
                         </div>
 
 
-                        {/* Email + Password + Contact */}
+                        {/* Email + Password + Mobile */}
                         <div className="register-form-row">
 
                             <div className="register-form-group">
@@ -816,15 +811,15 @@ function Register() {
 
                             <div className="register-form-group">
 
-                                <label htmlFor="mobile">
-                                    Contact Number <span>*</span>
+                                <label htmlFor="mobileNumber">
+                                    Mobile Number <span>*</span>
                                 </label>
 
                                 <input
-                                    id="mobile"
-                                    name="mobile"
+                                    id="mobileNumber"
+                                    name="mobileNumber"
                                     type="tel"
-                                    value={formData.mobile}
+                                    value={formData.mobileNumber}
                                     onChange={handleChange}
                                     placeholder="10-digit number"
                                     maxLength="10"
@@ -856,42 +851,6 @@ function Register() {
                         </div>
 
 
-                        {/* Scheme */}
-                        <div className="register-form-group">
-
-                            <label htmlFor="schemeName">
-                                Scheme of Interest <span>*</span>
-                            </label>
-
-                            <select
-                                id="schemeName"
-                                name="schemeName"
-                                value={formData.schemeName}
-                                onChange={handleChange}
-                                required
-                            >
-
-                                <option value="">
-                                    Select a scheme
-                                </option>
-
-                                <option value="PM-KISAN Samman Nidhi">
-                                    PM-KISAN Samman Nidhi
-                                </option>
-
-                                <option value="National Scholarship Portal">
-                                    National Scholarship Portal (NSP)
-                                </option>
-
-                                <option value="Prime Minister's Employment Generation Programme">
-                                    PMEGP
-                                </option>
-
-                            </select>
-
-                        </div>
-
-
                         {/* ══════════════════════════════════════
                             IDENTITY & DEMOGRAPHICS
                         ══════════════════════════════════════ */}
@@ -901,47 +860,23 @@ function Register() {
                         </p>
 
 
-                        {/* Aadhaar + Mobile */}
-                        <div className="register-form-row">
+                        {/* Aadhaar */}
+                        <div className="register-form-group">
 
-                            <div className="register-form-group">
+                            <label htmlFor="aadhaarNumber">
+                                Aadhaar Number <span>*</span>
+                            </label>
 
-                                <label htmlFor="aadhaarNumber">
-                                    Aadhaar Number <span>*</span>
-                                </label>
-
-                                <input
-                                    id="aadhaarNumber"
-                                    name="aadhaarNumber"
-                                    type="text"
-                                    value={formData.aadhaarNumber}
-                                    onChange={handleChange}
-                                    placeholder="12-digit Aadhaar"
-                                    maxLength="12"
-                                    required
-                                />
-
-                            </div>
-
-
-                            <div className="register-form-group">
-
-                                <label htmlFor="mobileNumber">
-                                    Mobile Number <span>*</span>
-                                </label>
-
-                                <input
-                                    id="mobileNumber"
-                                    name="mobileNumber"
-                                    type="tel"
-                                    value={formData.mobileNumber}
-                                    onChange={handleChange}
-                                    placeholder="10-digit number"
-                                    maxLength="10"
-                                    required
-                                />
-
-                            </div>
+                            <input
+                                id="aadhaarNumber"
+                                name="aadhaarNumber"
+                                type="text"
+                                value={formData.aadhaarNumber}
+                                onChange={handleChange}
+                                placeholder="12-digit Aadhaar"
+                                maxLength="12"
+                                required
+                            />
 
                         </div>
 

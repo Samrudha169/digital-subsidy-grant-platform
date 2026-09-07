@@ -341,13 +341,24 @@ function Schemes() {
                                     </div>
 
 
-                                    {/* DETAILS BUTTON */}
-                                    <Link
-                                        to={scheme.path}
-                                        className="scheme-view-btn"
-                                    >
-                                        View Details
-                                    </Link>
+                                    {/* ACTION BUTTONS */}
+                                    <div className="scheme-card-actions">
+
+                                        <Link
+                                            to={scheme.path}
+                                            className="scheme-view-btn"
+                                        >
+                                            View Details
+                                        </Link>
+
+                                        <Link
+                                            to={`${scheme.path}?apply=true`}
+                                            className="scheme-apply-btn"
+                                        >
+                                            Apply Now
+                                        </Link>
+
+                                    </div>
 
                                 </div>
 

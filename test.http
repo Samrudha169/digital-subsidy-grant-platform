@@ -204,3 +204,31 @@ http://localhost:8080/api/v1/schemes
 
 ###
 curl.exe http://localhost:8080/api/v1/schemes
+
+
+### Test PM-KISAN Eligibility
+POST http://localhost:8080/api/v1/eligibility/check
+Content-Type: application/json
+
+{
+  "beneficiaryId": 3,
+  "schemeId": 1
+}
+
+### Test Eligible PM-KISAN Beneficiary
+POST http://localhost:8080/api/v1/eligibility/check
+Content-Type: application/json
+
+{
+  "beneficiaryId": 15,
+  "schemeId": 1
+}
+
+### Submit PM-KISAN Application
+POST http://localhost:8080/api/v1/applications
+Content-Type: application/json
+
+{
+  "beneficiaryId": 15,
+  "schemeId": 1
+}
