@@ -21,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
  * POST /verification/applications/{id}/field-approve    — Field Officer approve (UNDER_REVIEW → FIELD_APPROVED)
  * POST /verification/applications/{id}/field-reject     — Field Officer reject  (UNDER_REVIEW → REJECTED)
  * POST /verification/applications/{id}/escalate         — Field Officer escalate (UNDER_REVIEW → ESCALATED)
+ * POST /verification/applications/{id}/request-correction — Field Officer request correction (UNDER_REVIEW → CORRECTION_REQUIRED)
+ * POST /verification/applications/{id}/resubmit         — Beneficiary resubmit (CORRECTION_REQUIRED → UNDER_REVIEW)
  * POST /verification/applications/{id}/district-approve — District Officer approve (ESCALATED → DISTRICT_APPROVED)
  * POST /verification/applications/{id}/district-reject  — District Officer reject  (ESCALATED → REJECTED)
  * POST /verification/applications/{id}/finance-approve  — Finance approve (FIELD_APPROVED|DISTRICT_APPROVED → APPROVED)
@@ -95,6 +97,29 @@ public class VerificationController {
             @Valid @RequestBody VerificationActionRequest request) {
 
         return ResponseEntity.ok(verificationService.escalateAtField(id, request));
+    }
+
+    /**
+     * Field Officer requests correction: UNDER_REVIEW → CORRECTION_REQUIRED.
+     * Remarks are mandatory and must describe what needs to be corrected.
+     */
+    @PostMapping("/{id}/request-correction")
+    public ResponseEntity<VerificationStatusResponse> requestCorrection(
+            @PathVariable Long id,
+            @Valid @RequestBody VerificationActionRequest request) {
+
+        return ResponseEntity.ok(verificationService.requestCorrection(id, request));
+    }
+
+    /**
+     * Beneficiary resubmits after correction: CORRECTION_REQUIRED → UNDER_REVIEW.
+     */
+    @PostMapping("/{id}/resubmit")
+    public ResponseEntity<VerificationStatusResponse> resubmit(
+            @PathVariable Long id,
+            @Valid @RequestBody VerificationActionRequest request) {
+
+        return ResponseEntity.ok(verificationService.resubmitByBeneficiary(id, request));
     }
 
     // ── District Officer actions ───────────────────────────────────────────

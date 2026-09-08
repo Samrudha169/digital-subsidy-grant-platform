@@ -3,25 +3,42 @@ package com.dsgp.beneficiary.service;
 import com.dsgp.beneficiary.dto.BeneficiaryRegistrationRequest;
 import com.dsgp.beneficiary.dto.BeneficiaryResponse;
 import com.dsgp.beneficiary.dto.BeneficiaryUpdateRequest;
+import com.dsgp.beneficiary.dto.DocumentResponse;
 import com.dsgp.beneficiary.entity.Beneficiary;
+import com.dsgp.beneficiary.entity.BeneficiaryDocument;
+import com.dsgp.beneficiary.entity.DocumentType;
 import com.dsgp.beneficiary.exception.BeneficiaryNotFoundException;
 import com.dsgp.beneficiary.exception.DuplicateAadhaarException;
 import com.dsgp.beneficiary.exception.DuplicateMobileException;
+import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
 import com.dsgp.beneficiary.repository.BeneficiaryRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 @Transactional
 public class BeneficiaryServiceImpl implements BeneficiaryService {
 
     private final BeneficiaryRepository beneficiaryRepository;
+    private final BeneficiaryDocumentRepository documentRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.storage.upload-dir:./uploads}")
+    private String uploadDir;
 
     // ============================================================
     // REGISTER BENEFICIARY
@@ -352,6 +369,104 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 .registrationStatus(beneficiary.getRegistrationStatus())
                 .identityVerified(beneficiary.isIdentityVerified())
 
+                .build();
+    }
+
+    // ============================================================
+    // DOCUMENT UPLOAD
+    // ============================================================
+
+    @Override
+    public DocumentResponse uploadDocument(Integer beneficiaryId,
+                                           MultipartFile file,
+                                           DocumentType documentType,
+                                           String uploadedBy) throws IOException {
+
+        Beneficiary beneficiary = beneficiaryRepository.findById(beneficiaryId)
+                .orElseThrow(() -> new BeneficiaryNotFoundException(beneficiaryId));
+
+        // Build storage directory: uploads/beneficiary/{id}/
+        Path storageDir = Paths.get(uploadDir, "beneficiary", String.valueOf(beneficiaryId));
+        Files.createDirectories(storageDir);
+
+        // Unique filename to prevent collisions
+        String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
+        String storedFilename = UUID.randomUUID() + "_" + originalFilename;
+        Path targetPath = storageDir.resolve(storedFilename);
+        Files.copy(file.getInputStream(), targetPath);
+
+        BeneficiaryDocument document = BeneficiaryDocument.builder()
+                .beneficiary(beneficiary)
+                .documentType(documentType)
+                .fileName(storedFilename)
+                .originalFileName(originalFilename)
+                .filePath(targetPath.toAbsolutePath().toString())
+                .fileSize(file.getSize())
+                .mimeType(file.getContentType())
+                .uploadedBy(uploadedBy)
+                .build();
+
+        BeneficiaryDocument saved = documentRepository.save(document);
+
+        log.info("Document uploaded: beneficiaryId={}, type={}, file={}",
+                beneficiaryId, documentType, storedFilename);
+
+        return mapDocumentToResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentResponse> getDocuments(Integer beneficiaryId) {
+
+        // Verify beneficiary exists
+        if (!beneficiaryRepository.existsById(beneficiaryId)) {
+            throw new BeneficiaryNotFoundException(beneficiaryId);
+        }
+
+        return documentRepository.findByBeneficiaryId(beneficiaryId.longValue())
+                .stream()
+                .map(this::mapDocumentToResponse)
+                .toList();
+    }
+
+    // ============================================================
+    // IDENTITY VERIFICATION
+    // ============================================================
+
+    @Override
+    public BeneficiaryResponse verifyIdentity(Integer beneficiaryId, String verifiedBy) {
+
+        Beneficiary beneficiary = beneficiaryRepository.findById(beneficiaryId)
+                .orElseThrow(() -> new BeneficiaryNotFoundException(beneficiaryId));
+
+        if (beneficiary.isIdentityVerified()) {
+            log.info("Identity already verified for beneficiaryId={}", beneficiaryId);
+        } else {
+            beneficiary.setIdentityVerified(true);
+            beneficiaryRepository.save(beneficiary);
+            log.info("Identity verified for beneficiaryId={} by officer={}",
+                    beneficiaryId, verifiedBy);
+        }
+
+        return mapToResponse(beneficiary);
+    }
+
+    // ============================================================
+    // DOCUMENT ENTITY → DTO
+    // ============================================================
+
+    private DocumentResponse mapDocumentToResponse(BeneficiaryDocument doc) {
+        return DocumentResponse.builder()
+                .id(doc.getId())
+                .beneficiaryId(doc.getBeneficiary().getId().longValue())
+                .documentType(doc.getDocumentType())
+                .originalFileName(doc.getOriginalFileName())
+                .fileName(doc.getFileName())
+                .fileSize(doc.getFileSize())
+                .mimeType(doc.getMimeType())
+                .uploadedAt(doc.getUploadedAt())
+                .uploadedBy(doc.getUploadedBy())
+                .verified(doc.isVerified())
                 .build();
     }
 }

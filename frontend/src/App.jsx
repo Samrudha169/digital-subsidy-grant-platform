@@ -20,6 +20,8 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import OfficerLogin from './pages/OfficerLogin';
+import OfficerDashboard from './pages/OfficerDashboard';
 
 function App() {
 
@@ -202,6 +204,16 @@ function App() {
                     <Route
                         path="/terms"
                         element={<Terms />}
+                    />
+
+                    <Route
+                        path="/officer/login"
+                        element={<OfficerLogin />}
+                    />
+
+                    <Route
+                        path="/officer/dashboard"
+                        element={<OfficerDashboard />}
                     />
 
                 </Routes>

@@ -52,15 +52,66 @@ const CRITERION_LABELS = {
     identityCheck: 'Identity Verified',
 };
 
-/* ─── Criterion maximums matching backend scoring ────────────── */
-const CRITERION_MAX = {
-    ageCheck: 20,
-    incomeCheck: 30,
-    landCheck: 25,
-    occupationCheck: 20,
-    categoryCheck: 20,
-    identityCheck: 10,
+/* ─── Scheme-specific criterion maximums ─────────────────────
+   These values MUST match EligibilityScoringEngine.java exactly.
+
+   PM-KISAN  (scheme id 1 / name "PM-KISAN"):
+     age=15, income=25, land=25, occupation=20, category=5, identity=10
+     Total = 100
+
+   NSP  (scheme id 2 / name contains "National Scholarship"):
+     age=20, income=30, occupation=30, category=10, identity=10
+     (no landCheck criterion for NSP)  Total = 100
+
+   PMEGP  (scheme id 3 / name "PMEGP"):
+     age=20, income=30, occupation=20, category=20, identity=10
+     (no landCheck criterion for PMEGP)  Total = 100
+─────────────────────────────────────────────────────────── */
+const CRITERION_MAX_BY_SCHEME = {
+    'PM-KISAN': {
+        ageCheck:        15,
+        incomeCheck:     25,
+        landCheck:       25,
+        occupationCheck: 20,
+        categoryCheck:    5,
+        identityCheck:   10,
+    },
+    'NSP': {
+        ageCheck:        20,
+        incomeCheck:     30,
+        occupationCheck: 30,
+        categoryCheck:   10,
+        identityCheck:   10,
+    },
+    'PMEGP': {
+        ageCheck:        20,
+        incomeCheck:     30,
+        occupationCheck: 20,
+        categoryCheck:   20,
+        identityCheck:   10,
+    },
 };
+
+/** Returns the criterion maximum for a given scheme key and criterion name.
+ *  Falls back to a sensible default if the key is unknown. */
+function getCriterionMax(schemeKey, criterion) {
+    const map = CRITERION_MAX_BY_SCHEME[schemeKey];
+    if (map && criterion in map) return map[criterion];
+    // Fallback: return the max across all schemes for that criterion
+    const allMaps = Object.values(CRITERION_MAX_BY_SCHEME);
+    return Math.max(...allMaps.map(m => m[criterion] ?? 0));
+}
+
+/** Derives the schemeKey ('PM-KISAN' | 'NSP' | 'PMEGP') from a scheme name string. */
+function resolveSchemeKey(schemeName) {
+    if (!schemeName) return null;
+    const n = schemeName.toUpperCase();
+    if (n.includes('KISAN') || n.includes('PM-KISAN')) return 'PM-KISAN';
+    if (n.includes('NSP') || n.includes('NATIONAL SCHOLARSHIP')) return 'NSP';
+    if (n.includes('PMEGP') || n.includes('EMPLOYMENT GENERATION')) return 'PMEGP';
+    return null;
+}
+
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -1400,10 +1451,13 @@ function Eligibility() {
                                         <div className="criteria-list">
 
                                             {liveResult.criteria &&
-                                                Object.entries(
-                                                    liveResult.criteria
-                                                ).map(
-                                                    ([key, crit]) => (
+                                                (() => {
+                                                    // Resolve scheme key once for this result
+                                                    const schemeKey = resolveSchemeKey(liveResult.schemeName);
+                                                    return Object.entries(
+                                                        liveResult.criteria
+                                                    ).map(
+                                                        ([key, crit]) => (
 
                                                         <div
                                                             key={key}
@@ -1445,9 +1499,7 @@ function Eligibility() {
 
                                                                     {crit.points}/
                                                                     {
-                                                                        CRITERION_MAX[
-                                                                            key
-                                                                            ] ?? '?'
+                                                                        getCriterionMax(schemeKey, key) ?? '?'
                                                                     }{' '}
                                                                     pts
 
@@ -1465,9 +1517,7 @@ function Eligibility() {
                                                                     crit.points
                                                                 }
                                                                 aria-valuemax={
-                                                                    CRITERION_MAX[
-                                                                        key
-                                                                        ]
+                                                                    getCriterionMax(schemeKey, key)
                                                                 }
                                                                 aria-label={`${
                                                                     CRITERION_LABELS[
@@ -1485,9 +1535,7 @@ function Eligibility() {
                                                                     style={{
                                                                         width: `${
                                                                             (crit.points /
-                                                                                (CRITERION_MAX[
-                                                                                    key
-                                                                                    ] ?? 100)) *
+                                                                                (getCriterionMax(schemeKey, key) ?? 100)) *
                                                                             100
                                                                         }%`,
                                                                     }}
@@ -1502,7 +1550,8 @@ function Eligibility() {
 
                                                         </div>
                                                     )
-                                                )}
+                                                );
+                                            })()}
 
                                         </div>
 

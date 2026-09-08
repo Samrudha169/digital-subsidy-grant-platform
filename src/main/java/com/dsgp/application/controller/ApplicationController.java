@@ -13,6 +13,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 /**
  * REST controller for scheme application submission and retrieval.
  *
@@ -20,13 +22,12 @@ import org.springframework.web.bind.annotation.*;
  *
  * <p>Endpoints:
  * <ul>
- *   <li>{@code POST /applications}       — submit a new application (201 Created)</li>
- *   <li>{@code GET  /applications/{id}}  — get application by ID (200 OK)</li>
+ *   <li>{@code POST /applications}                         — submit a new application (201 Created)</li>
+ *   <li>{@code GET  /applications/{id}}                    — get application by ID (200 OK)</li>
+ *   <li>{@code GET  /applications/beneficiary/{id}}        — all applications for a beneficiary</li>
+ *   <li>{@code GET  /applications?status={status}}         — applications by workflow status</li>
+ *   <li>{@code GET  /applications/all}                     — all applications (officer/admin)</li>
  * </ul>
- *
- * <p>GET /applications/{id} returns {@link ApplicationResponse} — NOT the raw
- * {@link SchemeApplication} entity — to avoid Hibernate ByteBuddy proxy
- * serialisation errors caused by LAZY-loaded JPA relationships.
  */
 @RestController
 @RequestMapping("/applications")
@@ -37,7 +38,7 @@ public class ApplicationController {
     private final SchemeApplicationService schemeApplicationService;
     private final EligibilityResultRepository eligibilityResultRepository;
 
-    // ── POST /applications ────────────────────────────────────────────────────
+    // ── POST /applications ──────────────────────────────────────────────────────
 
     @PostMapping
     public ResponseEntity<ApplicationResponse> submitApplication(
@@ -47,21 +48,8 @@ public class ApplicationController {
                 .body(applicationService.submitApplication(request));
     }
 
-    // ── GET /applications/{applicationId} ─────────────────────────────────────
+    // ── GET /applications/{applicationId} ───────────────────────────────────────
 
-    /**
-     * Returns the current state of an application as an {@link ApplicationResponse}.
-     *
-     * <p>Uses the {@link SchemeApplicationService} for the entity lookup, then
-     * maps to a DTO — accessing only the scalar fields and the already-initialised
-     * {@code beneficiary} and {@code scheme} proxies within the same transaction.
-     * The {@link EligibilityResult} for the (beneficiary, scheme) pair is fetched
-     * separately to populate the real eligibility score; falls back to 0 if no
-     * result is found (e.g., data was manually inserted without running the engine).
-     *
-     * @param applicationId primary key of the {@code scheme_applications} row
-     * @return 200 OK with {@link ApplicationResponse}; 404 if not found
-     */
     @GetMapping("/{applicationId}")
     public ResponseEntity<ApplicationResponse> getApplicationById(
             @PathVariable Long applicationId) {
@@ -69,7 +57,6 @@ public class ApplicationController {
         SchemeApplication application =
                 schemeApplicationService.getApplicationById(applicationId);
 
-        // Fetch the real eligibility score — 0 if no result exists yet.
         int eligibilityScore = eligibilityResultRepository
                 .findByBeneficiaryIdAndSchemeId(
                         application.getBeneficiary().getId(),
@@ -90,4 +77,46 @@ public class ApplicationController {
 
         return ResponseEntity.ok(response);
     }
-}
+
+    // ── GET /applications/beneficiary/{beneficiaryId} ─────────────────────────
+
+    /**
+     * Returns all applications for a specific beneficiary.
+     * Used by the beneficiary's "My Applications" page.
+     */
+    @GetMapping("/beneficiary/{beneficiaryId}")
+    public ResponseEntity<List<ApplicationResponse>> getApplicationsByBeneficiary(
+            @PathVariable Integer beneficiaryId) {
+
+        return ResponseEntity.ok(
+                applicationService.getApplicationsByBeneficiary(beneficiaryId));
+    }
+
+    // ── GET /applications?status=... ─────────────────────────────────────────
+
+    /**
+     * Returns all applications with the specified status.
+     * Used by officer dashboards to build their work queues.
+     */
+    @GetMapping
+    public ResponseEntity<List<ApplicationResponse>> getApplicationsByStatus(
+            @RequestParam(required = false) String status) {
+
+        if (status != null && !status.isBlank()) {
+            return ResponseEntity.ok(
+                    applicationService.getApplicationsByStatus(status.toUpperCase()));
+        }
+        return ResponseEntity.ok(applicationService.getAllApplications());
+    }
+
+    // ── GET /applications/all ───────────────────────────────────────────────
+
+    /**
+     * Returns all applications. Used by administrator dashboard.
+     */
+    @GetMapping("/all")
+    public ResponseEntity<List<ApplicationResponse>> getAllApplications() {
+        return ResponseEntity.ok(applicationService.getAllApplications());
+    }
+}
+

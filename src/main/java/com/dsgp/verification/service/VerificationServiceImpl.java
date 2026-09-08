@@ -29,6 +29,8 @@ import java.util.List;
  * UNDER_REVIEW       → FIELD_APPROVED     (approveAtField)
  * UNDER_REVIEW       → ESCALATED          (escalateAtField)
  * UNDER_REVIEW       → REJECTED           (rejectAtField)
+ * UNDER_REVIEW       → CORRECTION_REQUIRED (requestCorrection)
+ * CORRECTION_REQUIRED → UNDER_REVIEW      (resubmitByBeneficiary)
  * FIELD_APPROVED     → APPROVED           (approveAtFinance)
  * FIELD_APPROVED     → REJECTED           (rejectAtFinance)
  * ESCALATED          → DISTRICT_APPROVED  (approveAtDistrict)
@@ -93,13 +95,14 @@ public class VerificationServiceImpl implements VerificationService {
     public static final long FIELD_GRANT_ESCALATION_THRESHOLD = 0L;
 
     // ── Application status string constants ───────────────────────────────────
-    private static final String STATUS_PENDING           = "PENDING";
-    private static final String STATUS_UNDER_REVIEW      = "UNDER_REVIEW";
-    private static final String STATUS_FIELD_APPROVED    = "FIELD_APPROVED";
-    private static final String STATUS_ESCALATED         = "ESCALATED";
-    private static final String STATUS_DISTRICT_APPROVED = "DISTRICT_APPROVED";
-    private static final String STATUS_APPROVED          = "APPROVED";
-    private static final String STATUS_REJECTED          = "REJECTED";
+    private static final String STATUS_PENDING              = "PENDING";
+    private static final String STATUS_UNDER_REVIEW         = "UNDER_REVIEW";
+    private static final String STATUS_FIELD_APPROVED       = "FIELD_APPROVED";
+    private static final String STATUS_ESCALATED            = "ESCALATED";
+    private static final String STATUS_DISTRICT_APPROVED    = "DISTRICT_APPROVED";
+    private static final String STATUS_APPROVED             = "APPROVED";
+    private static final String STATUS_REJECTED             = "REJECTED";
+    private static final String STATUS_CORRECTION_REQUIRED  = "CORRECTION_REQUIRED";
 
     // ── Dependencies ──────────────────────────────────────────────────────────
     private final SchemeApplicationRepository  applicationRepository;
@@ -194,6 +197,38 @@ public class VerificationServiceImpl implements VerificationService {
                 request.getPerformedBy(), request.getRemarks());
 
         log.info("Field ESCALATE: applicationId={}, by={}", applicationId, request.getPerformedBy());
+        return buildResponse(app);
+    }
+
+    @Override
+    public VerificationStatusResponse requestCorrection(Long applicationId,
+                                                        VerificationActionRequest request) {
+        SchemeApplication app = requireApplication(applicationId);
+        requireStatus(app, STATUS_UNDER_REVIEW,
+                "Correction request requires status UNDER_REVIEW. Current: " + app.getApplicationStatus());
+        requireRemarks(request, "Correction request requires remarks describing what needs to be corrected.");
+
+        updateStatus(app, STATUS_CORRECTION_REQUIRED);
+        recordAction(app, VerificationStage.FIELD, VerificationAction.REQUEST_CORRECTION,
+                request.getPerformedBy(), request.getRemarks());
+
+        log.info("Field REQUEST_CORRECTION: applicationId={}, by={}", applicationId, request.getPerformedBy());
+        return buildResponse(app);
+    }
+
+    @Override
+    public VerificationStatusResponse resubmitByBeneficiary(Long applicationId,
+                                                            VerificationActionRequest request) {
+        SchemeApplication app = requireApplication(applicationId);
+        requireStatus(app, STATUS_CORRECTION_REQUIRED,
+                "Resubmission requires status CORRECTION_REQUIRED. Current: " + app.getApplicationStatus());
+
+        updateStatus(app, STATUS_UNDER_REVIEW);
+        recordAction(app, VerificationStage.FIELD, VerificationAction.APPROVE,
+                request.getPerformedBy(),
+                coalesce(request.getRemarks(), "Beneficiary resubmitted after corrections."));
+
+        log.info("Beneficiary RESUBMIT: applicationId={}, by={}", applicationId, request.getPerformedBy());
         return buildResponse(app);
     }
 

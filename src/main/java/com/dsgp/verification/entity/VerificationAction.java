@@ -4,12 +4,14 @@ package com.dsgp.verification.entity;
  * The action taken by an officer during a verification stage.
  *
  * <ul>
- *   <li>{@link #APPROVE}   — The officer approves the application at their stage.</li>
- *   <li>{@link #REJECT}    — The officer rejects the application (terminal).</li>
- *   <li>{@link #ESCALATE}  — The Field Officer escalates to the District Officer.</li>
+ *   <li>{@link #APPROVE}              — The officer approves the application at their stage.</li>
+ *   <li>{@link #REJECT}               — The officer rejects the application (terminal).</li>
+ *   <li>{@link #ESCALATE}             — The Field Officer escalates to the District Officer.</li>
+ *   <li>{@link #REQUEST_CORRECTION}   — The Field Officer requests the beneficiary to correct/resubmit.</li>
  * </ul>
  *
- * <p>Only a {@link VerificationStage#FIELD} officer may {@link #ESCALATE}.
+ * <p>Only a {@link VerificationStage#FIELD} officer may {@link #ESCALATE} or
+ * {@link #REQUEST_CORRECTION}.
  * District and Finance officers may only {@link #APPROVE} or {@link #REJECT}.
  */
 public enum VerificationAction {
@@ -24,5 +26,13 @@ public enum VerificationAction {
      * Escalate to the District Officer (FIELD stage only).
      * Moves the application status to {@code ESCALATED}.
      */
-    ESCALATE
+    ESCALATE,
+
+    /**
+     * Request the beneficiary to correct their application and resubmit
+     * (FIELD stage only). Moves application status to {@code CORRECTION_REQUIRED}.
+     * The beneficiary may then resubmit, returning the application to {@code UNDER_REVIEW}.
+     */
+    REQUEST_CORRECTION
 }
+

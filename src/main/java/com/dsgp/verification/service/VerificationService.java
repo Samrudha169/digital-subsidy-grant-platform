@@ -8,16 +8,18 @@ import com.dsgp.verification.dto.VerificationStatusResponse;
  *
  * <h3>State machine summary</h3>
  * <pre>
- * PENDING          → UNDER_REVIEW      (startVerification)
- * UNDER_REVIEW     → FIELD_APPROVED    (approveAtField)
- * UNDER_REVIEW     → ESCALATED         (escalateAtField)
- * UNDER_REVIEW     → REJECTED          (rejectAtField)
- * FIELD_APPROVED   → APPROVED          (approveAtFinance)
- * FIELD_APPROVED   → REJECTED          (rejectAtFinance)
- * ESCALATED        → DISTRICT_APPROVED (approveAtDistrict)
- * ESCALATED        → REJECTED          (rejectAtDistrict)
- * DISTRICT_APPROVED → APPROVED         (approveAtFinance)
- * DISTRICT_APPROVED → REJECTED         (rejectAtFinance)
+ * PENDING               → UNDER_REVIEW         (startVerification)
+ * UNDER_REVIEW          → FIELD_APPROVED        (approveAtField)
+ * UNDER_REVIEW          → ESCALATED             (escalateAtField)
+ * UNDER_REVIEW          → REJECTED              (rejectAtField)
+ * UNDER_REVIEW          → CORRECTION_REQUIRED   (requestCorrection)
+ * CORRECTION_REQUIRED   → UNDER_REVIEW          (resubmitByBeneficiary)
+ * FIELD_APPROVED        → APPROVED              (approveAtFinance)
+ * FIELD_APPROVED        → REJECTED              (rejectAtFinance)
+ * ESCALATED             → DISTRICT_APPROVED     (approveAtDistrict)
+ * ESCALATED             → REJECTED              (rejectAtDistrict)
+ * DISTRICT_APPROVED     → APPROVED              (approveAtFinance)
+ * DISTRICT_APPROVED     → REJECTED              (rejectAtFinance)
  * </pre>
  *
  * <p>Terminal states: {@code APPROVED} and {@code REJECTED}.
@@ -90,6 +92,27 @@ public interface VerificationService {
      */
     VerificationStatusResponse escalateAtField(Long applicationId,
                                                VerificationActionRequest request);
+
+    /**
+     * Field Officer requests the beneficiary to correct their application.
+     * UNDER_REVIEW → CORRECTION_REQUIRED.
+     * Remarks are mandatory (must describe what needs to be corrected).
+     *
+     * @param applicationId target application
+     * @param request       officer identifier + mandatory correction instructions
+     */
+    VerificationStatusResponse requestCorrection(Long applicationId,
+                                                  VerificationActionRequest request);
+
+    /**
+     * Beneficiary resubmits after making corrections.
+     * CORRECTION_REQUIRED → UNDER_REVIEW.
+     *
+     * @param applicationId target application
+     * @param request       beneficiary identifier + optional resubmission note
+     */
+    VerificationStatusResponse resubmitByBeneficiary(Long applicationId,
+                                                      VerificationActionRequest request);
 
     // ── District Officer actions ──────────────────────────────────────────────
 

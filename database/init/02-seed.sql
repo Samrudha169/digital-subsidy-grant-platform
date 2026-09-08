@@ -63,3 +63,43 @@ VALUES
  NULL,
  NULL,
  1);
+
+-- =============================================================================
+-- Milestone 2 — Officer Seed Data
+-- =============================================================================
+-- Default password for all seeded officers: password123
+-- BCrypt hash (strength 10) of "password123":
+--   $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+--
+-- IMPORTANT: Change passwords before any real deployment.
+-- Officers are seeded with INSERT IGNORE so this is safe to re-run.
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS officers (
+    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
+    username    VARCHAR(100) NOT NULL UNIQUE,
+    password    VARCHAR(255) NOT NULL,
+    full_name   VARCHAR(150) NOT NULL,
+    email       VARCHAR(150),
+    role        VARCHAR(20)  NOT NULL,
+    district    VARCHAR(100),
+    active      TINYINT(1)   NOT NULL DEFAULT 1
+);
+
+INSERT IGNORE INTO officers (id, username, password, full_name, email, role, district, active)
+VALUES
+-- Field Officers
+(1, 'field.officer1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    'Ramesh Kumar',        'ramesh.kumar@dsgp.gov.in',    'FIELD_OFFICER',    'Pune',        1),
+(2, 'field.officer2', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    'Priya Sharma',        'priya.sharma@dsgp.gov.in',    'FIELD_OFFICER',    'Nashik',      1),
+
+-- District Officers
+(3, 'district.officer1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    'Anita Desai',         'anita.desai@dsgp.gov.in',     'DISTRICT_OFFICER', 'Pune',        1),
+(4, 'district.officer2', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    'Suresh Patil',        'suresh.patil@dsgp.gov.in',    'DISTRICT_OFFICER', 'Nashik',      1),
+
+-- Finance Approver
+(5, 'finance.approver1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    'Meena Joshi',         'meena.joshi@dsgp.gov.in',     'FINANCE_APPROVER', NULL,          1);

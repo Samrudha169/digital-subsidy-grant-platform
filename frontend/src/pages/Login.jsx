@@ -304,6 +304,33 @@ function Login({ onLogin }) {
 
                     </div>
 
+                    {/* Officer Portal link */}
+                    <div style={{
+                        textAlign: 'center',
+                        marginTop: '1rem',
+                        paddingTop: '1rem',
+                        borderTop: '1px solid rgba(0,0,0,0.08)',
+                    }}>
+                        <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0 0 0.4rem' }}>
+                            Government officer?
+                        </p>
+                        <Link
+                            to="/officer/login"
+                            id="link-officer-portal"
+                            style={{
+                                fontSize: '0.82rem',
+                                fontWeight: 600,
+                                color: '#1a365d',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                            }}
+                        >
+                            🏛️ Officer Portal →
+                        </Link>
+                    </div>
+
                 </div>
 
             </main>

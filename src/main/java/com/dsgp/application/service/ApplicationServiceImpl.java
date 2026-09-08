@@ -19,6 +19,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 /**
  * Business logic implementation for scheme application submission.
  *
@@ -121,5 +123,52 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(app.getApplicationDate())
                 .build();
+    }
+
+    // ── List operations ───────────────────────────────────────────────────────
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApplicationResponse> getApplicationsByBeneficiary(Integer beneficiaryId) {
+        return applicationRepository.findByBeneficiaryId(beneficiaryId)
+                .stream()
+                .map(app -> {
+                    int score = eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(app.getBeneficiary().getId(), app.getScheme().getId())
+                            .map(EligibilityResult::getTotalScore)
+                            .orElse(0);
+                    return mapToResponse(app, score);
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApplicationResponse> getApplicationsByStatus(String status) {
+        return applicationRepository.findByApplicationStatus(status)
+                .stream()
+                .map(app -> {
+                    int score = eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(app.getBeneficiary().getId(), app.getScheme().getId())
+                            .map(EligibilityResult::getTotalScore)
+                            .orElse(0);
+                    return mapToResponse(app, score);
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ApplicationResponse> getAllApplications() {
+        return applicationRepository.findAll()
+                .stream()
+                .map(app -> {
+                    int score = eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(app.getBeneficiary().getId(), app.getScheme().getId())
+                            .map(EligibilityResult::getTotalScore)
+                            .orElse(0);
+                    return mapToResponse(app, score);
+                })
+                .toList();
     }
 }
