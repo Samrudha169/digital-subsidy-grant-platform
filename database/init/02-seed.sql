@@ -69,7 +69,9 @@ VALUES
 -- =============================================================================
 -- Default password for all seeded officers: password123
 -- BCrypt hash (strength 10) of "password123":
---   $2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+--   $2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a
+-- (Verified: BCryptPasswordEncoder.matches("password123", hash) == true)
+-- The original seed hash was incorrect and did not match "password123".
 --
 -- IMPORTANT: Change passwords before any real deployment.
 -- Officers are seeded with INSERT IGNORE so this is safe to re-run.
@@ -89,17 +91,17 @@ CREATE TABLE IF NOT EXISTS officers (
 INSERT IGNORE INTO officers (id, username, password, full_name, email, role, district, active)
 VALUES
 -- Field Officers
-(1, 'field.officer1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+(1, 'field.officer1', '$2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a',
     'Ramesh Kumar',        'ramesh.kumar@dsgp.gov.in',    'FIELD_OFFICER',    'Pune',        1),
-(2, 'field.officer2', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+(2, 'field.officer2', '$2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a',
     'Priya Sharma',        'priya.sharma@dsgp.gov.in',    'FIELD_OFFICER',    'Nashik',      1),
 
 -- District Officers
-(3, 'district.officer1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+(3, 'district.officer1', '$2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a',
     'Anita Desai',         'anita.desai@dsgp.gov.in',     'DISTRICT_OFFICER', 'Pune',        1),
-(4, 'district.officer2', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+(4, 'district.officer2', '$2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a',
     'Suresh Patil',        'suresh.patil@dsgp.gov.in',    'DISTRICT_OFFICER', 'Nashik',      1),
 
 -- Finance Approver
-(5, 'finance.approver1', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+(5, 'finance.approver1', '$2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a',
     'Meena Joshi',         'meena.joshi@dsgp.gov.in',     'FINANCE_APPROVER', NULL,          1);
