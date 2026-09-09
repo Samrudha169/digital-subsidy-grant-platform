@@ -103,6 +103,19 @@ async function postVerificationAction(applicationId, action, performedBy, remark
     return data;
 }
 
+async function fetchApplicationDocuments(applicationId) {
+    const res = await fetch(`/api/v1/applications/${applicationId}/documents`);
+    if (!res.ok) return [];   // non-fatal — return empty list
+    return res.json();
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return '—';
+    if (bytes < 1024)       return `${bytes} B`;
+    if (bytes < 1048576)    return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
@@ -288,10 +301,13 @@ function RemarksModal({ action, app, onConfirm, onCancel, loading }) {
 
 /**
  * Verification history panel — shown when officer clicks a row.
+ * Also displays all documents submitted for the application's beneficiary.
  */
-function HistoryPanel({ verificationData, onClose }) {
+function HistoryPanel({ verificationData, appDocs, onClose }) {
     if (!verificationData) return null;
-    const { applicationId, beneficiaryName, schemeName, applicationStatus, history } = verificationData;
+    const { applicationId, beneficiaryId, beneficiaryName, schemeName, applicationStatus, history } = verificationData;
+
+    const API_BASE = '/api/v1';
 
     return (
         <div className="history-overlay" onClick={onClose}>
@@ -310,6 +326,48 @@ function HistoryPanel({ verificationData, onClose }) {
                     Current Status: <StatusBadge status={applicationStatus} />
                 </div>
 
+                {/* ── Documents section ── */}
+                <div className="history-docs-section">
+                    <h3 className="history-docs-title">📎 Submitted Documents</h3>
+                    {(!appDocs || appDocs.length === 0) ? (
+                        <p className="history-empty">No documents uploaded for this application.</p>
+                    ) : (
+                        <table className="docs-table">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>File Name</th>
+                                    <th>Size</th>
+                                    <th>Uploaded</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {appDocs.map(doc => (
+                                    <tr key={doc.id}>
+                                        <td><span className="doc-type-badge">{(doc.documentType || '').replace(/_/g, ' ')}</span></td>
+                                        <td className="doc-filename" title={doc.originalFileName}>{doc.originalFileName}</td>
+                                        <td>{formatBytes(doc.fileSize)}</td>
+                                        <td>{formatDateTime(doc.uploadedAt)}</td>
+                                        <td>
+                                            <a
+                                                href={`${API_BASE}/beneficiaries/${beneficiaryId}/documents/${doc.id}/download`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="doc-view-link"
+                                            >
+                                                View / Download
+                                            </a>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+
+                {/* ── Verification timeline ── */}
+                <h3 className="history-docs-title">🕐 Verification Timeline</h3>
                 {(!history || history.length === 0) ? (
                     <p className="history-empty">No verification actions recorded yet.</p>
                 ) : (
@@ -380,6 +438,7 @@ function OfficerDashboard() {
     // Detail/history panel
     const [historyData, setHistoryData]     = useState(null);
     const [historyLoading, setHistoryLoading] = useState(false);
+    const [appDocs, setAppDocs]             = useState([]);
 
     // ── Data loading ─────────────────────────────────────────────────────────
 
@@ -438,14 +497,20 @@ function OfficerDashboard() {
         navigate('/officer/login', { replace: true });
     };
 
-    // ── Row click → history panel ─────────────────────────────────────────────
+    // ── Row click → history panel + documents ────────────────────────────────
 
     const handleRowClick = async (app) => {
         setHistoryLoading(true);
         setHistoryData(null);
+        setAppDocs([]);
         try {
-            const data = await fetchVerificationStatus(app.applicationId);
-            setHistoryData(data);
+            // Fetch verification history and documents in parallel
+            const [verif, docs] = await Promise.all([
+                fetchVerificationStatus(app.applicationId),
+                fetchApplicationDocuments(app.applicationId),
+            ]);
+            setHistoryData(verif);
+            setAppDocs(docs);
         } catch {
             // silently fail — history panel just won't open
         } finally {
@@ -671,8 +736,8 @@ function OfficerDashboard() {
                         </table>
 
                         <p className="od-table-hint">
-                            💡 Click any row (except Actions column) to view verification history.
-                            {historyLoading && ' Loading history…'}
+                            💡 Click any row (except Actions column) to view submitted documents and verification history.
+                            {historyLoading && ' Loading…'}
                         </p>
                     </div>
                 )}
@@ -694,7 +759,8 @@ function OfficerDashboard() {
             {historyData && (
                 <HistoryPanel
                     verificationData={historyData}
-                    onClose={() => setHistoryData(null)}
+                    appDocs={appDocs}
+                    onClose={() => { setHistoryData(null); setAppDocs([]); }}
                 />
             )}
 

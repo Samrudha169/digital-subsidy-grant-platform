@@ -861,15 +861,18 @@ public class EligibilityScoringEngine implements EligibilityService {
             String actualScheme,
             String expectedScheme) {
 
-        if (actualScheme == null) {
+        if (actualScheme == null || expectedScheme == null) {
             return false;
         }
 
-        return actualScheme
-                .trim()
-                .equalsIgnoreCase(expectedScheme);
+        String actual = actualScheme.trim().toLowerCase();
+        String expected = expectedScheme.trim().toLowerCase();
+
+        return actual.equals(expected)
+                || actual.startsWith(expected + " ");
     }
 
+        
     // ========================================================================
     // RESPONSE MAPPING
     // ========================================================================

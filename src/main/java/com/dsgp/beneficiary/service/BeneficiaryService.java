@@ -72,6 +72,26 @@ public interface BeneficiaryService {
      */
     List<DocumentResponse> getDocuments(Integer beneficiaryId);
 
+    /**
+     * Returns the metadata for a single document by its ID,
+     * verifying it belongs to the given beneficiary.
+     *
+     * @param beneficiaryId the beneficiary's primary key
+     * @param documentId    the document's primary key
+     * @return the document metadata
+     */
+    DocumentResponse getDocumentById(Integer beneficiaryId, Long documentId);
+
+    /**
+     * Reads the raw file bytes for a specific document.
+     * Used by the download endpoint to stream the file to the caller.
+     *
+     * @param beneficiaryId the beneficiary's primary key
+     * @param documentId    the document's primary key
+     * @return raw file bytes
+     */
+    byte[] downloadDocument(Integer beneficiaryId, Long documentId) throws IOException;
+
     // ── Milestone 2: Identity verification ───────────────────────────────────
 
     /**

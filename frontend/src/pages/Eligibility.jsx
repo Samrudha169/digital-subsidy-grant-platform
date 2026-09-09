@@ -112,6 +112,32 @@ function resolveSchemeKey(schemeName) {
     return null;
 }
 
+/* ─── Required documents per scheme ─────────────────────────
+   Must match the document types accepted by the backend
+   DocumentType enum: AADHAAR | PAN | LAND_RECORD | INCOME_CERTIFICATE | PHOTO | OTHER
+─────────────────────────────────────────────────────────── */
+const REQUIRED_DOCS_BY_SCHEME = {
+    'PM-KISAN': [
+        { type: 'AADHAAR',              label: 'Aadhaar Card' },
+        { type: 'LAND_RECORD',          label: 'Land Record / Khasra' },
+        { type: 'INCOME_CERTIFICATE',   label: 'Income Certificate' },
+    ],
+    'NSP': [
+        { type: 'AADHAAR',              label: 'Aadhaar Card' },
+        { type: 'INCOME_CERTIFICATE',   label: 'Income Certificate' },
+        { type: 'PHOTO',                label: 'Passport-size Photograph' },
+    ],
+    'PMEGP': [
+        { type: 'AADHAAR',              label: 'Aadhaar Card' },
+        { type: 'PAN',                  label: 'PAN Card' },
+        { type: 'INCOME_CERTIFICATE',   label: 'Income Certificate' },
+    ],
+};
+
+/** Returns the required docs array for a scheme key, or [] if unknown. */
+function getRequiredDocs(schemeKey) {
+    return REQUIRED_DOCS_BY_SCHEME[schemeKey] || [];
+}
 
 /* ═══════════════════════════════════════════════════════════════
    MAIN COMPONENT
@@ -156,6 +182,12 @@ function Eligibility() {
     const [applicationLoading, setApplicationLoading] = useState(false);
     const [applicationResult, setApplicationResult] = useState(null);
     const [applicationError, setApplicationError] = useState('');
+
+    /*
+     * Document upload state — keyed by document type string.
+     * Each entry: { file: File|null, status: 'idle'|'uploading'|'done'|'error', error: string }
+     */
+    const [docUploads, setDocUploads] = useState({});
 
     /* ════════════════════════════════════════════════════════════
        AUTO-LOAD BENEFICIARY + SCHEME
@@ -384,6 +416,61 @@ function Eligibility() {
 
 
     /* ════════════════════════════════════════════════════════════
+       DOCUMENT UPLOAD — single file upload per document type
+    ════════════════════════════════════════════════════════════ */
+    const handleDocUpload = async (docType, file) => {
+
+        const beneficiaryId = parseInt(liveForm.beneficiaryId, 10);
+        if (!beneficiaryId || isNaN(beneficiaryId)) return;
+
+        // Mark as uploading
+        setDocUploads((prev) => ({
+            ...prev,
+            [docType]: { file, status: 'uploading', error: '' },
+        }));
+
+        const form = new FormData();
+        form.append('file', file);
+        form.append('documentType', docType);
+        form.append('uploadedBy', String(beneficiaryId));
+
+        try {
+            const res = await fetch(
+                `${API_BASE}/beneficiaries/${beneficiaryId}/documents`,
+                { method: 'POST', body: form }
+            );
+
+            const body = await res.json().catch(() => ({}));
+
+            if (!res.ok) {
+                setDocUploads((prev) => ({
+                    ...prev,
+                    [docType]: {
+                        file,
+                        status: 'error',
+                        error: body.message || `Upload failed (${res.status})`,
+                    },
+                }));
+            } else {
+                setDocUploads((prev) => ({
+                    ...prev,
+                    [docType]: { file, status: 'done', error: '' },
+                }));
+            }
+
+        } catch {
+            setDocUploads((prev) => ({
+                ...prev,
+                [docType]: {
+                    file,
+                    status: 'error',
+                    error: 'Network error. Check that the server is running.',
+                },
+            }));
+        }
+    };
+
+    /* ════════════════════════════════════════════════════════════
        APPLICATION SUBMISSION — backend API call
     ════════════════════════════════════════════════════════════ */
     const handleApplicationSubmit = async () => {
@@ -486,6 +573,7 @@ function Eligibility() {
         setLiveValidation({});
         setApplicationResult(null);
         setApplicationError('');
+        setDocUploads({});
     };
 
 
@@ -1584,6 +1672,106 @@ function Eligibility() {
                                         </p>
 
 
+                                        {/* Required document upload section */}
+                                        {(() => {
+                                            const schemeKey = resolveSchemeKey(liveResult.schemeName);
+                                            const requiredDocs = getRequiredDocs(schemeKey);
+                                            if (requiredDocs.length === 0) return null;
+
+                                            const allDone = requiredDocs.every(
+                                                d => docUploads[d.type]?.status === 'done'
+                                            );
+
+                                            return (
+                                                <div className="doc-upload-section">
+
+                                                    <h4 className="doc-upload-title">
+                                                        📎 Required Documents
+                                                    </h4>
+
+                                                    <p className="doc-upload-subtitle">
+                                                        Upload all required documents for{' '}
+                                                        <strong>{liveResult.schemeName}</strong>{' '}
+                                                        before submitting your application.
+                                                    </p>
+
+                                                    <div className="doc-upload-list">
+                                                        {requiredDocs.map(({ type, label }) => {
+                                                            const entry = docUploads[type];
+                                                            const status = entry?.status ?? 'idle';
+
+                                                            return (
+                                                                <div
+                                                                    key={type}
+                                                                    className={`doc-upload-row doc-upload-row--${status}`}
+                                                                >
+                                                                    <span className="doc-upload-label">
+                                                                        {label}
+                                                                        <span className="field-required" aria-hidden="true"> *</span>
+                                                                    </span>
+
+                                                                    <label
+                                                                        className={`doc-file-btn${status === 'done' ? ' doc-file-btn--done' : ''}`}
+                                                                        htmlFor={`doc-input-${type}`}
+                                                                    >
+                                                                        {status === 'uploading' && (
+                                                                            <span className="spinner" aria-hidden="true" />
+                                                                        )}
+                                                                        {status === 'done'    ? '✓ Uploaded'     : null}
+                                                                        {status === 'error'   ? '↺ Retry'        : null}
+                                                                        {(status === 'idle' || status === 'uploading') && status !== 'uploading'
+                                                                            ? 'Choose File'
+                                                                            : null}
+                                                                        {status === 'uploading' ? ' Uploading…' : null}
+
+                                                                        <input
+                                                                            id={`doc-input-${type}`}
+                                                                            type="file"
+                                                                            accept="image/*,application/pdf"
+                                                                            style={{ display: 'none' }}
+                                                                            onChange={e => {
+                                                                                const file = e.target.files?.[0];
+                                                                                if (file) handleDocUpload(type, file);
+                                                                                e.target.value = '';
+                                                                            }}
+                                                                            disabled={status === 'uploading'}
+                                                                        />
+                                                                    </label>
+
+                                                                    {entry?.file && status !== 'uploading' && (
+                                                                        <span className="doc-filename-hint">
+                                                                            {entry.file.name}
+                                                                        </span>
+                                                                    )}
+
+                                                                    {status === 'error' && (
+                                                                        <span className="doc-upload-error" role="alert">
+                                                                            {entry.error}
+                                                                        </span>
+                                                                    )}
+
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {!allDone && (
+                                                        <p className="doc-upload-note" role="status">
+                                                            Upload all required documents to enable application submission.
+                                                        </p>
+                                                    )}
+
+                                                    {allDone && (
+                                                        <p className="doc-upload-note doc-upload-note--done" role="status">
+                                                            ✓ All required documents uploaded. You may now submit your application.
+                                                        </p>
+                                                    )}
+
+                                                </div>
+                                            );
+                                        })()}
+
+
                                         <div className="next-steps-actions">
 
                                             <Link
@@ -1602,22 +1790,33 @@ function Eligibility() {
                                             </Link>
 
 
-                                            <button
-                                                type="button"
-                                                className="result-button"
-                                                onClick={handleApplicationSubmit}
-                                                disabled={
-                                                    applicationLoading ||
-                                                    applicationResult !== null
-                                                }
-                                            >
-                                                {applicationLoading
-                                                    ? 'Submitting…'
-                                                    : applicationResult
-                                                        ? 'Application Submitted ✓'
-                                                        : 'Submit Application'
-                                                }
-                                            </button>
+                                            {/* Submit Application — gated on all docs uploaded */}
+                                            {(() => {
+                                                const schemeKey = resolveSchemeKey(liveResult.schemeName);
+                                                const requiredDocs = getRequiredDocs(schemeKey);
+                                                const allDone = requiredDocs.length === 0 ||
+                                                    requiredDocs.every(d => docUploads[d.type]?.status === 'done');
+                                                return (
+                                                    <button
+                                                        type="button"
+                                                        className="result-button"
+                                                        onClick={handleApplicationSubmit}
+                                                        disabled={
+                                                            applicationLoading ||
+                                                            applicationResult !== null ||
+                                                            !allDone
+                                                        }
+                                                        title={!allDone ? 'Upload all required documents first' : undefined}
+                                                    >
+                                                        {applicationLoading
+                                                            ? 'Submitting…'
+                                                            : applicationResult
+                                                                ? 'Application Submitted ✓'
+                                                                : 'Submit Application'
+                                                        }
+                                                    </button>
+                                                );
+                                            })()}
 
 
                                             <Link

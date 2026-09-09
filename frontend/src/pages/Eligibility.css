@@ -847,4 +847,145 @@
 .result-button-secondary:hover {
     background-color: var(--color-primary);
     color: var(--color-white);
-}
+}
+
+/* ── Document upload section (inside next-steps-card when eligible) ── */
+
+.doc-upload-section {
+    background: #f8faff;
+    border: 1px solid #c7d7f7;
+    border-radius: var(--radius-xl, 12px);
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0 1.5rem;
+}
+
+.doc-upload-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-primary, #1a56db);
+    margin: 0 0 0.35rem;
+}
+
+.doc-upload-subtitle {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary, #6b7280);
+    margin: 0 0 1rem;
+    line-height: 1.5;
+}
+
+.doc-upload-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.doc-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    transition: border-color 0.2s;
+}
+
+.doc-upload-row--done {
+    border-color: #22c55e;
+    background: #f0fdf4;
+}
+
+.doc-upload-row--error {
+    border-color: #ef4444;
+    background: #fef2f2;
+}
+
+.doc-upload-row--uploading {
+    border-color: #60a5fa;
+    background: #eff6ff;
+}
+
+.doc-upload-label {
+    flex: 1;
+    min-width: 150px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text, #111827);
+}
+
+.field-required {
+    color: #ef4444;
+    font-weight: 700;
+}
+
+.doc-file-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    cursor: pointer;
+    padding: 0.35rem 0.85rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--color-primary, #1a56db);
+    color: #fff;
+    border: none;
+    transition: background 0.2s, opacity 0.2s;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.doc-file-btn:hover {
+    opacity: 0.88;
+}
+
+.doc-file-btn--done {
+    background: #22c55e;
+}
+
+.doc-filename-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doc-upload-error {
+    font-size: 0.75rem;
+    color: #ef4444;
+    font-weight: 500;
+    width: 100%;
+}
+
+.doc-upload-note {
+    font-size: 0.8rem;
+    color: #6b7280;
+    margin: 0.75rem 0 0;
+    font-style: italic;
+}
+
+.doc-upload-note--done {
+    color: #16a34a;
+    font-style: normal;
+    font-weight: 600;
+}
+
+/* Inline spinner for upload rows */
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}

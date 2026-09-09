@@ -174,29 +174,63 @@ export const getApplicationById = async (applicationId) => {
 
 
 // ============================================================
-// APPLICATION VERIFICATION
+// DOCUMENTS
 // ============================================================
 
-export const verifyApplication = async (
-    applicationId,
-    verificationData
+/**
+ * Uploads a single document file for a beneficiary.
+ * Calls POST /beneficiaries/{beneficiaryId}/documents (multipart/form-data).
+ *
+ * @param {number} beneficiaryId  - the beneficiary's primary key
+ * @param {File}   file           - the File object from an <input type="file">
+ * @param {string} documentType   - one of AADHAAR | PAN | LAND_RECORD | INCOME_CERTIFICATE | PHOTO | OTHER
+ * @param {string} [uploadedBy]   - optional username of the uploader
+ * @returns {Promise<DocumentResponse>}
+ */
+export const uploadBeneficiaryDocument = async (
+    beneficiaryId,
+    file,
+    documentType,
+    uploadedBy = ''
 ) => {
+    const form = new FormData();
+    form.append('file', file);
+    form.append('documentType', documentType);
+    if (uploadedBy) form.append('uploadedBy', uploadedBy);
+
     const response = await fetch(
-        `${API_BASE_URL}/applications/${applicationId}/verify`,
-        {
-            method: 'POST',
+        `${API_BASE_URL}/beneficiaries/${beneficiaryId}/documents`,
+        { method: 'POST', body: form }
+    );
 
-            headers: {
-                'Content-Type': 'application/json'
-            },
+    const data = await response.json().catch(() => ({}));
 
-            body: JSON.stringify(verificationData)
-        }
+    if (!response.ok) {
+        throw new Error(
+            data.message || `Document upload failed. Status: ${response.status}`
+        );
+    }
+
+    return data;
+};
+
+
+/**
+ * Returns all documents submitted for the beneficiary who owns the given application.
+ * Calls GET /applications/{applicationId}/documents.
+ * Used by the officer dashboard to review supporting documents.
+ *
+ * @param {number} applicationId
+ * @returns {Promise<DocumentResponse[]>}
+ */
+export const getApplicationDocuments = async (applicationId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/applications/${applicationId}/documents`
     );
 
     if (!response.ok) {
         throw new Error(
-            `Application verification failed. Status: ${response.status}`
+            `Failed to fetch documents for application ${applicationId}. Status: ${response.status}`
         );
     }
 
@@ -204,25 +238,15 @@ export const verifyApplication = async (
 };
 
 
-export const requestReVerification = async (
-    applicationId,
-    remarks
-) => {
-    const url =
-        `${API_BASE_URL}/applications/${applicationId}/reverify` +
-        (remarks
-            ? `?remarks=${encodeURIComponent(remarks)}`
-            : '');
-
-    const response = await fetch(url, {
-        method: 'POST'
-    });
-
-    if (!response.ok) {
-        throw new Error(
-            `Re-verification request failed. Status: ${response.status}`
-        );
-    }
-
-    return await response.json();
-};
+/**
+ * Returns the URL to stream/download a specific document file.
+ * Points to GET /beneficiaries/{beneficiaryId}/documents/{documentId}/download.
+ * Open this URL in a new tab or use it as an anchor href so the browser
+ * applies the Content-Disposition header set by the backend.
+ *
+ * @param {number} beneficiaryId
+ * @param {number} documentId
+ * @returns {string} absolute URL
+ */
+export const downloadDocumentUrl = (beneficiaryId, documentId) =>
+    `${API_BASE_URL}/beneficiaries/${beneficiaryId}/documents/${documentId}/download`;

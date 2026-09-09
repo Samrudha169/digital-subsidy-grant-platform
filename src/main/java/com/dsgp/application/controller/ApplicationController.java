@@ -5,6 +5,8 @@ import com.dsgp.application.dto.ApplicationResponse;
 import com.dsgp.application.service.ApplicationService;
 import com.dsgp.application.service.SchemeApplicationService;
 import com.dsgp.application.entity.SchemeApplication;
+import com.dsgp.beneficiary.dto.DocumentResponse;
+import com.dsgp.beneficiary.service.BeneficiaryService;
 import com.dsgp.eligibility.entity.EligibilityResult;
 import com.dsgp.eligibility.repository.EligibilityResultRepository;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ import java.util.List;
  * <ul>
  *   <li>{@code POST /applications}                         — submit a new application (201 Created)</li>
  *   <li>{@code GET  /applications/{id}}                    — get application by ID (200 OK)</li>
+ *   <li>{@code GET  /applications/{id}/documents}          — documents submitted for an application</li>
  *   <li>{@code GET  /applications/beneficiary/{id}}        — all applications for a beneficiary</li>
  *   <li>{@code GET  /applications?status={status}}         — applications by workflow status</li>
  *   <li>{@code GET  /applications/all}                     — all applications (officer/admin)</li>
@@ -37,6 +40,7 @@ public class ApplicationController {
     private final ApplicationService applicationService;
     private final SchemeApplicationService schemeApplicationService;
     private final EligibilityResultRepository eligibilityResultRepository;
+    private final BeneficiaryService beneficiaryService;
 
     // ── POST /applications ──────────────────────────────────────────────────────
 
@@ -118,5 +122,27 @@ public class ApplicationController {
     public ResponseEntity<List<ApplicationResponse>> getAllApplications() {
         return ResponseEntity.ok(applicationService.getAllApplications());
     }
+
+    // ── GET /applications/{applicationId}/documents ──────────────────
+
+    /**
+     * Returns all documents submitted for the beneficiary who owns this application.
+     * Used by officer dashboards to review supporting documents during verification.
+     *
+     * <p>Resolves: applicationId → beneficiaryId → documents list.
+     *
+     * @param applicationId the scheme application primary key
+     * @return list of document metadata for the application's beneficiary
+     */
+    @GetMapping("/{applicationId}/documents")
+    public ResponseEntity<List<DocumentResponse>> getApplicationDocuments(
+            @PathVariable Long applicationId) {
+
+        SchemeApplication application =
+                schemeApplicationService.getApplicationById(applicationId);
+
+        Integer beneficiaryId = application.getBeneficiary().getId();
+
+        return ResponseEntity.ok(beneficiaryService.getDocuments(beneficiaryId));
+    }
 }
-

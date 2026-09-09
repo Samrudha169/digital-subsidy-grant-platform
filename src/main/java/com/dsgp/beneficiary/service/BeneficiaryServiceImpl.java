@@ -429,6 +429,43 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentResponse getDocumentById(Integer beneficiaryId, Long documentId) {
+
+        BeneficiaryDocument doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new BeneficiaryNotFoundException(
+                        "Document not found with ID: " + documentId));
+
+        if (!doc.getBeneficiary().getId().equals(beneficiaryId)) {
+            throw new BeneficiaryNotFoundException(
+                    "Document " + documentId + " does not belong to beneficiary " + beneficiaryId);
+        }
+
+        return mapDocumentToResponse(doc);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public byte[] downloadDocument(Integer beneficiaryId, Long documentId) throws IOException {
+
+        BeneficiaryDocument doc = documentRepository.findById(documentId)
+                .orElseThrow(() -> new BeneficiaryNotFoundException(
+                        "Document not found with ID: " + documentId));
+
+        if (!doc.getBeneficiary().getId().equals(beneficiaryId)) {
+            throw new BeneficiaryNotFoundException(
+                    "Document " + documentId + " does not belong to beneficiary " + beneficiaryId);
+        }
+
+        Path filePath = Paths.get(doc.getFilePath());
+        if (!Files.exists(filePath)) {
+            throw new IOException("File not found on server: " + doc.getFilePath());
+        }
+
+        return Files.readAllBytes(filePath);
+    }
+
     // ============================================================
     // IDENTITY VERIFICATION
     // ============================================================

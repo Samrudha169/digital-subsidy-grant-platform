@@ -30,10 +30,10 @@ VALUES
 (1,
  'PM-KISAN Samman Nidhi',
  'Pradhan Mantri Kisan Samman Nidhi — Income support scheme providing ₹6,000 per year in three equal instalments of ₹2,000 to eligible farmer families.',
- 18, 60,
- 150000.00,
- 2.0000,
- 'SC/ST',
+ 18, 70,
+ 300000.00,
+ 5.0000,
+ NULL,
  6000.00,
  1),
 
@@ -63,9 +63,22 @@ VALUES
  NULL,
  NULL,
  1);
-
 -- =============================================================================
--- Milestone 2 — Officer Seed Data
+-- Milestone 2 — Correct PM-KISAN seed to match EligibilityScoringEngine.java
+-- =============================================================================
+-- The INSERT IGNORE above will not update an already-seeded row.
+-- This UPDATE brings existing rows in line with the canonical engine values:
+--   age 18-70, income <= 300000, land <= 5 acres, category NOT mandatory.
+-- Run this in sequence after INSERT IGNORE so the state is always consistent.
+-- =============================================================================
+UPDATE schemes
+SET    max_age           = 70,
+       max_annual_income = 300000.00,
+       max_land_holding  = 5.0000,
+       required_category = NULL
+WHERE  id = 1
+  AND  scheme_name = 'PM-KISAN Samman Nidhi';
+
 -- =============================================================================
 -- Default password for all seeded officers: password123
 -- BCrypt hash (strength 10) of "password123":
@@ -105,3 +118,24 @@ VALUES
 -- Finance Approver
 (5, 'finance.approver1', '$2a$10$1mjJmEBaJgGkXv7yoV5S/e3sRy26n.2RP9AN25lMuApnY1WLapn1a',
     'Meena Joshi',         'meena.joshi@dsgp.gov.in',     'FINANCE_APPROVER', NULL,          1);
+-- =============================================================================
+-- Location Master Data
+-- =============================================================================
+-- Development/test location hierarchy:
+-- Maharashtra -> Pune -> Haveli -> Pune
+
+INSERT IGNORE INTO states (id, name)
+VALUES
+(1, 'Maharashtra');
+
+INSERT IGNORE INTO districts (id, name, state_id)
+VALUES
+(1, 'Pune', 1);
+
+INSERT IGNORE INTO talukas (id, name, district_id)
+VALUES
+(1, 'Haveli', 1);
+
+INSERT IGNORE INTO villages (id, name, taluka_id)
+VALUES
+(1, 'Pune', 1);

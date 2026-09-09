@@ -8,8 +8,12 @@ import com.dsgp.beneficiary.entity.DocumentType;
 import com.dsgp.beneficiary.service.BeneficiaryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -156,4 +160,45 @@ public class BeneficiaryController {
 
         return ResponseEntity.ok(beneficiaryService.verifyIdentity(id, verifiedBy));
     }
-}
+
+    // ── GET /beneficiaries/{id}/documents/{documentId}/download ─────────
+
+    /**
+     * Streams the raw file bytes for a specific document belonging to a beneficiary.
+     * Sets Content-Disposition: inline so PDF/image files open in the browser;
+     * other types fall back to attachment (download).
+     *
+     * @param id         beneficiary primary key
+     * @param documentId document primary key
+     */
+    @GetMapping("/{id}/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadDocument(
+            @PathVariable Integer id,
+            @PathVariable Long documentId) throws IOException {
+
+        // Fetch metadata first to get MIME type and filename
+        DocumentResponse meta = beneficiaryService.getDocumentById(id, documentId);
+        byte[] bytes = beneficiaryService.downloadDocument(id, documentId);
+
+        String mimeType = meta.getMimeType() != null ? meta.getMimeType() : "application/octet-stream";
+        MediaType mediaType;
+        try {
+            mediaType = MediaType.parseMediaType(mimeType);
+        } catch (Exception e) {
+            mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        }
+
+        // Inline for viewable types (PDF, images); attachment for everything else
+        boolean inline = mimeType.startsWith("image/") || mimeType.equals("application/pdf");
+        ContentDisposition disposition = inline
+                ? ContentDisposition.inline().filename(meta.getOriginalFileName()).build()
+                : ContentDisposition.attachment().filename(meta.getOriginalFileName()).build();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.setContentDisposition(disposition);
+        headers.setContentLength(bytes.length);
+
+        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+    }
+}
