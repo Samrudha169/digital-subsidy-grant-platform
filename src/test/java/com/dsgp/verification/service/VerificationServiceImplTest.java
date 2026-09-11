@@ -1,431 +1,1316 @@
 package com.dsgp.verification.service;
 
-import com.dsgp.application.exception.ApplicationException;
+import com.dsgp.application.entity.SchemeApplication;
+import com.dsgp.authentication.entity.Officer;
+import com.dsgp.authentication.entity.OfficerRole;
+import com.dsgp.authentication.repository.OfficerRepository;
 import com.dsgp.beneficiary.entity.Beneficiary;
 import com.dsgp.beneficiary.entity.Scheme;
-import com.dsgp.application.entity.SchemeApplication;
 import com.dsgp.beneficiary.repository.SchemeApplicationRepository;
 import com.dsgp.eligibility.entity.EligibilityResult;
 import com.dsgp.eligibility.entity.EligibilityStatus;
 import com.dsgp.eligibility.repository.EligibilityResultRepository;
 import com.dsgp.verification.dto.VerificationActionRequest;
+import com.dsgp.verification.dto.VerificationCriterionResponse;
 import com.dsgp.verification.dto.VerificationStatusResponse;
-import com.dsgp.verification.entity.VerificationRecord;
+import com.dsgp.verification.entity.VerificationCriterion;
+import com.dsgp.verification.entity.VerificationCriterionStatus;
+import com.dsgp.verification.entity.VerificationStage;
 import com.dsgp.verification.exception.InvalidVerificationTransitionException;
-import com.dsgp.verification.repository.VerificationRepository;
-import org.junit.jupiter.api.*;
+import com.dsgp.verification.repository.VerificationCriterionRepository;
+import com.dsgp.verification.repository.VerificationRecordRepository;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.*;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verify;
 
-/**
- * Unit tests for {@link VerificationServiceImpl}.
- *
- * <p>All repository interactions are mocked. Tests verify:
- * <ul>
- *   <li>State-machine transitions are enforced correctly.</li>
- *   <li>Eligibility guard prevents ineligible applications from entering verification.</li>
- *   <li>Invalid transitions throw {@link InvalidVerificationTransitionException}.</li>
- *   <li>Rejection requires non-empty remarks.</li>
- *   <li>Audit records are saved for every action.</li>
- * </ul>
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("VerificationServiceImpl")
 class VerificationServiceImplTest {
 
-    @Mock private SchemeApplicationRepository  applicationRepository;
-    @Mock private EligibilityResultRepository  eligibilityResultRepository;
-    @Mock private VerificationRepository       verificationRepository;
+    // ========================================================================
+    // MOCKS
+    // ========================================================================
+
+    @Mock
+    private SchemeApplicationRepository applicationRepository;
+
+    @Mock
+    private OfficerRepository officerRepository;
+
+    @Mock
+    private EligibilityResultRepository eligibilityResultRepository;
+
+    @Mock
+    private VerificationRecordRepository verificationRecordRepository;
+
+    @Mock
+    private VerificationCriterionRepository verificationCriterionRepository;
 
     @InjectMocks
     private VerificationServiceImpl service;
 
-    // ── Fixtures ──────────────────────────────────────────────────────────────
+    // ========================================================================
+    // TEST CONSTANTS
+    // ========================================================================
 
-    private static final Long    APP_ID         = 1L;
+    private static final Long APP_ID = 1L;
     private static final Integer BENEFICIARY_ID = 101;
-    private static final Long    SCHEME_ID      = 1L;
+    private static final Long SCHEME_ID = 1L;
+
+    // ========================================================================
+    // FIXTURES
+    // ========================================================================
 
     private Beneficiary beneficiary() {
-        Beneficiary b = new Beneficiary();
-        b.setId(BENEFICIARY_ID);
-        b.setFullName("Ravi Kumar");
-        return b;
+
+        Beneficiary beneficiary = new Beneficiary();
+
+        beneficiary.setId(BENEFICIARY_ID);
+        beneficiary.setFullName("Ravi Kumar");
+
+        return beneficiary;
     }
 
     private Scheme scheme() {
-        Scheme s = new Scheme();
-        s.setId(SCHEME_ID);
-        s.setSchemeName("PM-KISAN Samman Nidhi");
-        s.setGrantAmount(new BigDecimal("6000.00"));
-        return s;
+
+        Scheme scheme = new Scheme();
+
+        scheme.setId(SCHEME_ID);
+        scheme.setSchemeName("PM-KISAN");
+
+        return scheme;
     }
 
-    private SchemeApplication app(String status) {
-        SchemeApplication a = SchemeApplication.builder()
-                .beneficiary(beneficiary())
-                .scheme(scheme())
-                .applicationStatus(status)
-                .build();
-        // Reflectively set id via builder not possible without @Builder.Default on id field;
-        // use a spy or simply use findById mock to return this instance.
-        return a;
+    private SchemeApplication application(String status) {
+
+        SchemeApplication application =
+                SchemeApplication.builder()
+                        .beneficiary(beneficiary())
+                        .scheme(scheme())
+                        .applicationStatus(status)
+                        .build();
+
+        application.setId(APP_ID);
+
+        return application;
     }
 
     private EligibilityResult eligibleResult() {
+
         return EligibilityResult.builder()
                 .beneficiaryId(BENEFICIARY_ID)
                 .schemeId(SCHEME_ID)
-                .schemeName("PM-KISAN Samman Nidhi")
-                .totalScore(80)
+                .schemeName("PM-KISAN")
+                .totalScore(100)
                 .eligibilityStatus(EligibilityStatus.ELIGIBLE)
                 .evaluatedAt(LocalDateTime.now())
                 .build();
     }
 
     private EligibilityResult ineligibleResult() {
+
         return EligibilityResult.builder()
                 .beneficiaryId(BENEFICIARY_ID)
                 .schemeId(SCHEME_ID)
-                .schemeName("PM-KISAN Samman Nidhi")
+                .schemeName("PM-KISAN")
                 .totalScore(40)
                 .eligibilityStatus(EligibilityStatus.INELIGIBLE)
                 .evaluatedAt(LocalDateTime.now())
                 .build();
     }
 
-    private VerificationActionRequest req(String by, String remarks) {
-        VerificationActionRequest r = new VerificationActionRequest();
-        r.setPerformedBy(by);
-        r.setRemarks(remarks);
-        return r;
+    private Officer officer(
+            String username,
+            OfficerRole role) {
+
+        return Officer.builder()
+                .id(1L)
+                .username(username)
+                .fullName("Test Officer")
+                .role(role)
+                .active(true)
+                .build();
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // startVerification
-    // ════════════════════════════════════════════════════════════════════════
+    private VerificationActionRequest request(
+            String performedBy,
+            String remarks) {
+
+        VerificationActionRequest request =
+                new VerificationActionRequest();
+
+        request.setPerformedBy(performedBy);
+        request.setRemarks(remarks);
+
+        return request;
+    }
+
+    private VerificationCriterion criterion(
+            SchemeApplication application,
+            VerificationStage stage,
+            int id,
+            VerificationCriterionStatus status) {
+
+        return VerificationCriterion.builder()
+                .id((long) id)
+                .schemeApplication(application)
+                .stage(stage)
+                .criterionCode(
+                        stage.name()
+                                + "_CRITERION_"
+                                + id
+                )
+                .criterionName(
+                        stage.name()
+                                + " Criterion "
+                                + id
+                )
+                .status(status)
+                .verifiedBy(
+                        status == VerificationCriterionStatus.VERIFIED
+                                ? "test.officer"
+                                : null
+                )
+                .remarks(null)
+                .verifiedAt(
+                        status == VerificationCriterionStatus.VERIFIED
+                                ? LocalDateTime.now()
+                                : null
+                )
+                .build();
+    }
+
+    private void mockCriteria(
+            SchemeApplication application,
+            VerificationStage stage,
+            int total,
+            int verified) {
+
+        List<VerificationCriterion> criteria =
+                new ArrayList<>();
+
+        for (int i = 1; i <= total; i++) {
+
+            VerificationCriterionStatus status =
+                    i <= verified
+                            ? VerificationCriterionStatus.VERIFIED
+                            : VerificationCriterionStatus.PENDING;
+
+            criteria.add(
+                    criterion(
+                            application,
+                            stage,
+                            i,
+                            status
+                    )
+            );
+        }
+
+        lenient()
+                .when(
+                        verificationCriterionRepository
+                                .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                        APP_ID,
+                                        stage
+                                )
+                )
+                .thenReturn(criteria);
+
+        lenient()
+                .when(
+                        verificationCriterionRepository
+                                .countBySchemeApplicationIdAndStage(
+                                        APP_ID,
+                                        stage
+                                )
+                )
+                .thenReturn((long) total);
+
+        lenient()
+                .when(
+                        verificationCriterionRepository
+                                .countBySchemeApplicationIdAndStageAndStatus(
+                                        APP_ID,
+                                        stage,
+                                        VerificationCriterionStatus.VERIFIED
+                                )
+                )
+                .thenReturn((long) verified);
+    }
+
+    private void mockOfficer(
+            String username,
+            OfficerRole role) {
+
+        lenient()
+                .when(
+                        officerRepository.findByUsername(username)
+                )
+                .thenReturn(
+                        Optional.of(
+                                officer(
+                                        username,
+                                        role
+                                )
+                        )
+                );
+    }
+
+    private void mockHistory() {
+
+        lenient()
+                .when(
+                        verificationRecordRepository
+                                .findBySchemeApplicationIdOrderByPerformedAtAsc(
+                                        APP_ID
+                                )
+                )
+                .thenReturn(List.of());
+    }
+
+    private void mockSave() {
+
+        lenient()
+                .when(
+                        applicationRepository.save(any())
+                )
+                .thenAnswer(
+                        invocation ->
+                                invocation.getArgument(0)
+                );
+
+        lenient()
+                .when(
+                        verificationRecordRepository.save(any())
+                )
+                .thenAnswer(
+                        invocation ->
+                                invocation.getArgument(0)
+                );
+
+        lenient()
+                .when(
+                        verificationCriterionRepository.save(any())
+                )
+                .thenAnswer(
+                        invocation ->
+                                invocation.getArgument(0)
+                );
+
+        lenient()
+                .when(
+                        verificationCriterionRepository.saveAll(any())
+                )
+                .thenAnswer(
+                        invocation ->
+                                invocation.getArgument(0)
+                );
+    }
+
+    // ========================================================================
+    // START VERIFICATION
+    // ========================================================================
 
     @Nested
-    @DisplayName("startVerification")
+    @DisplayName("Start Verification")
     class StartVerification {
 
         @Test
-        @DisplayName("eligible PENDING application moves to UNDER_REVIEW")
-        void start_eligible_movesToUnderReview() {
-            SchemeApplication pending = app("PENDING");
-            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(pending));
-            given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
-                    .willReturn(Optional.of(eligibleResult()));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void eligiblePendingApplicationMovesToUnderReview() {
 
-            VerificationStatusResponse resp = service.startVerification(APP_ID, req("field_officer_1", null));
+            SchemeApplication application =
+                    application("PENDING");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("UNDER_REVIEW");
-            then(verificationRepository).should().save(any(VerificationRecord.class));
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(
+                            eligibleResult()
+                    )
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.startVerification(
+                            APP_ID,
+                            request(
+                                    "field.officer",
+                                    null
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "UNDER_REVIEW"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "UNDER_REVIEW"
+            );
+
+            verify(
+                    applicationRepository
+            ).save(application);
         }
 
         @Test
-        @DisplayName("INELIGIBLE application cannot start verification")
-        void start_ineligible_throws() {
-            SchemeApplication pending = app("PENDING");
-            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(pending));
-            given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
-                    .willReturn(Optional.of(ineligibleResult()));
+        void ineligibleApplicationCannotStart() {
 
-            assertThatThrownBy(() -> service.startVerification(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("INELIGIBLE");
+            SchemeApplication application =
+                    application("PENDING");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(
+                            ineligibleResult()
+                    )
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.startVerification(
+                                    APP_ID,
+                                    request(
+                                            "field.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "INELIGIBLE"
+                    );
         }
 
         @Test
-        @DisplayName("non-PENDING application cannot start verification")
-        void start_nonPending_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
+        void nonPendingApplicationCannotStart() {
 
-            assertThatThrownBy(() -> service.startVerification(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("PENDING");
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.startVerification(
+                                    APP_ID,
+                                    request(
+                                            "field.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
         }
 
         @Test
-        @DisplayName("application not found throws ApplicationException")
-        void start_notFound_throws() {
-            given(applicationRepository.findById(APP_ID)).willReturn(Optional.empty());
+        void applicationNotFoundThrows() {
 
-            assertThatThrownBy(() -> service.startVerification(APP_ID, req("officer", null)))
-                    .isInstanceOf(ApplicationException.class)
-                    .hasMessageContaining("not found");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.empty()
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.startVerification(
+                                    APP_ID,
+                                    request(
+                                            "field.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            com.dsgp.application.exception.ApplicationException.class
+                    );
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Field Officer
-    // ════════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // FIELD OFFICER
+    // ========================================================================
 
     @Nested
-    @DisplayName("Field Officer actions")
+    @DisplayName("Field Officer")
     class FieldOfficer {
 
         @Test
-        @DisplayName("approve: UNDER_REVIEW → FIELD_APPROVED")
-        void field_approve_movesToFieldApproved() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void fieldApprovalWithAllCriteriaMovesToFieldApproved() {
 
-            VerificationStatusResponse resp =
-                    service.approveAtField(APP_ID, req("field_officer_1", "Documents confirmed."));
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("FIELD_APPROVED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    7,
+                    7
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.approveAtField(
+                            APP_ID,
+                            request(
+                                    "field.officer",
+                                    "All field verification criteria verified."
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "FIELD_APPROVED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "FIELD_APPROVED"
+            );
+
+            verify(
+                    applicationRepository
+            ).save(application);
         }
 
         @Test
-        @DisplayName("reject: UNDER_REVIEW → REJECTED (with remarks)")
-        void field_reject_movesToRejected() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void fieldApprovalWithoutAllCriteriaThrows() {
 
-            VerificationStatusResponse resp =
-                    service.rejectAtField(APP_ID, req("field_officer_1", "Fraudulent documents."));
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("REJECTED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    7,
+                    6
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtField(
+                                    APP_ID,
+                                    request(
+                                            "field.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "cannot approve until all verification criteria are VERIFIED"
+                    );
         }
 
         @Test
-        @DisplayName("reject without remarks throws exception")
-        void field_reject_noRemarks_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
+        void fieldRejectMovesToRejected() {
 
-            assertThatThrownBy(() -> service.rejectAtField(APP_ID, req("officer", "")))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("remarks");
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.rejectAtField(
+                            APP_ID,
+                            request(
+                                    "field.officer",
+                                    "Documents are invalid."
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
         }
 
         @Test
-        @DisplayName("escalate: UNDER_REVIEW → ESCALATED")
-        void field_escalate_movesToEscalated() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void fieldRejectWithoutRemarksThrows() {
 
-            VerificationStatusResponse resp =
-                    service.escalateAtField(APP_ID, req("field_officer_1", "Needs district review."));
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("ESCALATED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.rejectAtField(
+                                    APP_ID,
+                                    request(
+                                            "field.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "remarks"
+                    );
         }
 
         @Test
-        @DisplayName("approve on non-UNDER_REVIEW throws invalid transition")
-        void field_approve_wrongStatus_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("PENDING")));
+        void completeFieldWithAllCriteriaMovesToFieldApproved() {
 
-            assertThatThrownBy(() -> service.approveAtField(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("UNDER_REVIEW");
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    7,
+                    7
+            );
+
+            mockSave();
+            mockHistory();
+
+            service.completeFieldVerification(
+                    APP_ID,
+                    "field.officer",
+                    "Field verification completed."
+            );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "FIELD_APPROVED"
+            );
+
+            verify(
+                    applicationRepository
+            ).save(application);
+        }
+
+        @Test
+        void completeFieldWithoutAllCriteriaThrows() {
+
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    7,
+                    5
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.completeFieldVerification(
+                                    APP_ID,
+                                    "field.officer",
+                                    null
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "cannot approve until all verification criteria are VERIFIED"
+                    );
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // District Officer
-    // ════════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // DISTRICT OFFICER
+    // ========================================================================
 
     @Nested
-    @DisplayName("District Officer actions")
+    @DisplayName("District Officer")
     class DistrictOfficer {
 
         @Test
-        @DisplayName("approve: ESCALATED → DISTRICT_APPROVED")
-        void district_approve_movesToDistrictApproved() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("ESCALATED")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void districtApproveWithAllCriteriaMovesToDistrictApproved() {
 
-            VerificationStatusResponse resp =
-                    service.approveAtDistrict(APP_ID, req("district_officer_1", null));
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("DISTRICT_APPROVED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.DISTRICT,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.approveAtDistrict(
+                            APP_ID,
+                            request(
+                                    "district.officer",
+                                    null
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "DISTRICT_APPROVED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "DISTRICT_APPROVED"
+            );
         }
 
         @Test
-        @DisplayName("reject: ESCALATED → REJECTED (with remarks)")
-        void district_reject_movesToRejected() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("ESCALATED")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void districtApproveWithoutAllCriteriaThrows() {
 
-            VerificationStatusResponse resp =
-                    service.rejectAtDistrict(APP_ID, req("district_officer_1", "Does not qualify."));
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("REJECTED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.DISTRICT,
+                    4,
+                    3
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtDistrict(
+                                    APP_ID,
+                                    request(
+                                            "district.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
         }
 
         @Test
-        @DisplayName("district reject without remarks throws")
-        void district_reject_noRemarks_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("ESCALATED")));
+        void districtRejectMovesToRejected() {
 
-            assertThatThrownBy(() -> service.rejectAtDistrict(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("remarks");
+            // UPDATED:
+            // District Officer works only after Field Officer approval.
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.rejectAtDistrict(
+                            APP_ID,
+                            request(
+                                    "district.officer",
+                                    "District validation failed."
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
         }
 
         @Test
-        @DisplayName("district action on non-ESCALATED application throws")
-        void district_wrongStatus_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
+        void districtRejectWithoutRemarksThrows() {
 
-            assertThatThrownBy(() -> service.approveAtDistrict(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("ESCALATED");
+            // UPDATED:
+            // The request must reach the remarks validation first.
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.rejectAtDistrict(
+                                    APP_ID,
+                                    request(
+                                            "district.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "remarks"
+                    );
+        }
+
+        @Test
+        void districtCannotApproveWrongStatus() {
+
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtDistrict(
+                                    APP_ID,
+                                    request(
+                                            "district.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // Finance Approver
-    // ════════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // FINANCE APPROVER
+    // ========================================================================
 
     @Nested
-    @DisplayName("Finance Approver actions")
+    @DisplayName("Finance Approver")
     class FinanceApprover {
 
         @Test
-        @DisplayName("approve from FIELD_APPROVED → APPROVED")
-        void finance_approve_fromFieldApproved() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("FIELD_APPROVED")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void financeApproveWithAllCriteriaMovesToApproved() {
 
-            VerificationStatusResponse resp =
-                    service.approveAtFinance(APP_ID, req("finance_approver_1", null));
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("APPROVED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FINANCE,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.approveAtFinance(
+                            APP_ID,
+                            request(
+                                    "finance.officer",
+                                    null
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "APPROVED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "APPROVED"
+            );
         }
 
         @Test
-        @DisplayName("approve from DISTRICT_APPROVED → APPROVED")
-        void finance_approve_fromDistrictApproved() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("DISTRICT_APPROVED")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void financeApproveWithoutAllCriteriaThrows() {
 
-            VerificationStatusResponse resp =
-                    service.approveAtFinance(APP_ID, req("finance_approver_1", null));
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("APPROVED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FINANCE,
+                    4,
+                    2
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtFinance(
+                                    APP_ID,
+                                    request(
+                                            "finance.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
         }
 
         @Test
-        @DisplayName("reject from FIELD_APPROVED → REJECTED")
-        void finance_reject_fromFieldApproved() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("FIELD_APPROVED")));
-            given(applicationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void financeRejectMovesToRejected() {
 
-            VerificationStatusResponse resp =
-                    service.rejectAtFinance(APP_ID, req("finance_approver_1", "Insufficient supporting docs."));
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED");
 
-            assertThat(resp.getApplicationStatus()).isEqualTo("REJECTED");
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.rejectAtFinance(
+                            APP_ID,
+                            request(
+                                    "finance.officer",
+                                    "Budget validation failed."
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
         }
 
         @Test
-        @DisplayName("finance reject without remarks throws")
-        void finance_reject_noRemarks_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("FIELD_APPROVED")));
+        void financeRejectWithoutRemarksThrows() {
 
-            assertThatThrownBy(() -> service.rejectAtFinance(APP_ID, req("officer", "")))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("remarks");
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.rejectAtFinance(
+                                    APP_ID,
+                                    request(
+                                            "finance.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "remarks"
+                    );
         }
 
         @Test
-        @DisplayName("finance action on UNDER_REVIEW throws invalid transition")
-        void finance_wrongStatus_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("UNDER_REVIEW")));
+        void financeCannotApproveBeforeDistrict() {
 
-            assertThatThrownBy(() -> service.approveAtFinance(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class)
-                    .hasMessageContaining("FIELD_APPROVED");
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtFinance(
+                                    APP_ID,
+                                    request(
+                                            "finance.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
         }
 
         @Test
-        @DisplayName("finance action on terminal APPROVED throws invalid transition")
-        void finance_alreadyApproved_throws() {
-            given(applicationRepository.findById(APP_ID))
-                    .willReturn(Optional.of(app("APPROVED")));
+        void financeCannotApproveAlreadyApprovedApplication() {
 
-            assertThatThrownBy(() -> service.approveAtFinance(APP_ID, req("officer", null)))
-                    .isInstanceOf(InvalidVerificationTransitionException.class);
+            SchemeApplication application =
+                    application("APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtFinance(
+                                    APP_ID,
+                                    request(
+                                            "finance.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // getStatus
-    // ════════════════════════════════════════════════════════════════════════
+    // ========================================================================
+    // STATUS
+    // ========================================================================
 
     @Nested
-    @DisplayName("getStatus")
+    @DisplayName("Get Status")
     class GetStatus {
 
         @Test
-        @DisplayName("returns response with application details and history")
-        void getStatus_returnsCorrectResponse() {
-            SchemeApplication a = app("PENDING");
-            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(a));
-            given(verificationRepository.findBySchemeApplicationIdOrderByPerformedAtAsc(any()))
-                    .willReturn(List.of());
+        void getStatusReturnsCorrectResponse() {
 
-            VerificationStatusResponse resp = service.getStatus(APP_ID);
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
 
-            assertThat(resp.getBeneficiaryId()).isEqualTo(BENEFICIARY_ID);
-            assertThat(resp.getSchemeId()).isEqualTo(SCHEME_ID);
-            assertThat(resp.getApplicationStatus()).isEqualTo("PENDING");
-            assertThat(resp.getHistory()).isEmpty();
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.getStatus(APP_ID);
+
+            assertThat(
+                    response.getApplicationId()
+            ).isEqualTo(
+                    APP_ID
+            );
+
+            assertThat(
+                    response.getBeneficiaryId()
+            ).isEqualTo(
+                    BENEFICIARY_ID
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "UNDER_REVIEW"
+            );
+        }
+    }
+
+    // ========================================================================
+    // CRITERIA
+    // ========================================================================
+
+    @Nested
+    @DisplayName("Verification Criteria")
+    class VerificationCriteria {
+
+        @Test
+        void getFieldCriteriaReturnsCriteria() {
+
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            List<VerificationCriterion> criteria =
+                    List.of(
+                            criterion(
+                                    application,
+                                    VerificationStage.FIELD,
+                                    1,
+                                    VerificationCriterionStatus.PENDING
+                            ),
+                            criterion(
+                                    application,
+                                    VerificationStage.FIELD,
+                                    2,
+                                    VerificationCriterionStatus.PENDING
+                            )
+                    );
+
+            given(
+                    verificationCriterionRepository
+                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                    APP_ID,
+                                    VerificationStage.FIELD
+                            )
+            ).willReturn(criteria);
+
+            List<VerificationCriterionResponse> response =
+                    service.getCriteria(
+                            APP_ID,
+                            VerificationStage.FIELD
+                    );
+
+            assertThat(response).hasSize(2);
+
+            assertThat(
+                    response.get(0).getStage()
+            ).isEqualTo(
+                    VerificationStage.FIELD
+            );
         }
     }
 }

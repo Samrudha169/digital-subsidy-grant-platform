@@ -1,16 +1,28 @@
 import { Link } from 'react-router-dom';
-import { useState } from 'react';
 import '../App.css';
 
 function Home() {
 
-    const [searchTerm, setSearchTerm] = useState('');
+    const isOfficerLoggedIn =
+        localStorage.getItem('officerLoggedIn') === 'true';
 
     const stats = [
-        { value: '3', label: 'Featured Schemes' },
-        { value: '3', label: 'Focus Sectors' },
-        { value: 'One', label: 'Unified Platform' },
-        { value: '4-Step', label: 'Application Process' }
+        {
+            value: '3',
+            label: 'Featured Schemes'
+        },
+        {
+            value: '3',
+            label: 'Focus Sectors'
+        },
+        {
+            value: 'One',
+            label: 'Unified Platform'
+        },
+        {
+            value: '4-Step',
+            label: 'Application Process'
+        }
     ];
 
     const categories = [
@@ -36,14 +48,6 @@ function Home() {
             count: '1 Scheme Available'
         }
     ];
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-
-        if (searchTerm.trim() !== '') {
-            window.location.href = `/schemes?search=${encodeURIComponent(searchTerm.trim())}`;
-        }
-    };
 
     const featuredSchemes = [
         {
@@ -105,8 +109,74 @@ function Home() {
     return (
         <div className="dsgp-app">
 
+            {/* HEADER */}
+            {!isOfficerLoggedIn && (
+                <header className="header">
+                    <div className="site-header">
+                        <div className="header-inner">
+                            <div className="header-container">
 
+                                <div className="brand">
+                                    <h1 className="brand-title">
+                                        DSGP
+                                    </h1>
 
+                                    <p className="brand-subtitle">
+                                        Digital Subsidy & Grant Platform
+                                    </p>
+                                </div>
+
+                                <nav className="nav">
+
+                                    <Link
+                                        to="/"
+                                        className="nav-link"
+                                    >
+                                        Home
+                                    </Link>
+
+                                    <Link
+                                        to="/schemes"
+                                        className="nav-link"
+                                    >
+                                        Find Schemes
+                                    </Link>
+
+                                    <Link
+                                        to="/eligibility"
+                                        className="nav-link"
+                                    >
+                                        Eligibility
+                                    </Link>
+
+                                    <Link
+                                        to="/track"
+                                        className="nav-link"
+                                    >
+                                        Track Application
+                                    </Link>
+
+                                    <Link
+                                        to="/about"
+                                        className="nav-link"
+                                    >
+                                        About
+                                    </Link>
+
+                                    <Link
+                                        to="/login"
+                                        className="nav-link nav-login"
+                                    >
+                                        Login / Register
+                                    </Link>
+
+                                </nav>
+
+                            </div>
+                        </div>
+                    </div>
+                </header>
+            )}
 
             <main>
 
@@ -120,24 +190,24 @@ function Home() {
                         </h2>
 
                         <p className="hero-description">
-                            DSGP is your unified platform to discover, understand,
-                            apply for, and track government subsidies and grants.
-                            Access financial assistance schemes designed for
-                            farmers, students, entrepreneurs, and citizens across India.
+                            DSGP is your unified platform to discover,
+                            understand, apply for, and track government
+                            subsidies and grants.
+                            Access financial assistance schemes designed
+                            for farmers, students, entrepreneurs, and
+                            citizens across India.
                         </p>
 
-                        <form className="hero-search" onSubmit={handleSearch}>
+                        <div className="hero-search">
 
                             <input
                                 type="text"
                                 className="search-input"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
                                 placeholder="Search for schemes by name, category, or keyword..."
                                 aria-label="Search for schemes"
                             />
 
-                        </form>
+                        </div>
 
                         <div className="hero-actions">
 
@@ -160,7 +230,6 @@ function Home() {
                     </div>
 
                 </section>
-
 
                 {/* STATISTICS */}
                 <section className="stats">
@@ -190,7 +259,6 @@ function Home() {
 
                 </section>
 
-
                 {/* FOCUS SECTORS */}
                 <section className="categories">
 
@@ -203,12 +271,12 @@ function Home() {
                             </h2>
 
                             <p className="section-subtitle">
-                                Explore schemes organized by key sectors to
-                                find assistance programs relevant to your field
+                                Explore schemes organized by key sectors
+                                to find assistance programs relevant
+                                to your field
                             </p>
 
                         </div>
-
 
                         <div className="categories-grid">
 
@@ -241,7 +309,6 @@ function Home() {
 
                 </section>
 
-
                 {/* FEATURED SCHEMES */}
                 <section className="featured-schemes">
 
@@ -259,7 +326,6 @@ function Home() {
                             </p>
 
                         </div>
-
 
                         <div className="schemes-grid">
 
@@ -282,16 +348,13 @@ function Home() {
 
                                     </div>
 
-
                                     <h3 className="scheme-name">
                                         {scheme.name}
                                     </h3>
 
-
                                     <p className="scheme-description">
                                         {scheme.description}
                                     </p>
-
 
                                     <Link
                                         to={scheme.path}
@@ -309,7 +372,6 @@ function Home() {
                     </div>
 
                 </section>
-
 
                 {/* ELIGIBILITY FINDER */}
                 <section className="eligibility-finder">
@@ -329,7 +391,6 @@ function Home() {
 
                         </div>
 
-
                         <form
                             className="eligibility-form"
                             onSubmit={(e) => e.preventDefault()}
@@ -337,103 +398,33 @@ function Home() {
 
                             <div className="form-group">
 
-                                <label htmlFor="state">
-                                    State / Union Territory
-                                </label>
-
-                                <select
-                                    id="state"
-                                    className="form-control"
-                                    defaultValue=""
-                                >
-
-                                    <option value="" disabled>
-                                        Select your state
-                                    </option>
-
-                                    <option value="andhra-pradesh">
-                                        Andhra Pradesh
-                                    </option>
-
-                                    <option value="karnataka">
-                                        Karnataka
-                                    </option>
-
-                                    <option value="maharashtra">
-                                        Maharashtra
-                                    </option>
-
-                                    <option value="tamil-nadu">
-                                        Tamil Nadu
-                                    </option>
-
-                                    <option value="delhi">
-                                        Delhi
-                                    </option>
-
-                                    <option value="other">
-                                        Other
-                                    </option>
-
-                                </select>
-
-                            </div>
-
-
-                            <div className="form-group">
-
                                 <label htmlFor="age">
-                                    Age Group
+                                    Age
                                 </label>
 
-                                <select
+                                <input
                                     id="age"
-                                    className="form-control"
-                                    defaultValue=""
-                                >
-
-                                    <option value="" disabled>
-                                        Select your age group
-                                    </option>
-
-                                    <option value="below-18">
-                                        Below 18
-                                    </option>
-
-                                    <option value="18-25">
-                                        18 - 25
-                                    </option>
-
-                                    <option value="26-40">
-                                        26 - 40
-                                    </option>
-
-                                    <option value="41-60">
-                                        41 - 60
-                                    </option>
-
-                                    <option value="above-60">
-                                        Above 60
-                                    </option>
-
-                                </select>
+                                    type="number"
+                                    placeholder="Enter your age"
+                                />
 
                             </div>
-
 
                             <div className="form-group">
 
                                 <label htmlFor="occupation">
-                                    Occupation / Status
+                                    Occupation
                                 </label>
 
                                 <select
                                     id="occupation"
-                                    className="form-control"
                                     defaultValue=""
                                 >
 
-                                    <option value="" disabled>
+                                    <option
+                                        value=""
+                                        disabled
+                                    >
                                         Select your occupation
                                     </option>
 
@@ -449,18 +440,9 @@ function Home() {
                                         Entrepreneur
                                     </option>
 
-                                    <option value="business-owner">
-                                        Small Business Owner
-                                    </option>
-
-                                    <option value="other">
-                                        Other
-                                    </option>
-
                                 </select>
 
                             </div>
-
 
                             <div className="form-group">
 
@@ -470,11 +452,13 @@ function Home() {
 
                                 <select
                                     id="category"
-                                    className="form-control"
                                     defaultValue=""
                                 >
 
-                                    <option value="" disabled>
+                                    <option
+                                        value=""
+                                        disabled
+                                    >
                                         Select your category
                                     </option>
 
@@ -502,7 +486,6 @@ function Home() {
 
                             </div>
 
-
                             <button
                                 type="submit"
                                 className="btn btn-primary form-submit"
@@ -516,7 +499,6 @@ function Home() {
 
                 </section>
 
-
                 {/* APPLICATION TRACKING */}
                 <section className="tracking-section">
 
@@ -529,12 +511,11 @@ function Home() {
                             </h2>
 
                             <p className="section-subtitle">
-                                Enter your application ID to check the current
-                                status of your submission
+                                Enter your application ID to check the
+                                current status of your submission
                             </p>
 
                         </div>
-
 
                         <form
                             className="tracking-form"
@@ -561,7 +542,6 @@ function Home() {
 
                 </section>
 
-
                 {/* HOW IT WORKS */}
                 <section className="how-it-works">
 
@@ -574,12 +554,11 @@ function Home() {
                             </h2>
 
                             <p className="section-subtitle">
-                                A simple four-step process to access government
-                                assistance programs
+                                A simple four-step process to access
+                                government assistance programs
                             </p>
 
                         </div>
-
 
                         <div className="steps-grid">
 
@@ -614,7 +593,6 @@ function Home() {
 
             </main>
 
-
             {/* FOOTER */}
             <footer className="footer">
 
@@ -630,55 +608,81 @@ function Home() {
 
                             <p>
                                 DSGP is an academic demonstration project
-                                designed to showcase a unified digital platform
-                                for accessing government subsidy and grant schemes.
+                                designed to showcase a unified digital
+                                platform for accessing government subsidy
+                                and grant schemes.
                             </p>
 
                             <p className="footer-disclaimer">
 
                                 <strong>Disclaimer:</strong> This is an
                                 educational project. For official scheme
-                                information and applications, please visit the
-                                respective government portals and verify all
-                                details through authorized channels.
+                                information and applications, please visit
+                                the respective government portals and verify
+                                all details through authorized channels.
 
                             </p>
 
                         </div>
 
-
                         <div className="footer-links">
 
                             <h4>Quick Links</h4>
 
-                            <Link to="/">Home</Link>
-                            <Link to="/schemes">Find Schemes</Link>
-                            <Link to="/eligibility">Check Eligibility</Link>
-                            <Link to="/track">Track Application</Link>
-                            <Link to="/about">About DSGP</Link>
+                            <Link to="/">
+                                Home
+                            </Link>
+
+                            <Link to="/schemes">
+                                Find Schemes
+                            </Link>
+
+                            <Link to="/eligibility">
+                                Check Eligibility
+                            </Link>
+
+                            <Link to="/track">
+                                Track Application
+                            </Link>
+
+                            <Link to="/about">
+                                About DSGP
+                            </Link>
 
                         </div>
-
 
                         <div className="footer-links">
 
                             <h4>Resources</h4>
 
-                            <Link to="/help">Help & Support</Link>
-                            <Link to="/faq">FAQs</Link>
-                            <Link to="/contact">Contact Us</Link>
-                            <Link to="/privacy">Privacy Policy</Link>
-                            <Link to="/terms">Terms of Service</Link>
+                            <Link to="/help">
+                                Help & Support
+                            </Link>
+
+                            <Link to="/faq">
+                                FAQs
+                            </Link>
+
+                            <Link to="/contact">
+                                Contact Us
+                            </Link>
+
+                            <Link to="/privacy">
+                                Privacy Policy
+                            </Link>
+
+                            <Link to="/terms">
+                                Terms of Service
+                            </Link>
 
                         </div>
 
                     </div>
 
-
                     <div className="footer-bottom">
 
                         <p>
-                            &copy; 2024 Digital Subsidy & Grant Platform
+                            &copy; 2026 Digital Subsidy & Grant Platform
                             (DSGP) - Academic Project
                         </p>
 

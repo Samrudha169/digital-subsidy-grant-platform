@@ -1,13 +1,13 @@
 package com.dsgp.beneficiary.entity;
 
-/**
- * Type of identity or supporting document uploaded by or for a beneficiary.
- */
 public enum DocumentType {
-    AADHAAR,
-    PAN,
-    LAND_RECORD,
+    IDENTITY_PROOF,
+    ADDRESS_PROOF,
     INCOME_CERTIFICATE,
-    PHOTO,
-    OTHER
+    LAND_RECORD,
+    OCCUPATION_PROOF,
+    CATEGORY_CERTIFICATE,
+    BANK_ACCOUNT_PROOF,
+    SCHEME_SPECIFIC_DOCUMENT,
+    OTHER_SUPPORTING_DOCUMENT
 }

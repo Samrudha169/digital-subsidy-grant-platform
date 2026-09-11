@@ -112,31 +112,42 @@ function resolveSchemeKey(schemeName) {
     return null;
 }
 
-/* ─── Required documents per scheme ─────────────────────────
-   Must match the document types accepted by the backend
-   DocumentType enum: AADHAAR | PAN | LAND_RECORD | INCOME_CERTIFICATE | PHOTO | OTHER
-─────────────────────────────────────────────────────────── */
-const REQUIRED_DOCS_BY_SCHEME = {
+/* ─── Required documents ──────────────────────────────────── */
+
+const COMMON_DOCUMENTS = [
+    { type: 'IDENTITY_PROOF', label: 'Aadhaar Card / PAN Card' },
+    { type: 'ADDRESS_PROOF', label: 'Address Proof (Domicile / Electricity Bill)' },
+    { type: 'INCOME_CERTIFICATE', label: 'Income Certificate' },
+    { type: 'CATEGORY_CERTIFICATE', label: 'Caste / Category Certificate' },
+    { type: 'BANK_ACCOUNT_PROOF', label: 'Bank Passbook / Cancelled Cheque' },
+];
+
+const SCHEME_DOCUMENTS = {
     'PM-KISAN': [
-        { type: 'AADHAAR',              label: 'Aadhaar Card' },
-        { type: 'LAND_RECORD',          label: 'Land Record / Khasra' },
-        { type: 'INCOME_CERTIFICATE',   label: 'Income Certificate' },
+        { type: 'LAND_RECORD', label: 'Land Record / 7-12 Extract' },
+        { type: 'OCCUPATION_PROOF', label: 'Farmer Proof / 7-12 Extract' },
+        { type: 'SCHEME_SPECIFIC_DOCUMENT', label: 'PM-KISAN Land & Farmer Record' },
+        { type: 'OTHER_SUPPORTING_DOCUMENT', label: 'Any Other Supporting Document' },
     ],
+
     'NSP': [
-        { type: 'AADHAAR',              label: 'Aadhaar Card' },
-        { type: 'INCOME_CERTIFICATE',   label: 'Income Certificate' },
-        { type: 'PHOTO',                label: 'Passport-size Photograph' },
+        { type: 'OCCUPATION_PROOF', label: 'College ID Card / Bonafide Certificate' },
+        { type: 'SCHEME_SPECIFIC_DOCUMENT', label: 'College Admission Letter / Fee Receipt' },
+        { type: 'OTHER_SUPPORTING_DOCUMENT', label: 'Previous Year Marksheet' },
     ],
+
     'PMEGP': [
-        { type: 'AADHAAR',              label: 'Aadhaar Card' },
-        { type: 'PAN',                  label: 'PAN Card' },
-        { type: 'INCOME_CERTIFICATE',   label: 'Income Certificate' },
+        { type: 'OCCUPATION_PROOF', label: 'Business / Work Experience Proof' },
+        { type: 'SCHEME_SPECIFIC_DOCUMENT', label: 'Business Project Report' },
+        { type: 'OTHER_SUPPORTING_DOCUMENT', label: 'Training / Skill Certificate' },
     ],
 };
 
-/** Returns the required docs array for a scheme key, or [] if unknown. */
 function getRequiredDocs(schemeKey) {
-    return REQUIRED_DOCS_BY_SCHEME[schemeKey] || [];
+    return [
+        ...COMMON_DOCUMENTS,
+        ...(SCHEME_DOCUMENTS[schemeKey] || []),
+    ];
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -202,6 +213,13 @@ function Eligibility() {
          */
         const storedBeneficiaryId =
             localStorage.getItem('beneficiaryId');
+
+        if (!storedBeneficiaryId) {
+            setLiveError(
+                'Please log in as a beneficiary to check your eligibility.'
+            );
+            return;
+        }
 
         /*
          * Get scheme from URL.
@@ -288,15 +306,6 @@ function Eligibility() {
     const validateLiveForm = () => {
 
         const errors = {};
-
-        if (
-            !liveForm.beneficiaryId ||
-            isNaN(Number(liveForm.beneficiaryId)) ||
-            Number(liveForm.beneficiaryId) < 1
-        ) {
-            errors.beneficiaryId =
-                'Enter a valid Beneficiary ID (positive integer).';
-        }
 
         if (!liveForm.schemeId) {
             errors.schemeId =
@@ -1132,20 +1141,10 @@ function Eligibility() {
                                         id="beneficiaryId"
                                         name="beneficiaryId"
                                         type="number"
-                                        min="1"
-                                        placeholder="e.g. 101"
                                         value={liveForm.beneficiaryId}
-                                        onChange={handleLiveChange}
-                                        className={`elig-input${
-                                            liveValidation.beneficiaryId
-                                                ? ' input-error'
-                                                : ''
-                                        }`}
-                                        aria-describedby={
-                                            liveValidation.beneficiaryId
-                                                ? 'err-beneficiaryId'
-                                                : undefined
-                                        }
+                                        readOnly
+                                        className="elig-input"
+                                        aria-describedby="beneficiaryId-hint"
                                     />
 
 
@@ -1162,13 +1161,11 @@ function Eligibility() {
                                     )}
 
 
-                                    <span className="field-hint">
-
-                                        {localStorage.getItem('beneficiaryId')
-                                            ? 'Beneficiary ID loaded from your login.'
-                                            : 'Your numeric ID assigned during beneficiary registration.'
-                                        }
-
+                                    <span
+                                        id="beneficiaryId-hint"
+                                        className="field-hint"
+                                    >
+                                        Your Beneficiary ID is automatically taken from your login.
                                     </span>
 
                                 </div>
@@ -1547,16 +1544,16 @@ function Eligibility() {
                                                     ).map(
                                                         ([key, crit]) => (
 
-                                                        <div
-                                                            key={key}
-                                                            className={`criterion-row ${
-                                                                crit.passed
-                                                                    ? 'crit-pass'
-                                                                    : 'crit-fail'
-                                                            }`}
-                                                        >
+                                                            <div
+                                                                key={key}
+                                                                className={`criterion-row ${
+                                                                    crit.passed
+                                                                        ? 'crit-pass'
+                                                                        : 'crit-fail'
+                                                                }`}
+                                                            >
 
-                                                            <div className="crit-header">
+                                                                <div className="crit-header">
 
                                                                 <span
                                                                     className={`crit-icon ${
@@ -1572,7 +1569,7 @@ function Eligibility() {
                                                                 </span>
 
 
-                                                                <span className="crit-name">
+                                                                    <span className="crit-name">
 
                                                                     {
                                                                         CRITERION_LABELS[
@@ -1583,63 +1580,63 @@ function Eligibility() {
                                                                 </span>
 
 
-                                                                <span className="crit-points">
+                                                                    <span className="crit-points">
 
                                                                     {crit.points}/
-                                                                    {
-                                                                        getCriterionMax(schemeKey, key) ?? '?'
-                                                                    }{' '}
-                                                                    pts
+                                                                        {
+                                                                            getCriterionMax(schemeKey, key) ?? '?'
+                                                                        }{' '}
+                                                                        pts
 
                                                                 </span>
 
-                                                            </div>
+                                                                </div>
 
 
-                                                            {/* Progress bar */}
-
-                                                            <div
-                                                                className="crit-bar-track"
-                                                                role="progressbar"
-                                                                aria-valuenow={
-                                                                    crit.points
-                                                                }
-                                                                aria-valuemax={
-                                                                    getCriterionMax(schemeKey, key)
-                                                                }
-                                                                aria-label={`${
-                                                                    CRITERION_LABELS[
-                                                                        key
-                                                                        ] ?? key
-                                                                } score`}
-                                                            >
+                                                                {/* Progress bar */}
 
                                                                 <div
-                                                                    className={`crit-bar-fill ${
-                                                                        crit.passed
-                                                                            ? 'bar-pass'
-                                                                            : 'bar-fail'
-                                                                    }`}
-                                                                    style={{
-                                                                        width: `${
-                                                                            (crit.points /
-                                                                                (getCriterionMax(schemeKey, key) ?? 100)) *
-                                                                            100
-                                                                        }%`,
-                                                                    }}
-                                                                />
+                                                                    className="crit-bar-track"
+                                                                    role="progressbar"
+                                                                    aria-valuenow={
+                                                                        crit.points
+                                                                    }
+                                                                    aria-valuemax={
+                                                                        getCriterionMax(schemeKey, key)
+                                                                    }
+                                                                    aria-label={`${
+                                                                        CRITERION_LABELS[
+                                                                            key
+                                                                            ] ?? key
+                                                                    } score`}
+                                                                >
+
+                                                                    <div
+                                                                        className={`crit-bar-fill ${
+                                                                            crit.passed
+                                                                                ? 'bar-pass'
+                                                                                : 'bar-fail'
+                                                                        }`}
+                                                                        style={{
+                                                                            width: `${
+                                                                                (crit.points /
+                                                                                    (getCriterionMax(schemeKey, key) ?? 100)) *
+                                                                                100
+                                                                            }%`,
+                                                                        }}
+                                                                    />
+
+                                                                </div>
+
+
+                                                                <p className="crit-detail">
+                                                                    {crit.detail}
+                                                                </p>
 
                                                             </div>
-
-
-                                                            <p className="crit-detail">
-                                                                {crit.detail}
-                                                            </p>
-
-                                                        </div>
-                                                    )
-                                                );
-                                            })()}
+                                                        )
+                                                    );
+                                                })()}
 
                                         </div>
 
@@ -1793,7 +1790,7 @@ function Eligibility() {
                                             {/* Submit Application — gated on all docs uploaded */}
                                             {(() => {
                                                 const schemeKey = resolveSchemeKey(liveResult.schemeName);
-                                                const requiredDocs = getRequiredDocs(schemeKey);
+                                                const requiredDocs = getRequiredDocs(schemeKey)
                                                 const allDone = requiredDocs.length === 0 ||
                                                     requiredDocs.every(d => docUploads[d.type]?.status === 'done');
                                                 return (

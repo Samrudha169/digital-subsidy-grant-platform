@@ -1,160 +1,276 @@
 package com.dsgp.verification.service;
 
 import com.dsgp.verification.dto.VerificationActionRequest;
+import com.dsgp.verification.dto.VerificationCriterionResponse;
+import com.dsgp.verification.dto.VerificationCriterionUpdateRequest;
 import com.dsgp.verification.dto.VerificationStatusResponse;
+import com.dsgp.verification.entity.VerificationStage;
+
+import java.util.List;
 
 /**
  * Service interface for the multi-level verification workflow.
  *
- * <h3>State machine summary</h3>
+ * <h3>State machine</h3>
+ *
  * <pre>
- * PENDING               → UNDER_REVIEW         (startVerification)
- * UNDER_REVIEW          → FIELD_APPROVED        (approveAtField)
- * UNDER_REVIEW          → ESCALATED             (escalateAtField)
- * UNDER_REVIEW          → REJECTED              (rejectAtField)
- * UNDER_REVIEW          → CORRECTION_REQUIRED   (requestCorrection)
- * CORRECTION_REQUIRED   → UNDER_REVIEW          (resubmitByBeneficiary)
- * FIELD_APPROVED        → APPROVED              (approveAtFinance)
- * FIELD_APPROVED        → REJECTED              (rejectAtFinance)
- * ESCALATED             → DISTRICT_APPROVED     (approveAtDistrict)
- * ESCALATED             → REJECTED              (rejectAtDistrict)
- * DISTRICT_APPROVED     → APPROVED              (approveAtFinance)
- * DISTRICT_APPROVED     → REJECTED              (rejectAtFinance)
+ * PENDING
+ *     ↓
+ * UNDER_REVIEW
+ *     ↓
+ * ESCALATED
+ *     ↓
+ * DISTRICT_APPROVED
+ *     ↓
+ * APPROVED
+ *
+ * Other possible transitions:
+ *
+ * UNDER_REVIEW → REJECTED
+ * UNDER_REVIEW → CORRECTION_REQUIRED
+ * CORRECTION_REQUIRED → UNDER_REVIEW
+ * ESCALATED → REJECTED
+ * DISTRICT_APPROVED → REJECTED
  * </pre>
  *
- * <p>Terminal states: {@code APPROVED} and {@code REJECTED}.
- * An Administrator may reopen a rejected application by resetting it to
- * {@code PENDING} (future Milestone 5 feature).
+ * <p>Field approval is no longer a direct approval action.
+ * The Field Officer must verify all Field criteria first and then
+ * complete Field verification.</p>
  *
- * <p>Routing: The verification-workflow.md specification states routing is based
- * on the Field Officer's decision (APPROVE vs ESCALATE). Numeric routing thresholds
- * (e.g. by eligibility score or grant amount) are NOT currently specified in the
- * project documentation — see implementation notes in
- * {@link VerificationServiceImpl} for the configurable routing policy.
- *
- * @see com.dsgp.verification.entity.VerificationRecord
- * @see com.dsgp.verification.entity.VerificationStage
+ * <p>District and Finance verification are separate stages and are
+ * restricted to their respective officer roles.</p>
  */
 public interface VerificationService {
 
-    /**
-     * Starts the verification process for a {@code PENDING} application.
-     * Moves the application status from {@code PENDING} → {@code UNDER_REVIEW}.
-     *
-     * @param applicationId primary key of the {@code scheme_applications} row
-     * @param request       officer identifier and optional remarks
-     * @return the updated application status response
-     * @throws com.dsgp.beneficiary.exception.BeneficiaryNotFoundException
-     *         if the application does not exist
-     * @throws com.dsgp.verification.exception.InvalidVerificationTransitionException
-     *         if the application is not in {@code PENDING} state
-     */
-    VerificationStatusResponse startVerification(Long applicationId,
-                                                 VerificationActionRequest request);
+    // ─────────────────────────────────────────────────────────────────────
+    // General verification
+    // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Retrieves the current status and full verification history for an application.
+     * Starts Field verification for a PENDING application.
      *
-     * @param applicationId primary key of the application
-     * @return status response with history
+     * <p>PENDING → UNDER_REVIEW</p>
+     *
+     * <p>This also creates the Field verification criteria for the
+     * application if they do not already exist.</p>
+     *
+     * @param applicationId application primary key
+     * @param request officer identifier and optional remarks
+     * @return updated verification status
      */
-    VerificationStatusResponse getStatus(Long applicationId);
-
-    // ── Field Officer actions ─────────────────────────────────────────────────
+    VerificationStatusResponse startVerification(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 
     /**
-     * Field Officer approves the application.
-     * UNDER_REVIEW → FIELD_APPROVED.
+     * Retrieves the current application status and verification history.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + optional remarks
+     * @param applicationId application primary key
+     * @return current status and history
      */
-    VerificationStatusResponse approveAtField(Long applicationId,
-                                              VerificationActionRequest request);
+    VerificationStatusResponse getStatus(
+            Long applicationId
+    );
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Field Officer actions
+    // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Field Officer rejects the application (terminal).
-     * UNDER_REVIEW → REJECTED.
-     * Remarks are mandatory for rejections.
+     * Legacy Field Officer approval endpoint.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + mandatory rejection remarks
+     * <p>Direct Field approval is no longer allowed.
+     * Field verification must be completed through the criteria checklist.</p>
+     *
+     * @param applicationId application primary key
+     * @param request officer identifier and remarks
+     * @return verification status
      */
-    VerificationStatusResponse rejectAtField(Long applicationId,
-                                             VerificationActionRequest request);
+    VerificationStatusResponse approveAtField(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 
     /**
-     * Field Officer escalates the application to the District Officer.
-     * UNDER_REVIEW → ESCALATED.
+     * Field Officer rejects the application.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + escalation reason
+     * <p>UNDER_REVIEW → REJECTED</p>
+     *
+     * @param applicationId application primary key
+     * @param request officer identifier and mandatory rejection remarks
+     * @return updated verification status
      */
-    VerificationStatusResponse escalateAtField(Long applicationId,
-                                               VerificationActionRequest request);
+    VerificationStatusResponse rejectAtField(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 
     /**
-     * Field Officer requests the beneficiary to correct their application.
-     * UNDER_REVIEW → CORRECTION_REQUIRED.
-     * Remarks are mandatory (must describe what needs to be corrected).
+     * Legacy Field escalation endpoint.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + mandatory correction instructions
+     * <p>Direct escalation is no longer allowed.
+     * The application is automatically routed to the District Officer
+     * after all Field criteria have been verified.</p>
+     *
+     * @param applicationId application primary key
+     * @param request officer identifier and remarks
+     * @return verification status
      */
-    VerificationStatusResponse requestCorrection(Long applicationId,
-                                                  VerificationActionRequest request);
+    VerificationStatusResponse escalateAtField(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 
     /**
-     * Beneficiary resubmits after making corrections.
-     * CORRECTION_REQUIRED → UNDER_REVIEW.
+     * Field Officer requests correction from the beneficiary.
      *
-     * @param applicationId target application
-     * @param request       beneficiary identifier + optional resubmission note
+     * <p>UNDER_REVIEW → CORRECTION_REQUIRED</p>
+     *
+     * @param applicationId application primary key
+     * @param request officer identifier and mandatory correction remarks
+     * @return updated verification status
      */
-    VerificationStatusResponse resubmitByBeneficiary(Long applicationId,
-                                                      VerificationActionRequest request);
-
-    // ── District Officer actions ──────────────────────────────────────────────
+    VerificationStatusResponse requestCorrection(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 
     /**
-     * District Officer approves the escalated application.
-     * ESCALATED → DISTRICT_APPROVED.
+     * Beneficiary resubmits an application after making corrections.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + optional remarks
+     * <p>CORRECTION_REQUIRED → UNDER_REVIEW</p>
+     *
+     * @param applicationId application primary key
+     * @param request beneficiary identifier and optional remarks
+     * @return updated verification status
      */
-    VerificationStatusResponse approveAtDistrict(Long applicationId,
-                                                 VerificationActionRequest request);
+    VerificationStatusResponse resubmitByBeneficiary(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 
     /**
-     * District Officer rejects the application (terminal).
-     * ESCALATED → REJECTED.
+     * Completes Field verification after all Field criteria are verified.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + mandatory rejection remarks
+     * <p>UNDER_REVIEW → ESCALATED</p>
+     *
+     * <p>ESCALATED represents the District Officer queue.</p>
+     *
+     * @param applicationId application primary key
+     * @param performedBy Field Officer username
+     * @param remarks optional completion remarks
      */
-    VerificationStatusResponse rejectAtDistrict(Long applicationId,
-                                                VerificationActionRequest request);
+    void completeFieldVerification(
+            Long applicationId,
+            String performedBy,
+            String remarks
+    );
 
-    // ── Finance Approver actions ──────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────
+    // Verification criteria
+    // ─────────────────────────────────────────────────────────────────────
 
     /**
-     * Finance Approver grants final approval.
-     * FIELD_APPROVED or DISTRICT_APPROVED → APPROVED.
+     * Retrieves verification criteria for an application and stage.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + optional remarks
+     * <p>Example:</p>
+     *
+     * <pre>
+     * GET /verification/applications/1/criteria?stage=FIELD
+     * </pre>
+     *
+     * @param applicationId application primary key
+     * @param stage verification stage
+     * @return criteria belonging to that stage
      */
-    VerificationStatusResponse approveAtFinance(Long applicationId,
-                                                VerificationActionRequest request);
+    List<VerificationCriterionResponse> getCriteria(
+            Long applicationId,
+            VerificationStage stage
+    );
 
     /**
-     * Finance Approver rejects the application (terminal).
-     * FIELD_APPROVED or DISTRICT_APPROVED → REJECTED.
+     * Updates the status of a verification criterion.
      *
-     * @param applicationId target application
-     * @param request       officer identifier + mandatory rejection remarks
+     * <p>The backend verifies that the officer's role matches the
+     * criterion's stage.</p>
+     *
+     * @param applicationId application primary key
+     * @param criterionId criterion primary key
+     * @param request criterion status, officer and remarks
+     * @return updated criterion
      */
-    VerificationStatusResponse rejectAtFinance(Long applicationId,
-                                               VerificationActionRequest request);
+    VerificationCriterionResponse updateCriterion(
+            Long applicationId,
+            Long criterionId,
+            VerificationCriterionUpdateRequest request
+    );
+
+    // ─────────────────────────────────────────────────────────────────────
+    // District Officer actions
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * District Officer approves the application after completing
+     * District verification criteria.
+     *
+     * <p>ESCALATED → DISTRICT_APPROVED</p>
+     *
+     * @param applicationId application primary key
+     * @param request District Officer identifier and remarks
+     * @return updated verification status
+     */
+    VerificationStatusResponse approveAtDistrict(
+            Long applicationId,
+            VerificationActionRequest request
+    );
+
+    /**
+     * District Officer rejects the application.
+     *
+     * <p>ESCALATED → REJECTED</p>
+     *
+     * @param applicationId application primary key
+     * @param request District Officer identifier and mandatory remarks
+     * @return updated verification status
+     */
+    VerificationStatusResponse rejectAtDistrict(
+            Long applicationId,
+            VerificationActionRequest request
+    );
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Finance Approver actions
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Finance Approver gives final approval.
+     *
+     * <p>DISTRICT_APPROVED → APPROVED</p>
+     *
+     * <p>Finance cannot approve directly after Field verification.
+     * District approval is mandatory.</p>
+     *
+     * @param applicationId application primary key
+     * @param request Finance Officer identifier and remarks
+     * @return final verification status
+     */
+    VerificationStatusResponse approveAtFinance(
+            Long applicationId,
+            VerificationActionRequest request
+    );
+
+    /**
+     * Finance Approver rejects the application.
+     *
+     * <p>DISTRICT_APPROVED → REJECTED</p>
+     *
+     * @param applicationId application primary key
+     * @param request Finance Officer identifier and mandatory remarks
+     * @return updated verification status
+     */
+    VerificationStatusResponse rejectAtFinance(
+            Long applicationId,
+            VerificationActionRequest request
+    );
 }

@@ -9,6 +9,7 @@ import com.dsgp.eligibility.repository.EligibilityResultRepository;
 import com.dsgp.GovernmentSchemeApplication;
 import com.dsgp.beneficiary.exception.BeneficiaryNotFoundException;
 import com.dsgp.beneficiary.security.SecurityConfig;
+import com.dsgp.beneficiary.service.BeneficiaryService;
 import com.dsgp.config.ApiErrorResponse;
 import com.dsgp.config.GlobalExceptionHandler;
 import com.dsgp.scheme.exception.SchemeNotFoundException;
@@ -52,6 +53,10 @@ class ApplicationControllerTest {
 
     @MockBean
     private ApplicationService applicationService;
+
+    @MockBean
+    private BeneficiaryService beneficiaryService;
+
 
     // Required by ApplicationController constructor after the GET /applications/{id} fix
     @MockBean

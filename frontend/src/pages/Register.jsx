@@ -35,7 +35,8 @@ function buildPayload(formData) {
         state: formData.state,
         pinCode: formData.pinCode.trim(),
         annualIncome: parseFloat(formData.annualIncome),
-        category: formData.category
+        category: formData.category,
+        occupation: formData.occupation
     };
 
     // Land holding is the ONLY optional field
@@ -140,6 +141,11 @@ function validate(formData) {
         errors.push('Land holding must be a valid positive number.');
     }
 
+
+    if (!formData.occupation) {
+        errors.push('Occupation is required.');
+    }
+
     if (!formData.terms) {
         errors.push('You must agree to the Terms of Service.');
     }
@@ -179,7 +185,10 @@ function Register() {
         state: '',
         pinCode: '',
 
-        // Required financial field
+        // Occupation
+        occupation: '',
+
+// Required financial field
         annualIncome: '',
 
         // ONLY OPTIONAL FIELD
@@ -1174,6 +1183,64 @@ function Register() {
                                 maxLength="6"
                                 required
                             />
+
+                        </div>
+
+
+
+                        {/* ══════════════════════════════════════
+    OCCUPATION
+══════════════════════════════════════ */}
+
+                        <p className="register-section-label">
+                            Occupation &amp; Status
+                        </p>
+
+                        <div className="register-form-group">
+
+                            <label htmlFor="occupation">
+                                Occupation / Status <span>*</span>
+                            </label>
+
+                            <select
+                                id="occupation"
+                                name="occupation"
+                                value={formData.occupation}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">
+                                    Select occupation / status
+                                </option>
+
+                                <option value="Farmer">
+                                    Farmer
+                                </option>
+
+                                <option value="Student">
+                                    Student
+                                </option>
+
+                                <option value="Entrepreneur">
+                                    Entrepreneur
+                                </option>
+
+                                <option value="Business Owner">
+                                    Small Business Owner
+                                </option>
+
+                                <option value="Self Employed">
+                                    Self Employed
+                                </option>
+
+                                <option value="Salaried">
+                                    Salaried Employee
+                                </option>
+
+                                <option value="Other">
+                                    Other
+                                </option>
+                            </select>
 
                         </div>
 

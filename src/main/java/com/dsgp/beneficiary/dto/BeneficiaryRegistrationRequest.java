@@ -138,6 +138,8 @@ public class BeneficiaryRegistrationRequest {
      * Used for category-based eligibility and subsidy rate determination.
      */
     private Category category;
+    private String occupation;
+
 
     // ── Authentication ───────────────────────────────────────────────────────
 

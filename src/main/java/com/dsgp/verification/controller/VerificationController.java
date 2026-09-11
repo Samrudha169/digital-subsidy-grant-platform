@@ -7,6 +7,10 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.dsgp.verification.dto.VerificationCriterionResponse;
+import com.dsgp.verification.dto.VerificationCriterionUpdateRequest;
+import com.dsgp.verification.entity.VerificationStage;
+import java.util.List;
 
 /**
  * REST controller for the multi-level verification workflow.
@@ -62,6 +66,42 @@ public class VerificationController {
     @GetMapping("/{id}")
     public ResponseEntity<VerificationStatusResponse> getStatus(@PathVariable Long id) {
         return ResponseEntity.ok(verificationService.getStatus(id));
+    }
+
+
+    // ── Verification criteria ───────────────────────────────────────────────
+
+    /**
+     * Returns verification criteria for the requested application and stage.
+     *
+     * Example:
+     * GET /verification/applications/1/criteria?stage=FIELD
+     */
+    @GetMapping("/{id}/criteria")
+    public ResponseEntity<List<VerificationCriterionResponse>> getCriteria(
+            @PathVariable Long id,
+            @RequestParam VerificationStage stage) {
+
+        return ResponseEntity.ok(
+                verificationService.getCriteria(id, stage)
+        );
+    }
+
+    /**
+     * Updates one verification criterion.
+     *
+     * Example:
+     * PATCH /verification/applications/1/criteria/1
+     */
+    @PatchMapping("/{id}/criteria/{criterionId}")
+    public ResponseEntity<VerificationCriterionResponse> updateCriterion(
+            @PathVariable Long id,
+            @PathVariable Long criterionId,
+            @Valid @RequestBody VerificationCriterionUpdateRequest request) {
+
+        return ResponseEntity.ok(
+                verificationService.updateCriterion(id, criterionId, request)
+        );
     }
 
     // ── Field Officer actions ──────────────────────────────────────────────
