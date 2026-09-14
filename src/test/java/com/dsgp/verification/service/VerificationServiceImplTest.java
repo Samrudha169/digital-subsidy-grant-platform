@@ -19,6 +19,7 @@ import com.dsgp.verification.entity.VerificationStage;
 import com.dsgp.verification.exception.InvalidVerificationTransitionException;
 import com.dsgp.verification.repository.VerificationCriterionRepository;
 import com.dsgp.verification.repository.VerificationRecordRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -77,6 +79,26 @@ class VerificationServiceImplTest {
     private static final Long SCHEME_ID = 1L;
 
     // ========================================================================
+    // SETUP
+    // ========================================================================
+
+    @BeforeEach
+    void injectRoutingThresholds() {
+        // @Value fields are not injected by Mockito. Set them explicitly so
+        // that the routing logic uses the same defaults as application.properties.
+        ReflectionTestUtils.setField(
+                service,
+                "minimumDirectFinanceScore",
+                60
+        );
+        ReflectionTestUtils.setField(
+                service,
+                "maximumDirectFinanceGrantAmount",
+                10000
+        );
+    }
+
+    // ========================================================================
     // FIXTURES
     // ========================================================================
 
@@ -100,12 +122,35 @@ class VerificationServiceImplTest {
         return scheme;
     }
 
+    private Scheme scheme(java.math.BigDecimal grantAmount) {
+
+        Scheme scheme = scheme();
+        scheme.setGrantAmount(grantAmount);
+        return scheme;
+    }
+
     private SchemeApplication application(String status) {
 
         SchemeApplication application =
                 SchemeApplication.builder()
                         .beneficiary(beneficiary())
                         .scheme(scheme())
+                        .applicationStatus(status)
+                        .build();
+
+        application.setId(APP_ID);
+
+        return application;
+    }
+
+    private SchemeApplication application(
+            String status,
+            java.math.BigDecimal grantAmount) {
+
+        SchemeApplication application =
+                SchemeApplication.builder()
+                        .beneficiary(beneficiary())
+                        .scheme(scheme(grantAmount))
                         .applicationStatus(status)
                         .build();
 
@@ -507,13 +552,27 @@ class VerificationServiceImplTest {
         @Test
         void fieldApprovalWithAllCriteriaMovesToFieldApproved() {
 
+            // score=100, grant=5000 (below 10000 threshold) → FIELD_APPROVED
             SchemeApplication application =
-                    application("UNDER_REVIEW");
+                    application(
+                            "UNDER_REVIEW",
+                            new java.math.BigDecimal("5000")
+                    );
 
             given(
                     applicationRepository.findById(APP_ID)
             ).willReturn(
                     Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())
             );
 
             mockOfficer(
@@ -679,13 +738,27 @@ class VerificationServiceImplTest {
         @Test
         void completeFieldWithAllCriteriaMovesToFieldApproved() {
 
+            // score=100, grant=5000 (below 10000 threshold) → FIELD_APPROVED
             SchemeApplication application =
-                    application("UNDER_REVIEW");
+                    application(
+                            "UNDER_REVIEW",
+                            new java.math.BigDecimal("5000")
+                    );
 
             given(
                     applicationRepository.findById(APP_ID)
             ).willReturn(
                     Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())
             );
 
             mockOfficer(
@@ -758,6 +831,245 @@ class VerificationServiceImplTest {
                     .hasMessageContaining(
                             "cannot approve until all verification criteria are VERIFIED"
                     );
+        }
+    }
+
+    // ========================================================================
+    // FIELD OFFICER — ROUTING
+    // ========================================================================
+
+    @Nested
+    @DisplayName("Field Officer Routing")
+    class FieldOfficerRouting {
+
+        // Default thresholds from application.properties:
+        //   minimumDirectFinanceScore         = 60
+        //   maximumDirectFinanceGrantAmount   = 10000
+
+        @Test
+        @DisplayName("high score + low grant amount routes to FIELD_APPROVED (direct Finance)")
+        void highScoreAndLowGrantRoutesToFieldApproved() {
+
+            // score=100 (>=60), grant=6000 (<=10000) → FIELD_APPROVED
+            SchemeApplication application =
+                    application(
+                            "UNDER_REVIEW",
+                            new java.math.BigDecimal("6000")
+                    );
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())   // score = 100
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            service.approveAtField(
+                    APP_ID,
+                    request("field.officer", null)
+            );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "FIELD_APPROVED"
+            );
+        }
+
+        @Test
+        @DisplayName("high score + grant above threshold routes to ESCALATED")
+        void highScoreAndHighGrantRoutesToEscalated() {
+
+            // score=100 (>=60), grant=50000 (>10000) → ESCALATED
+            SchemeApplication application =
+                    application(
+                            "UNDER_REVIEW",
+                            new java.math.BigDecimal("50000")
+                    );
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())   // score = 100
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            service.approveAtField(
+                    APP_ID,
+                    request("field.officer", null)
+            );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "ESCALATED"
+            );
+        }
+
+        @Test
+        @DisplayName("score below direct-finance threshold routes to ESCALATED regardless of grant")
+        void lowScoreRoutesToEscalatedRegardlessOfGrant() {
+
+            // score=40 (<60), grant=500 (<=10000) → ESCALATED (score fails)
+            SchemeApplication application =
+                    application(
+                            "UNDER_REVIEW",
+                            new java.math.BigDecimal("500")
+                    );
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            EligibilityResult lowScore =
+                    EligibilityResult.builder()
+                            .beneficiaryId(BENEFICIARY_ID)
+                            .schemeId(SCHEME_ID)
+                            .schemeName("PM-KISAN")
+                            .totalScore(40)
+                            .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                            .evaluatedAt(java.time.LocalDateTime.now())
+                            .build();
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(lowScore)
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            service.approveAtField(
+                    APP_ID,
+                    request("field.officer", null)
+            );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "ESCALATED"
+            );
+        }
+
+        @Test
+        @DisplayName("null grant amount routes to ESCALATED")
+        void nullGrantAmountRoutesToEscalated() {
+
+            // score=100 (>=60), grant=null → ESCALATED (null treated as above threshold)
+            SchemeApplication application =
+                    application(
+                            "UNDER_REVIEW",
+                            null   // null grant amount
+                    );
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())   // score = 100
+            );
+
+            mockOfficer(
+                    "field.officer",
+                    OfficerRole.FIELD_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FIELD,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            service.approveAtField(
+                    APP_ID,
+                    request("field.officer", null)
+            );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "ESCALATED"
+            );
         }
     }
 

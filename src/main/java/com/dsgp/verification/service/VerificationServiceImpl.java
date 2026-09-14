@@ -25,9 +25,11 @@ import com.dsgp.verification.repository.VerificationCriterionRepository;
 import com.dsgp.verification.repository.VerificationRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +63,26 @@ public class VerificationServiceImpl implements VerificationService {
     private final EligibilityResultRepository eligibilityResultRepository;
     private final VerificationRecordRepository verificationRecordRepository;
     private final VerificationCriterionRepository verificationCriterionRepository;
+
+    // ========================================================================
+    // ROUTING THRESHOLDS  (configurable via application.properties)
+    // ========================================================================
+
+    /**
+     * Minimum eligibility score required for direct-to-Finance routing.
+     * Applications with a score below this threshold are always escalated
+     * to the District Officer, regardless of grant amount.
+     */
+    @Value("${dsgp.verification.routing.minimum-direct-finance-score:60}")
+    private int minimumDirectFinanceScore;
+
+    /**
+     * Maximum grant amount (inclusive) that qualifies for direct-to-Finance
+     * routing. Applications whose scheme grant amount exceeds this value —
+     * or where the grant amount is null — are escalated to the District Officer.
+     */
+    @Value("${dsgp.verification.routing.maximum-direct-finance-grant-amount:10000}")
+    private int maximumDirectFinanceGrantAmount;
 
     // ========================================================================
     // START VERIFICATION
@@ -215,13 +237,37 @@ public class VerificationServiceImpl implements VerificationService {
         );
 
         // ------------------------------------------------------------
-        // Move to District Officer level
+        // Routing: score + grant amount decide the next status.
         // ------------------------------------------------------------
 
-        updateStatus(
-                application,
-                STATUS_FIELD_APPROVED
+        EligibilityResult eligibility =
+                eligibilityResultRepository
+                        .findByBeneficiaryIdAndSchemeId(
+                                application.getBeneficiary().getId(),
+                                application.getScheme().getId()
+                        )
+                        .orElseThrow(() ->
+                                new InvalidVerificationTransitionException(
+                                        "Cannot approve at Field: " +
+                                                "no eligibility result found for " +
+                                                "this application."
+                                )
+                        );
+
+        String nextStatus = routeAfterFieldApproval(
+                eligibility.getTotalScore(),
+                application.getScheme().getGrantAmount()
         );
+
+        updateStatus(application, nextStatus);
+
+        String defaultRemarks = STATUS_FIELD_APPROVED.equals(nextStatus)
+                ? "All Field criteria verified. Routed directly to Finance "
+                        + "(score=" + eligibility.getTotalScore()
+                        + ", grant=" + application.getScheme().getGrantAmount() + ")."
+                : "All Field criteria verified. Escalated to District Officer "
+                        + "(score=" + eligibility.getTotalScore()
+                        + ", grant=" + application.getScheme().getGrantAmount() + ").";
 
         recordAction(
                 application,
@@ -230,15 +276,15 @@ public class VerificationServiceImpl implements VerificationService {
                 request.getPerformedBy(),
                 coalesce(
                         request.getRemarks(),
-                        "All Field verification criteria verified. " +
-                                "Application approved at Field level."
+                        defaultRemarks
                 )
         );
 
         log.info(
-                "Field APPROVE: applicationId={}, by={}",
+                "Field APPROVE: applicationId={}, by={}, nextStatus={}",
                 applicationId,
-                request.getPerformedBy()
+                request.getPerformedBy(),
+                nextStatus
         );
 
         return buildResponse(application);
@@ -491,10 +537,25 @@ public class VerificationServiceImpl implements VerificationService {
                 VerificationStage.FIELD
         );
 
-        updateStatus(
-                application,
-                STATUS_FIELD_APPROVED
+        EligibilityResult eligibility =
+                eligibilityResultRepository
+                        .findByBeneficiaryIdAndSchemeId(
+                                application.getBeneficiary().getId(),
+                                application.getScheme().getId()
+                        )
+                        .orElseThrow(() ->
+                                new InvalidVerificationTransitionException(
+                                        "Cannot complete Field verification: " +
+                                                "no eligibility result found."
+                                )
+                        );
+
+        String nextStatus = routeAfterFieldApproval(
+                eligibility.getTotalScore(),
+                application.getScheme().getGrantAmount()
         );
+
+        updateStatus(application, nextStatus);
 
         recordAction(
                 application,
@@ -503,9 +564,72 @@ public class VerificationServiceImpl implements VerificationService {
                 performedBy,
                 coalesce(
                         remarks,
-                        "Field verification completed."
+                        "Field verification completed. Next status: " + nextStatus + "."
                 )
         );
+    }
+
+    // ========================================================================
+    // ROUTING DECISION
+    // ========================================================================
+
+    /**
+     * Decides the post-field-approval status using the configurable thresholds:
+     * <ul>
+     *   <li>Score &ge; {@code minimumDirectFinanceScore} <b>AND</b>
+     *       grant &le; {@code maximumDirectFinanceGrantAmount}
+     *       &rarr; {@code FIELD_APPROVED} (direct to Finance)</li>
+     *   <li>Otherwise (low score, high grant, or null grant)
+     *       &rarr; {@code ESCALATED} (District Officer queue)</li>
+     * </ul>
+     *
+     * <p>These thresholds are project configuration values loaded from
+     * {@code application.properties}. They are not government policy.</p>
+     *
+     * @param totalScore   eligibility score from the persisted EligibilityResult
+     * @param grantAmount  scheme grant amount; {@code null} is treated as
+     *                     "above threshold" and forces escalation
+     * @return {@code "FIELD_APPROVED"} or {@code "ESCALATED"}
+     */
+    private String routeAfterFieldApproval(
+            int totalScore,
+            BigDecimal grantAmount) {
+
+        if (grantAmount == null) {
+            log.debug(
+                    "Routing: grant amount is null → ESCALATED "
+                            + "(score={})",
+                    totalScore
+            );
+            return STATUS_ESCALATED;
+        }
+
+        boolean scoreOk =
+                totalScore >= minimumDirectFinanceScore;
+        boolean grantOk =
+                grantAmount.compareTo(
+                        BigDecimal.valueOf(maximumDirectFinanceGrantAmount)
+                ) <= 0;
+
+        if (scoreOk && grantOk) {
+            log.debug(
+                    "Routing: score={} >= {}, grant={} <= {} → FIELD_APPROVED",
+                    totalScore,
+                    minimumDirectFinanceScore,
+                    grantAmount,
+                    maximumDirectFinanceGrantAmount
+            );
+            return STATUS_FIELD_APPROVED;
+        }
+
+        log.debug(
+                "Routing: score={} (min={}), grant={} (max={}) → ESCALATED",
+                totalScore,
+                minimumDirectFinanceScore,
+                grantAmount,
+                maximumDirectFinanceGrantAmount
+        );
+        return STATUS_ESCALATED;
     }
 
     // ========================================================================
