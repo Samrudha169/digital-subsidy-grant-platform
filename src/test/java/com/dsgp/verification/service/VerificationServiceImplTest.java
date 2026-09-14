@@ -773,7 +773,7 @@ class VerificationServiceImplTest {
         void districtApproveWithAllCriteriaMovesToDistrictApproved() {
 
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("ESCALATED");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -822,7 +822,7 @@ class VerificationServiceImplTest {
         void districtApproveWithoutAllCriteriaThrows() {
 
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("ESCALATED");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -861,9 +861,9 @@ class VerificationServiceImplTest {
         void districtRejectMovesToRejected() {
 
             // UPDATED:
-            // District Officer works only after Field Officer approval.
+            // District Officer rejects only when the application is ESCALATED.
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("ESCALATED");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -907,7 +907,7 @@ class VerificationServiceImplTest {
             // UPDATED:
             // The request must reach the remarks validation first.
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("ESCALATED");
 
             given(
                     applicationRepository.findById(APP_ID)

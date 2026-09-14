@@ -90,17 +90,6 @@ WHERE  id = 1
 -- Officers are seeded with INSERT IGNORE so this is safe to re-run.
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS officers (
-    id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    username    VARCHAR(100) NOT NULL UNIQUE,
-    password    VARCHAR(255) NOT NULL,
-    full_name   VARCHAR(150) NOT NULL,
-    email       VARCHAR(150),
-    role        VARCHAR(20)  NOT NULL,
-    district    VARCHAR(100),
-    active      TINYINT(1)   NOT NULL DEFAULT 1
-);
-
 INSERT IGNORE INTO officers (id, username, password, full_name, email, role, district, active)
 VALUES
 -- Field Officers

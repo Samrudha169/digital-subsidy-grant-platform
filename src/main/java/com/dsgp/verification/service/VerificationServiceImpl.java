@@ -744,8 +744,8 @@ public class VerificationServiceImpl implements VerificationService {
          */
         requireStatus(
                 application,
-                STATUS_FIELD_APPROVED,
-                "District approval requires status FIELD_APPROVED. " +
+                STATUS_ESCALATED,
+                "District approval requires status ESCALATED. " +
                         "Current status: " +
                         application.getApplicationStatus()
         );
@@ -816,8 +816,8 @@ public class VerificationServiceImpl implements VerificationService {
 
         requireStatus(
                 application,
-                STATUS_FIELD_APPROVED,
-                "District rejection requires status FIELD_APPROVED. " +
+                STATUS_ESCALATED,
+                "District rejection requires status ESCALATED. " +
                         "Current status: " +
                         application.getApplicationStatus()
         );

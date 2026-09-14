@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS beneficiary (
     gov_id              VARCHAR(20)  NOT NULL,
     contact             VARCHAR(10)  NOT NULL,
     email               VARCHAR(150) NOT NULL,
+    password            VARCHAR(255) NOT NULL,
     age                 INT          NOT NULL,
     address             VARCHAR(255) NOT NULL,
     scheme_name         VARCHAR(150) NOT NULL,
@@ -36,6 +37,7 @@ CREATE TABLE IF NOT EXISTS beneficiary (
     taluka              VARCHAR(100),
     district            VARCHAR(100),
     state               VARCHAR(100),
+    occupation          VARCHAR(100),
     pin_code            VARCHAR(6),
     -- Financial eligibility fields
     annual_income       DECIMAL(15,2),
@@ -60,6 +62,8 @@ CREATE TABLE IF NOT EXISTS schemes (
     max_annual_income   DECIMAL(15,2),
     max_land_holding    DECIMAL(10,4),
     required_category   VARCHAR(20),
+    required_state      VARCHAR(100),
+    required_occupation VARCHAR(100),
     grant_amount        DECIMAL(15,2),
     active              TINYINT(1) NOT NULL DEFAULT 1
     );
@@ -171,6 +175,50 @@ CREATE TABLE IF NOT EXISTS verification_records (
     remarks                 TEXT,
 
     CONSTRAINT fk_verification_application
+        FOREIGN KEY (scheme_application_id)
+        REFERENCES scheme_applications(id)
+);
+
+
+-- =============================================================================
+-- TABLE: officers                                            [Milestone 2]
+-- Verification officers (Field, District, Finance) who act on applications.
+-- DDL moved here from 02-seed.sql so schema and data files are properly
+-- separated. The seed file retains only the INSERT IGNORE statements.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS officers (
+    id          BIGINT       AUTO_INCREMENT PRIMARY KEY,
+    username    VARCHAR(100) NOT NULL UNIQUE,
+    password    VARCHAR(255) NOT NULL,
+    full_name   VARCHAR(150) NOT NULL,
+    email       VARCHAR(150),
+    role        VARCHAR(20)  NOT NULL,   -- FIELD_OFFICER | DISTRICT_OFFICER | FINANCE_APPROVER
+    district    VARCHAR(100),
+    active      TINYINT(1)   NOT NULL DEFAULT 1
+);
+
+
+-- =============================================================================
+-- TABLE: verification_criteria                               [Milestone 2]
+-- One row per criterion that a verification officer must mark VERIFIED
+-- before they can approve their stage.
+--
+-- Mapped to VerificationCriterion JPA entity.
+-- Stages:  FIELD | DISTRICT | FINANCE
+-- Statuses: PENDING | VERIFIED
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS verification_criteria (
+    id                      BIGINT        AUTO_INCREMENT PRIMARY KEY,
+    scheme_application_id   BIGINT        NOT NULL,
+    stage                   VARCHAR(20)   NOT NULL,   -- FIELD | DISTRICT | FINANCE
+    criterion_code          VARCHAR(100)  NOT NULL,
+    criterion_name          VARCHAR(255)  NOT NULL,
+    status                  VARCHAR(20)   NOT NULL DEFAULT 'PENDING',   -- PENDING | VERIFIED
+    verified_by             VARCHAR(100),
+    remarks                 VARCHAR(500),
+    verified_at             DATETIME,
+
+    CONSTRAINT fk_criterion_application
         FOREIGN KEY (scheme_application_id)
         REFERENCES scheme_applications(id)
 );
