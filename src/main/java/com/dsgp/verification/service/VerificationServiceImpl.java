@@ -653,11 +653,15 @@ public class VerificationServiceImpl implements VerificationService {
                         );
 
         // ------------------------------------------------------------
-        // Create District criteria automatically after Field approval
+        // Create District criteria automatically after Field escalation
         // ------------------------------------------------------------
+        //
+        // When the Field Officer approves and the routing decision sends
+        // the application to the District Officer, the status is ESCALATED
+        // (not FIELD_APPROVED, which is the direct-to-Finance route).
 
         if (stage == VerificationStage.DISTRICT
-                && STATUS_FIELD_APPROVED.equals(
+                && STATUS_ESCALATED.equals(
                 application.getApplicationStatus())
                 && (criteria == null || criteria.isEmpty())) {
 
@@ -672,12 +676,21 @@ public class VerificationServiceImpl implements VerificationService {
         }
 
         // ------------------------------------------------------------
-        // Create Finance criteria automatically after District approval
+        // Create Finance criteria automatically when ready for Finance
         // ------------------------------------------------------------
+        //
+        // Two routes reach Finance:
+        //   - FIELD_APPROVED  : direct route (high score, low grant amount)
+        //   - DISTRICT_APPROVED : escalated route (via District Officer)
+
+        boolean readyForFinance =
+                STATUS_FIELD_APPROVED.equals(
+                        application.getApplicationStatus())
+                        || STATUS_DISTRICT_APPROVED.equals(
+                        application.getApplicationStatus());
 
         if (stage == VerificationStage.FINANCE
-                && STATUS_DISTRICT_APPROVED.equals(
-                application.getApplicationStatus())
+                && readyForFinance
                 && (criteria == null || criteria.isEmpty())) {
 
             createFinanceCriteria(application);
@@ -999,15 +1012,17 @@ public class VerificationServiceImpl implements VerificationService {
                 requireApplication(applicationId);
 
         /*
-         * Finance receives the application only after
-         * District approval.
+         * Finance receives applications via two routes:
+         *   - FIELD_APPROVED  : direct route (high score, low grant amount)
+         *   - DISTRICT_APPROVED : escalated route (via District Officer)
          */
-        requireStatus(
+        requireStatusOneOf(
                 application,
-                STATUS_DISTRICT_APPROVED,
-                "Finance approval requires status DISTRICT_APPROVED. " +
-                        "Current status: " +
-                        application.getApplicationStatus()
+                "Finance approval requires status FIELD_APPROVED or " +
+                        "DISTRICT_APPROVED. Current status: " +
+                        application.getApplicationStatus(),
+                STATUS_FIELD_APPROVED,
+                STATUS_DISTRICT_APPROVED
         );
 
         Officer officer =
@@ -1524,6 +1539,27 @@ public class VerificationServiceImpl implements VerificationService {
                     message
             );
         }
+    }
+
+    /**
+     * Throws {@link InvalidVerificationTransitionException} unless the
+     * application's current status matches at least one of the supplied
+     * {@code acceptedStatuses}.
+     */
+    private void requireStatusOneOf(
+            SchemeApplication application,
+            String message,
+            String... acceptedStatuses) {
+
+        String current = application.getApplicationStatus();
+
+        for (String accepted : acceptedStatuses) {
+            if (accepted.equals(current)) {
+                return;
+            }
+        }
+
+        throw new InvalidVerificationTransitionException(message);
     }
 
     private void updateStatus(

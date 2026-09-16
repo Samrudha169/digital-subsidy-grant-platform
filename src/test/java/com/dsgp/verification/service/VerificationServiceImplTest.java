@@ -1284,6 +1284,194 @@ class VerificationServiceImplTest {
     }
 
     // ========================================================================
+    // GET CRITERIA — ROUTING (auto-creation conditions)
+    // ========================================================================
+
+    @Nested
+    @DisplayName("Get Criteria Routing")
+    class GetCriteriaRouting {
+
+        /**
+         * After automatic routing sends a low-score or high-grant application
+         * to the District Officer, the status is ESCALATED.
+         * getCriteria(DISTRICT) must auto-create District criteria for
+         * ESCALATED applications (not only FIELD_APPROVED).
+         */
+        @Test
+        @DisplayName("ESCALATED application gets District criteria created on first getCriteria call")
+        void escalatedApplicationGetsDistrictCriteriaCreated() {
+
+            SchemeApplication application =
+                    application("ESCALATED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            // First call returns empty; second call (after saveAll) returns criteria.
+            given(
+                    verificationCriterionRepository
+                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                    APP_ID,
+                                    VerificationStage.DISTRICT
+                            )
+            ).willReturn(List.of())
+             .willReturn(
+                    List.of(
+                            criterion(
+                                    application,
+                                    VerificationStage.DISTRICT,
+                                    1,
+                                    VerificationCriterionStatus.PENDING
+                            )
+                    )
+            );
+
+            List<VerificationCriterionResponse> result =
+                    service.getCriteria(
+                            APP_ID,
+                            VerificationStage.DISTRICT
+                    );
+
+            assertThat(result)
+                    .isNotNull()
+                    .isNotEmpty();
+        }
+
+        /**
+         * FIELD_APPROVED is the direct-to-Finance route.
+         * getCriteria(DISTRICT) must NOT create District criteria for a
+         * FIELD_APPROVED application — it bypassed the District Officer.
+         */
+        @Test
+        @DisplayName("FIELD_APPROVED application does NOT get District criteria created")
+        void fieldApprovedApplicationDoesNotGetDistrictCriteriaCreated() {
+
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    verificationCriterionRepository
+                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                    APP_ID,
+                                    VerificationStage.DISTRICT
+                            )
+            ).willReturn(List.of());
+
+            List<VerificationCriterionResponse> result =
+                    service.getCriteria(
+                            APP_ID,
+                            VerificationStage.DISTRICT
+                    );
+
+            assertThat(result)
+                    .isNotNull()
+                    .isEmpty();
+        }
+
+        /**
+         * After automatic routing sends a direct-Finance application to
+         * FIELD_APPROVED, getCriteria(FINANCE) must auto-create Finance
+         * criteria (was broken: it was only checking DISTRICT_APPROVED).
+         */
+        @Test
+        @DisplayName("FIELD_APPROVED application gets Finance criteria created on first getCriteria call")
+        void fieldApprovedApplicationGetsFinanceCriteriaCreated() {
+
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    verificationCriterionRepository
+                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                    APP_ID,
+                                    VerificationStage.FINANCE
+                            )
+            ).willReturn(List.of())
+             .willReturn(
+                    List.of(
+                            criterion(
+                                    application,
+                                    VerificationStage.FINANCE,
+                                    1,
+                                    VerificationCriterionStatus.PENDING
+                            )
+                    )
+            );
+
+            List<VerificationCriterionResponse> result =
+                    service.getCriteria(
+                            APP_ID,
+                            VerificationStage.FINANCE
+                    );
+
+            assertThat(result)
+                    .isNotNull()
+                    .isNotEmpty();
+        }
+
+        /**
+         * DISTRICT_APPROVED still triggers Finance criteria creation
+         * (existing behaviour must not have regressed).
+         */
+        @Test
+        @DisplayName("DISTRICT_APPROVED application gets Finance criteria created on first getCriteria call")
+        void districtApprovedApplicationGetsFinanceCriteriaCreated() {
+
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    verificationCriterionRepository
+                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                    APP_ID,
+                                    VerificationStage.FINANCE
+                            )
+            ).willReturn(List.of())
+             .willReturn(
+                    List.of(
+                            criterion(
+                                    application,
+                                    VerificationStage.FINANCE,
+                                    1,
+                                    VerificationCriterionStatus.PENDING
+                            )
+                    )
+            );
+
+            List<VerificationCriterionResponse> result =
+                    service.getCriteria(
+                            APP_ID,
+                            VerificationStage.FINANCE
+                    );
+
+            assertThat(result)
+                    .isNotNull()
+                    .isNotEmpty();
+        }
+    }
+
+    // ========================================================================
     // FINANCE APPROVER
     // ========================================================================
 
@@ -1457,10 +1645,62 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        void financeCannotApproveBeforeDistrict() {
+        @DisplayName("FIELD_APPROVED + all Finance criteria VERIFIED -> APPROVED (direct route)")
+        void financeApproveFromFieldApprovedMovesToApproved() {
 
+            // Direct Finance route: high score + low grant skipped District.
             SchemeApplication application =
                     application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FINANCE,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.approveAtFinance(
+                            APP_ID,
+                            request(
+                                    "finance.officer",
+                                    null
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "APPROVED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "APPROVED"
+            );
+        }
+
+        @Test
+        @DisplayName("UNDER_REVIEW -> Finance approval rejected")
+        void financeCannotApproveUnderReview() {
+
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -1487,6 +1727,83 @@ class VerificationServiceImplTest {
                             InvalidVerificationTransitionException.class
                     );
         }
+
+        @Test
+        @DisplayName("ESCALATED -> Finance approval rejected")
+        void financeCannotApproveEscalated() {
+
+            SchemeApplication application =
+                    application("ESCALATED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtFinance(
+                                    APP_ID,
+                                    request(
+                                            "finance.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    );
+        }
+
+        @Test
+        @DisplayName("FIELD_APPROVED without all Finance criteria -> rejected")
+        void financeCannotApproveFieldApprovedWithIncompleteCriteria() {
+
+            SchemeApplication application =
+                    application("FIELD_APPROVED");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.FINANCE,
+                    4,
+                    1
+            );
+
+            assertThatThrownBy(
+                    () ->
+                            service.approveAtFinance(
+                                    APP_ID,
+                                    request(
+                                            "finance.officer",
+                                            null
+                                    )
+                            )
+            )
+                    .isInstanceOf(
+                            InvalidVerificationTransitionException.class
+                    )
+                    .hasMessageContaining(
+                            "cannot approve until all verification criteria are VERIFIED"
+                    );
+        }
+
 
         @Test
         void financeCannotApproveAlreadyApprovedApplication() {

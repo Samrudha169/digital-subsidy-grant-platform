@@ -14,8 +14,12 @@ const ROLES = {
 
 const ROLE_STATUSES = {
     [ROLES.FIELD_OFFICER]: ['PENDING', 'UNDER_REVIEW'],
-    [ROLES.DISTRICT_OFFICER]: ['FIELD_APPROVED'],
-    [ROLES.FINANCE_APPROVER]: ['DISTRICT_APPROVED'],
+    // District Officers work on ESCALATED applications (automatic routing sends
+    // non-direct applications to ESCALATED, not FIELD_APPROVED).
+    [ROLES.DISTRICT_OFFICER]: ['ESCALATED', 'FIELD_APPROVED'],
+    // Finance Approvers work on FIELD_APPROVED (direct route) and
+    // DISTRICT_APPROVED (escalated route after District review).
+    [ROLES.FINANCE_APPROVER]: ['FIELD_APPROVED', 'DISTRICT_APPROVED'],
 };
 
 const ROLE_LABELS = {
