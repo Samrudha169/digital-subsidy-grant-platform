@@ -222,3 +222,71 @@ CREATE TABLE IF NOT EXISTS verification_criteria (
         FOREIGN KEY (scheme_application_id)
         REFERENCES scheme_applications(id)
 );
+
+
+-- =============================================================================
+-- TABLE: states                                              [Location]
+-- Master list of Indian states and Union Territories.
+-- Mapped to com.dsgp.location.State JPA entity.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS states (
+    id   INT          AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE
+);
+
+
+-- =============================================================================
+-- TABLE: districts                                           [Location]
+-- Districts within a state.
+-- Mapped to com.dsgp.location.District JPA entity.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS districts (
+    id       INT          AUTO_INCREMENT PRIMARY KEY,
+    name     VARCHAR(100) NOT NULL,
+    state_id INT          NOT NULL,
+
+    CONSTRAINT fk_district_state
+        FOREIGN KEY (state_id)
+        REFERENCES states(id),
+
+    CONSTRAINT uk_district_name_state
+        UNIQUE (name, state_id)
+);
+
+
+-- =============================================================================
+-- TABLE: talukas                                             [Location]
+-- Talukas (sub-districts) within a district.
+-- Mapped to com.dsgp.location.Taluka JPA entity.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS talukas (
+    id          INT          AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL,
+    district_id INT          NOT NULL,
+
+    CONSTRAINT fk_taluka_district
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id),
+
+    CONSTRAINT uk_taluka_name_district
+        UNIQUE (name, district_id)
+);
+
+
+-- =============================================================================
+-- TABLE: villages                                            [Location]
+-- Villages within a taluka.
+-- Mapped to com.dsgp.location.Village JPA entity.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS villages (
+    id        INT          AUTO_INCREMENT PRIMARY KEY,
+    name      VARCHAR(150) NOT NULL,
+    taluka_id INT          NOT NULL,
+
+    CONSTRAINT fk_village_taluka
+        FOREIGN KEY (taluka_id)
+        REFERENCES talukas(id),
+
+    CONSTRAINT uk_village_name_taluka
+        UNIQUE (name, taluka_id)
+);
