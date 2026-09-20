@@ -110,12 +110,64 @@ VALUES
 -- =============================================================================
 -- Location Master Data
 -- =============================================================================
--- Development/test location hierarchy:
--- Maharashtra -> Pune -> Haveli -> Pune
+-- All 28 Indian States and 8 Union Territories (36 total).
+--
+-- Maharashtra (id=1) is seeded first to preserve the existing
+-- State → District → Taluka → Village hierarchy used in development and tests.
+-- The remaining 35 entries follow in alphabetical order within each group.
+--
+-- District/Taluka/Village sub-location records are only present for
+-- Maharashtra (the single state for which verified project data exists).
+-- No fake sub-location records are created for other states.
+--
+-- Uses INSERT IGNORE throughout so re-running on an already-seeded database
+-- is fully idempotent.
+-- =============================================================================
 
+-- ── States (28) ──────────────────────────────────────────────────────────────
 INSERT IGNORE INTO states (id, name)
 VALUES
-(1, 'Maharashtra');
+(1,  'Maharashtra'),
+(2,  'Andhra Pradesh'),
+(3,  'Arunachal Pradesh'),
+(4,  'Assam'),
+(5,  'Bihar'),
+(6,  'Chhattisgarh'),
+(7,  'Goa'),
+(8,  'Gujarat'),
+(9,  'Haryana'),
+(10, 'Himachal Pradesh'),
+(11, 'Jharkhand'),
+(12, 'Karnataka'),
+(13, 'Kerala'),
+(14, 'Madhya Pradesh'),
+(15, 'Manipur'),
+(16, 'Meghalaya'),
+(17, 'Mizoram'),
+(18, 'Nagaland'),
+(19, 'Odisha'),
+(20, 'Punjab'),
+(21, 'Rajasthan'),
+(22, 'Sikkim'),
+(23, 'Tamil Nadu'),
+(24, 'Telangana'),
+(25, 'Tripura'),
+(26, 'Uttar Pradesh'),
+(27, 'Uttarakhand'),
+(28, 'West Bengal'),
+
+-- ── Union Territories (8) ────────────────────────────────────────────────────
+(29, 'Andaman and Nicobar Islands'),
+(30, 'Chandigarh'),
+(31, 'Dadra and Nagar Haveli and Daman and Diu'),
+(32, 'Delhi'),
+(33, 'Jammu and Kashmir'),
+(34, 'Ladakh'),
+(35, 'Lakshadweep'),
+(36, 'Puducherry');
+
+-- ── Maharashtra sub-location hierarchy (existing data — preserved) ────────────
+-- Maharashtra -> Pune -> Haveli -> Pune
 
 INSERT IGNORE INTO districts (id, name, state_id)
 VALUES
