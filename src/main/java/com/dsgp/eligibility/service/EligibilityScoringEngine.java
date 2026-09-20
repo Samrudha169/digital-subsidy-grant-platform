@@ -11,6 +11,10 @@ import com.dsgp.eligibility.entity.EligibilityResult;
 import com.dsgp.eligibility.entity.EligibilityStatus;
 import com.dsgp.eligibility.exception.EligibilityCheckException;
 import com.dsgp.eligibility.repository.EligibilityResultRepository;
+import com.dsgp.eligibility.rules.EligibilityRule;
+import com.dsgp.eligibility.rules.NspEligibilityRule;
+import com.dsgp.eligibility.rules.PmKisanEligibilityRule;
+import com.dsgp.eligibility.rules.PmegpEligibilityRule;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +42,13 @@ public class EligibilityScoringEngine implements EligibilityService {
     private final SchemeRepository schemeRepository;
     private final EligibilityResultRepository resultRepository;
     private final ObjectMapper objectMapper;
+
+    // Rule instances are created here directly because the rule classes are
+    // stateless; this also preserves full test compatibility with @InjectMocks,
+    // which only injects mocked/spied collaborators declared in the test.
+    private final EligibilityRule pmKisanRule = new PmKisanEligibilityRule();
+    private final EligibilityRule nspRule     = new NspEligibilityRule();
+    private final EligibilityRule pmegpRule   = new PmegpEligibilityRule();
 
     // ========================================================================
     // MAIN ELIGIBILITY CHECK
@@ -68,163 +78,30 @@ public class EligibilityScoringEngine implements EligibilityService {
                 schemeName
         );
 
+        // ====================================================================
+        // SELECT RULE
+        // ====================================================================
+
+        EligibilityRule rule = selectRule(schemeName);
+
+        // ====================================================================
+        // DELEGATE SCHEME-SPECIFIC EVALUATION
+        // ====================================================================
+
         Map<String, CriterionResult> criteria =
-                new LinkedHashMap<>();
-
-        int totalScore;
-        boolean mandatoryConditionsPassed;
+                rule.evaluate(beneficiary, scheme);
 
         // ====================================================================
-        // PM-KISAN
+        // CALCULATE TOTAL SCORE
         // ====================================================================
 
-        if (isScheme(schemeName, PM_KISAN)) {
+        int totalScore = criteria.values()
+                .stream()
+                .mapToInt(CriterionResult::getPoints)
+                .sum();
 
-            CriterionResult age =
-                    evaluatePmKisanAge(beneficiary);
-
-            CriterionResult income =
-                    evaluatePmKisanIncome(beneficiary);
-
-            CriterionResult land =
-                    evaluatePmKisanLand(beneficiary);
-
-            CriterionResult occupation =
-                    evaluatePmKisanOccupation(beneficiary);
-
-            CriterionResult category =
-                    evaluateCategory(
-                            beneficiary,
-                            scheme,
-                            5
-                    );
-
-            CriterionResult identity =
-                    evaluateIdentity(
-                            beneficiary,
-                            10
-                    );
-
-            criteria.put("ageCheck", age);
-            criteria.put("incomeCheck", income);
-            criteria.put("landCheck", land);
-            criteria.put("occupationCheck", occupation);
-            criteria.put("categoryCheck", category);
-            criteria.put("identityCheck", identity);
-
-            totalScore =
-                    age.getPoints()
-                            + income.getPoints()
-                            + land.getPoints()
-                            + occupation.getPoints()
-                            + category.getPoints()
-                            + identity.getPoints();
-
-            mandatoryConditionsPassed =
-                    age.isPassed()
-                            && income.isPassed()
-                            && land.isPassed()
-                            && occupation.isPassed();
-        }
-
-        // ====================================================================
-        // NSP
-        // ====================================================================
-
-        else if (isScheme(schemeName, NSP)) {
-
-            CriterionResult age =
-                    evaluateNspAge(beneficiary);
-
-            CriterionResult income =
-                    evaluateNspIncome(beneficiary);
-
-            CriterionResult occupation =
-                    evaluateNspOccupation(beneficiary);
-
-            CriterionResult category =
-                    evaluateCategory(
-                            beneficiary,
-                            scheme,
-                            10
-                    );
-
-            CriterionResult identity =
-                    evaluateIdentity(
-                            beneficiary,
-                            10
-                    );
-
-            criteria.put("ageCheck", age);
-            criteria.put("incomeCheck", income);
-            criteria.put("occupationCheck", occupation);
-            criteria.put("categoryCheck", category);
-            criteria.put("identityCheck", identity);
-
-            totalScore =
-                    age.getPoints()
-                            + income.getPoints()
-                            + occupation.getPoints()
-                            + category.getPoints()
-                            + identity.getPoints();
-
-            mandatoryConditionsPassed =
-                    age.isPassed()
-                            && income.isPassed()
-                            && occupation.isPassed();
-        }
-
-        // ====================================================================
-        // PMEGP
-        // ====================================================================
-
-        else if (isScheme(schemeName, PMEGP)) {
-
-            CriterionResult age =
-                    evaluatePmegpAge(beneficiary);
-
-            CriterionResult income =
-                    evaluatePmegpIncome(beneficiary);
-
-            CriterionResult occupation =
-                    evaluatePmegpOccupation(beneficiary);
-
-            CriterionResult category =
-                    evaluateCategory(
-                            beneficiary,
-                            scheme,
-                            20
-                    );
-
-            CriterionResult identity =
-                    evaluateIdentity(
-                            beneficiary,
-                            10
-                    );
-
-            criteria.put("ageCheck", age);
-            criteria.put("incomeCheck", income);
-            criteria.put("occupationCheck", occupation);
-            criteria.put("categoryCheck", category);
-            criteria.put("identityCheck", identity);
-
-            totalScore =
-                    age.getPoints()
-                            + income.getPoints()
-                            + occupation.getPoints()
-                            + category.getPoints()
-                            + identity.getPoints();
-
-            mandatoryConditionsPassed =
-                    age.isPassed()
-                            && income.isPassed();
-        }
-
-        else {
-            throw new EligibilityCheckException(
-                    "Unsupported scheme for eligibility scoring: "
-                            + schemeName);
-        }
+        boolean mandatoryConditionsPassed =
+                rule.mandatoryConditionsPassed(criteria);
 
         // ====================================================================
         // FINAL DECISION
@@ -276,585 +153,36 @@ public class EligibilityScoringEngine implements EligibilityService {
     }
 
     // ========================================================================
-    // PM-KISAN
+    // RULE SELECTION
     // ========================================================================
 
-    private CriterionResult evaluatePmKisanAge(
-            Beneficiary b) {
+    /**
+     * Selects the {@link EligibilityRule} that corresponds to the given scheme
+     * name.  The scheme name is matched case-insensitively and may optionally
+     * be followed by a space and additional text (e.g. "PM-KISAN 2024" still
+     * maps to {@link PmKisanEligibilityRule}).
+     *
+     * @param schemeName the name of the scheme as stored in the database
+     * @return the matching rule
+     * @throws EligibilityCheckException if no rule is registered for the scheme
+     */
+    private EligibilityRule selectRule(String schemeName) {
 
-        Integer age = b.getAge();
-
-        if (age == null) {
-            return failed("Beneficiary age not recorded");
+        if (isScheme(schemeName, PM_KISAN)) {
+            return pmKisanRule;
         }
 
-        if (age < 18 || age > 70) {
-            return failed(
-                    "Age " + age
-                            + " is outside PM-KISAN required range 18-70"
-            );
+        if (isScheme(schemeName, NSP)) {
+            return nspRule;
         }
 
-        if (age <= 30) {
-            return passed(
-                    15,
-                    "Age " + age + " → 15/15 points"
-            );
+        if (isScheme(schemeName, PMEGP)) {
+            return pmegpRule;
         }
 
-        if (age <= 45) {
-            return passed(
-                    12,
-                    "Age " + age + " → 12/15 points"
-            );
-        }
-
-        if (age <= 60) {
-            return passed(
-                    9,
-                    "Age " + age + " → 9/15 points"
-            );
-        }
-
-        return passed(
-                6,
-                "Age " + age + " → 6/15 points"
-        );
-    }
-
-    private CriterionResult evaluatePmKisanIncome(
-            Beneficiary b) {
-
-        BigDecimal income = b.getAnnualIncome();
-
-        if (income == null) {
-            return failed(
-                    "Beneficiary annual income not recorded"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("300000")) > 0) {
-
-            return failed(
-                    "Income ₹" + income
-                            + " exceeds PM-KISAN maximum ₹300000"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("100000")) <= 0) {
-
-            return passed(
-                    25,
-                    "Income ₹" + income
-                            + " → 25/25 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("150000")) <= 0) {
-
-            return passed(
-                    20,
-                    "Income ₹" + income
-                            + " → 20/25 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("200000")) <= 0) {
-
-            return passed(
-                    15,
-                    "Income ₹" + income
-                            + " → 15/25 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("250000")) <= 0) {
-
-            return passed(
-                    10,
-                    "Income ₹" + income
-                            + " → 10/25 points"
-            );
-        }
-
-        return passed(
-                5,
-                "Income ₹" + income
-                        + " → 5/25 points"
-        );
-    }
-
-    private CriterionResult evaluatePmKisanLand(
-            Beneficiary b) {
-
-        BigDecimal land = b.getLandHolding();
-
-        if (land == null) {
-            return failed(
-                    "Beneficiary land holding not recorded"
-            );
-        }
-
-        if (land.compareTo(
-                new BigDecimal("5")) > 0) {
-
-            return failed(
-                    "Land holding " + land
-                            + " acres exceeds PM-KISAN maximum 5 acres"
-            );
-        }
-
-        if (land.compareTo(
-                new BigDecimal("1")) <= 0) {
-
-            return passed(
-                    25,
-                    "Land holding " + land
-                            + " acres → 25/25 points"
-            );
-        }
-
-        if (land.compareTo(
-                new BigDecimal("2")) <= 0) {
-
-            return passed(
-                    20,
-                    "Land holding " + land
-                            + " acres → 20/25 points"
-            );
-        }
-
-        if (land.compareTo(
-                new BigDecimal("3")) <= 0) {
-
-            return passed(
-                    15,
-                    "Land holding " + land
-                            + " acres → 15/25 points"
-            );
-        }
-
-        if (land.compareTo(
-                new BigDecimal("4")) <= 0) {
-
-            return passed(
-                    10,
-                    "Land holding " + land
-                            + " acres → 10/25 points"
-            );
-        }
-
-        return passed(
-                5,
-                "Land holding " + land
-                        + " acres → 5/25 points"
-        );
-    }
-
-    private CriterionResult evaluatePmKisanOccupation(
-            Beneficiary b) {
-
-        String occupation =
-                normalise(b.getOccupation());
-
-        if (occupation.isEmpty()) {
-            return failed(
-                    "Beneficiary occupation not recorded"
-            );
-        }
-
-        if (occupation.equals("farmer")
-                || occupation.equals("agriculture")
-                || occupation.equals("agriculturist")) {
-
-            return passed(
-                    20,
-                    "Occupation Farmer → 20/20 points"
-            );
-        }
-
-        return failed(
-                "Occupation " + b.getOccupation()
-                        + " does not satisfy PM-KISAN Farmer requirement"
-        );
-    }
-
-    // ========================================================================
-    // NSP
-    // ========================================================================
-
-    private CriterionResult evaluateNspAge(
-            Beneficiary b) {
-
-        Integer age = b.getAge();
-
-        if (age == null) {
-            return failed("Beneficiary age not recorded");
-        }
-
-        if (age < 15 || age > 30) {
-            return failed(
-                    "Age " + age
-                            + " is outside NSP required range 15-30"
-            );
-        }
-
-        if (age <= 18) {
-            return passed(
-                    20,
-                    "Age " + age + " → 20/20 points"
-            );
-        }
-
-        if (age <= 22) {
-            return passed(
-                    17,
-                    "Age " + age + " → 17/20 points"
-            );
-        }
-
-        if (age <= 26) {
-            return passed(
-                    14,
-                    "Age " + age + " → 14/20 points"
-            );
-        }
-
-        return passed(
-                10,
-                "Age " + age + " → 10/20 points"
-        );
-    }
-
-    private CriterionResult evaluateNspIncome(
-            Beneficiary b) {
-
-        BigDecimal income =
-                b.getAnnualIncome();
-
-        if (income == null) {
-            return failed(
-                    "Beneficiary annual income not recorded"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("250000")) > 0) {
-
-            return failed(
-                    "Income ₹" + income
-                            + " exceeds NSP maximum ₹250000"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("100000")) <= 0) {
-
-            return passed(
-                    30,
-                    "Income ₹" + income
-                            + " → 30/30 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("150000")) <= 0) {
-
-            return passed(
-                    25,
-                    "Income ₹" + income
-                            + " → 25/30 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("200000")) <= 0) {
-
-            return passed(
-                    20,
-                    "Income ₹" + income
-                            + " → 20/30 points"
-            );
-        }
-
-        return passed(
-                10,
-                "Income ₹" + income
-                        + " → 10/30 points"
-        );
-    }
-
-    private CriterionResult evaluateNspOccupation(
-            Beneficiary b) {
-
-        String occupation =
-                normalise(b.getOccupation());
-
-        if (occupation.isEmpty()) {
-            return failed(
-                    "Beneficiary occupation not recorded"
-            );
-        }
-
-        if (occupation.equals("student")
-                || occupation.equals("studying")
-                || occupation.equals("student/learner")) {
-
-            return passed(
-                    30,
-                    "Occupation Student → 30/30 points"
-            );
-        }
-
-        return failed(
-                "Occupation " + b.getOccupation()
-                        + " does not satisfy NSP Student requirement"
-        );
-    }
-
-    // ========================================================================
-    // PMEGP
-    // ========================================================================
-
-    private CriterionResult evaluatePmegpAge(
-            Beneficiary b) {
-
-        Integer age = b.getAge();
-
-        if (age == null) {
-            return failed("Beneficiary age not recorded");
-        }
-
-        if (age < 18 || age > 55) {
-            return failed(
-                    "Age " + age
-                            + " is outside PMEGP required range 18-55"
-            );
-        }
-
-        if (age <= 25) {
-            return passed(
-                    20,
-                    "Age " + age + " → 20/20 points"
-            );
-        }
-
-        if (age <= 35) {
-            return passed(
-                    17,
-                    "Age " + age + " → 17/20 points"
-            );
-        }
-
-        if (age <= 45) {
-            return passed(
-                    14,
-                    "Age " + age + " → 14/20 points"
-            );
-        }
-
-        return passed(
-                10,
-                "Age " + age + " → 10/20 points"
-        );
-    }
-
-    private CriterionResult evaluatePmegpIncome(
-            Beneficiary b) {
-
-        BigDecimal income =
-                b.getAnnualIncome();
-
-        if (income == null) {
-            return failed(
-                    "Beneficiary annual income not recorded"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("800000")) > 0) {
-
-            return failed(
-                    "Income ₹" + income
-                            + " exceeds PMEGP maximum ₹800000"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("200000")) <= 0) {
-
-            return passed(
-                    30,
-                    "Income ₹" + income
-                            + " → 30/30 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("400000")) <= 0) {
-
-            return passed(
-                    25,
-                    "Income ₹" + income
-                            + " → 25/30 points"
-            );
-        }
-
-        if (income.compareTo(
-                new BigDecimal("600000")) <= 0) {
-
-            return passed(
-                    20,
-                    "Income ₹" + income
-                            + " → 20/30 points"
-            );
-        }
-
-        return passed(
-                10,
-                "Income ₹" + income
-                        + " → 10/30 points"
-        );
-    }
-
-    private CriterionResult evaluatePmegpOccupation(
-            Beneficiary b) {
-
-        String occupation =
-                normalise(b.getOccupation());
-
-        if (occupation.isEmpty()) {
-            return failed(
-                    "Beneficiary occupation not recorded"
-            );
-        }
-
-        return passed(
-                20,
-                "Occupation " + b.getOccupation()
-                        + " → 20/20 points"
-        );
-    }
-
-    // ========================================================================
-    // CATEGORY
-    // ========================================================================
-
-    private CriterionResult evaluateCategory(
-            Beneficiary b,
-            Scheme s,
-            int maxPoints) {
-
-        String requiredCategory =
-                normalise(s.getRequiredCategory());
-
-        if (requiredCategory.isEmpty()
-                || requiredCategory.equals("all")) {
-
-            return passed(
-                    maxPoints,
-                    "No category restriction → "
-                            + maxPoints + "/" + maxPoints + " points"
-            );
-        }
-
-        if (b.getCategory() == null) {
-            return failed(
-                    "Beneficiary category not recorded; required: "
-                            + s.getRequiredCategory()
-            );
-        }
-
-        boolean matches =
-                b.getCategory()
-                        .name()
-                        .equalsIgnoreCase(
-                                s.getRequiredCategory().trim()
-                        );
-
-        if (matches) {
-            return passed(
-                    maxPoints,
-                    "Category "
-                            + b.getCategory().name()
-                            + " matches required "
-                            + s.getRequiredCategory()
-            );
-        }
-
-        return failed(
-                "Category "
-                        + b.getCategory().name()
-                        + "; required "
-                        + s.getRequiredCategory()
-        );
-    }
-
-    // ========================================================================
-    // IDENTITY
-    // ========================================================================
-
-    private CriterionResult evaluateIdentity(
-            Beneficiary b,
-            int maxPoints) {
-
-        if (b.isIdentityVerified()) {
-
-            return passed(
-                    maxPoints,
-                    "Identity verified → "
-                            + maxPoints
-                            + "/"
-                            + maxPoints
-                            + " points"
-            );
-        }
-
-        return failed(
-                "Identity not yet verified by a Field Officer"
-        );
-    }
-
-    // ========================================================================
-    // HELPER METHODS
-    // ========================================================================
-
-    private CriterionResult passed(
-            int points,
-            String detail) {
-
-        return CriterionResult.builder()
-                .points(points)
-                .passed(true)
-                .detail(detail)
-                .build();
-    }
-
-    private CriterionResult failed(
-            String detail) {
-
-        return CriterionResult.builder()
-                .points(0)
-                .passed(false)
-                .detail(detail)
-                .build();
-    }
-
-    private String normalise(String value) {
-
-        if (value == null) {
-            return "";
-        }
-
-        return value
-                .trim()
-                .toLowerCase()
-                .replaceAll("\\s+", " ");
+        throw new EligibilityCheckException(
+                "Unsupported scheme for eligibility scoring: "
+                        + schemeName);
     }
 
     private boolean isScheme(
@@ -872,7 +200,6 @@ public class EligibilityScoringEngine implements EligibilityService {
                 || actual.startsWith(expected + " ");
     }
 
-        
     // ========================================================================
     // RESPONSE MAPPING
     // ========================================================================
