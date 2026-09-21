@@ -1570,7 +1570,9 @@ function ApplicationReview({
 
     const canFinanceApprove =
         officerRole === ROLES.FINANCE_APPROVER &&
-        app.applicationStatus === 'DISTRICT_APPROVED' &&
+        ['FIELD_APPROVED', 'DISTRICT_APPROVED'].includes(
+            app.applicationStatus
+        ) &&
         totalCriteria > 0 &&
         verifiedCount === totalCriteria;
 
