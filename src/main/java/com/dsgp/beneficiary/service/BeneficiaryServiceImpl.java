@@ -388,10 +388,14 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
         }
 
         if (request.getCategory() != null) {
-            beneficiary.setCategory(
-                    request.getCategory()
-            );
+            beneficiary.setCategory(request.getCategory());
         }
+
+        if (request.getOccupation() != null) {
+            beneficiary.setOccupation(request.getOccupation());
+        }
+
+
 
         /*
          * Government ID / Aadhaar is intentionally not updated
@@ -739,47 +743,33 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
         );
     }
 
-    private BeneficiaryResponse mapToResponse(
-            Beneficiary b) {
-
+    private BeneficiaryResponse mapToResponse(Beneficiary b) {
         return BeneficiaryResponse.builder()
                 .id(b.getId())
-
-                // Legacy fields
                 .fullName(b.getFullName())
                 .govId(b.getGovId())
                 .contact(b.getContact())
-
-                // Extended fields
-                .firstName(b.getFirstName())
-                .lastName(b.getLastName())
-                .dateOfBirth(b.getDateOfBirth())
-                .gender(b.getGender())
-                .aadhaarNumber(b.getAadhaarNumber())
-                .mobileNumber(b.getMobileNumber())
-
                 .email(b.getEmail())
                 .age(b.getAge())
                 .address(b.getAddress())
                 .schemeName(b.getSchemeName())
-
+                .occupation(b.getOccupation())
+                .aadhaarNumber(b.getAadhaarNumber())
+                .mobileNumber(b.getMobileNumber())
+                .firstName(b.getFirstName())
+                .lastName(b.getLastName())
+                .dateOfBirth(b.getDateOfBirth())
+                .gender(b.getGender())
                 .village(b.getVillage())
                 .taluka(b.getTaluka())
                 .district(b.getDistrict())
                 .state(b.getState())
                 .pinCode(b.getPinCode())
-
                 .annualIncome(b.getAnnualIncome())
                 .landHolding(b.getLandHolding())
                 .category(b.getCategory())
-
-                .registrationStatus(
-                        b.getRegistrationStatus()
-                )
-                .identityVerified(
-                        b.isIdentityVerified()
-                )
-
+                .registrationStatus(b.getRegistrationStatus())
+                .identityVerified(b.isIdentityVerified())
                 .build();
     }
 

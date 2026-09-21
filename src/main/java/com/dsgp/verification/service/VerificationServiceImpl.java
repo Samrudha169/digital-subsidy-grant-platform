@@ -33,6 +33,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+
+import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
+import com.dsgp.beneficiary.entity.DocumentType;
 
 @Service
 @RequiredArgsConstructor
@@ -63,6 +67,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final EligibilityResultRepository eligibilityResultRepository;
     private final VerificationRecordRepository verificationRecordRepository;
     private final VerificationCriterionRepository verificationCriterionRepository;
+    private final BeneficiaryDocumentRepository documentRepository;
 
     // ========================================================================
     // ROUTING THRESHOLDS  (configurable via application.properties)
@@ -263,11 +268,11 @@ public class VerificationServiceImpl implements VerificationService {
 
         String defaultRemarks = STATUS_FIELD_APPROVED.equals(nextStatus)
                 ? "All Field criteria verified. Routed directly to Finance "
-                        + "(score=" + eligibility.getTotalScore()
-                        + ", grant=" + application.getScheme().getGrantAmount() + ")."
+                + "(score=" + eligibility.getTotalScore()
+                + ", grant=" + application.getScheme().getGrantAmount() + ")."
                 : "All Field criteria verified. Escalated to District Officer "
-                        + "(score=" + eligibility.getTotalScore()
-                        + ", grant=" + application.getScheme().getGrantAmount() + ").";
+                + "(score=" + eligibility.getTotalScore()
+                + ", grant=" + application.getScheme().getGrantAmount() + ").";
 
         recordAction(
                 application,
@@ -816,6 +821,19 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
 
+        if (request.getStatus() == VerificationCriterionStatus.FAILED
+                && (request.getRemarks() == null
+                || request.getRemarks().isBlank())) {
+
+            throw new InvalidVerificationTransitionException(
+                    "Remarks are required when rejecting a criterion."
+            );
+        }
+
+        if (request.getStatus() == VerificationCriterionStatus.VERIFIED) {
+            validateRequiredProof(application, criterion);
+        }
+
         criterion.setStatus(
                 request.getStatus()
         );
@@ -897,6 +915,12 @@ public class VerificationServiceImpl implements VerificationService {
                 OfficerRole.DISTRICT_OFFICER,
                 "Only a District Officer can approve at District level."
         );
+
+        // ------------------------------------------------------------
+        // Ensure District criteria exist before validation
+        // ------------------------------------------------------------
+
+        createDistrictCriteria(application);
 
         // ------------------------------------------------------------
         // All District criteria must be VERIFIED
@@ -1037,6 +1061,12 @@ public class VerificationServiceImpl implements VerificationService {
         );
 
         // ------------------------------------------------------------
+        // Ensure Finance criteria exist before validation
+        // ------------------------------------------------------------
+
+        createFinanceCriteria(application);
+
+        // ------------------------------------------------------------
         // All Finance criteria must be VERIFIED
         // ------------------------------------------------------------
 
@@ -1089,12 +1119,13 @@ public class VerificationServiceImpl implements VerificationService {
         SchemeApplication application =
                 requireApplication(applicationId);
 
-        requireStatus(
+        requireStatusOneOf(
                 application,
-                STATUS_DISTRICT_APPROVED,
-                "Finance rejection requires status DISTRICT_APPROVED. " +
-                        "Current status: " +
-                        application.getApplicationStatus()
+                "Finance rejection requires status FIELD_APPROVED or " +
+                        "DISTRICT_APPROVED. Current status: " +
+                        application.getApplicationStatus(),
+                STATUS_FIELD_APPROVED,
+                STATUS_DISTRICT_APPROVED
         );
 
         Officer officer =
@@ -1139,11 +1170,9 @@ public class VerificationServiceImpl implements VerificationService {
     // CREATE FIELD CRITERIA
     // ========================================================================
 
-    private void createFieldCriteria(
-            SchemeApplication application) {
+    private void createFieldCriteria(SchemeApplication application) {
 
-        Long applicationId =
-                application.getId();
+        Long applicationId = application.getId();
 
         List<VerificationCriterion> existing =
                 verificationCriterionRepository
@@ -1156,85 +1185,33 @@ public class VerificationServiceImpl implements VerificationService {
             return;
         }
 
-        /*
-         * Field Officer has exactly 6 criteria.
-         *
-         * These are the criteria already used in the
-         * current application workflow.
-         */
+        List<VerificationCriterion> criteria = new ArrayList<>();
 
-        List<VerificationCriterion> criteria =
-                new ArrayList<>();
+        // 1. Identity Verification
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FIELD,
+                "IDENTITY_PROOF",
+                "Verify the beneficiary identity using the submitted Identity Proof"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FIELD,
-                        "IDENTITY_ADDRESS",
-                        "Identity & Address Verification"
-                )
-        );
+        // 2. Address Verification
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FIELD,
+                "ADDRESS_PROOF",
+                "Verify the beneficiary address using the submitted Address Proof"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FIELD,
-                        "INCOME",
-                        "Income document verified"
-                )
-        );
+        // 3. Document Completeness
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FIELD,
+                "DOCUMENT_COMPLETENESS",
+                "Review all supporting documents submitted with the application"
+        ));
 
-        if ("PM-KISAN".equalsIgnoreCase(
-                application.getScheme().getSchemeName())) {
-
-            criteria.add(
-                    buildCriterion(
-                            application,
-                            VerificationStage.FIELD,
-                            "LAND",
-                            "Land ownership/holding verified"
-                    )
-            );
-        }
-
-        String occupation = application.getBeneficiary().getOccupation();
-
-        if (occupation != null &&
-                (occupation.equalsIgnoreCase("Farmer")
-                        || occupation.equalsIgnoreCase("Business Owner")
-                        || occupation.equalsIgnoreCase("Self Employed"))) {
-
-            criteria.add(
-                    buildCriterion(
-                            application,
-                            VerificationStage.FIELD,
-                            "LAND",
-                            "Land ownership/holding verified"
-                    )
-            );
-        }
-
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FIELD,
-                        "CATEGORY",
-                        "Category certificate/details verified"
-                )
-        );
-
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FIELD,
-                        "DOCUMENTS",
-                        "Required Documents Complete"
-                )
-        );
-
-        verificationCriterionRepository.saveAll(
-                criteria
-        );
+        verificationCriterionRepository.saveAll(criteria);
 
         log.info(
                 "Created {} FIELD criteria for applicationId={}",
@@ -1250,8 +1227,7 @@ public class VerificationServiceImpl implements VerificationService {
     private void createDistrictCriteria(
             SchemeApplication application) {
 
-        Long applicationId =
-                application.getId();
+        Long applicationId = application.getId();
 
         List<VerificationCriterion> existing =
                 verificationCriterionRepository
@@ -1264,44 +1240,65 @@ public class VerificationServiceImpl implements VerificationService {
             return;
         }
 
-        /*
-         * District Officer has criteria that are different
-         * from Field Officer criteria.
-         */
+        List<VerificationCriterion> criteria = new ArrayList<>();
 
-        List<VerificationCriterion> criteria =
-                new ArrayList<>();
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "JURISDICTION",
+                "Verify district jurisdiction"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.DISTRICT,
-                        "JURISDICTION",
-                        "District Jurisdiction Verified"
-                )
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "FIELD_REPORT_REVIEW",
+                "Review Field Officer report and visit details"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.DISTRICT,
-                        "FIELD_REVIEW",
-                        "Field Verification Review"
-                )
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "SCHEME_ELIGIBILITY",
+                "Verify scheme eligibility and supporting documents"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.DISTRICT,
-                        "SCHEME_REVIEW",
-                        "Scheme and Application Details Verified"
-                )
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "ANNUAL_INCOME",
+                "Verify annual income and income certificate"
+        ));
 
-        verificationCriterionRepository.saveAll(
-                criteria
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "CATEGORY_VERIFICATION",
+                "Verify category and category certificate"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "AGE_PROOF",
+                "Verify age using government identity document"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "PREVIOUS_SUBSIDY",
+                "Check previous subsidy records"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.DISTRICT,
+                "DUPLICATE_APPLICATION",
+                "Check duplicate applications and beneficiary records"
+        ));
+
+        verificationCriterionRepository.saveAll(criteria);
 
         log.info(
                 "Created {} DISTRICT criteria for applicationId={}",
@@ -1317,8 +1314,7 @@ public class VerificationServiceImpl implements VerificationService {
     private void createFinanceCriteria(
             SchemeApplication application) {
 
-        Long applicationId =
-                application.getId();
+        Long applicationId = application.getId();
 
         List<VerificationCriterion> existing =
                 verificationCriterionRepository
@@ -1331,44 +1327,72 @@ public class VerificationServiceImpl implements VerificationService {
             return;
         }
 
-        /*
-         * Finance Approver has criteria that are different
-         * from Field and District criteria.
-         */
+        List<VerificationCriterion> criteria = new ArrayList<>();
 
-        List<VerificationCriterion> criteria =
-                new ArrayList<>();
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "DISTRICT_APPROVAL",
+                "Verify District Officer approval"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FINANCE,
-                        "DISTRICT_APPROVAL",
-                        "District Approval Verified"
-                )
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "BANK_OWNERSHIP",
+                "Verify bank account ownership using passbook or cancelled cheque"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FINANCE,
-                        "GRANT_AMOUNT",
-                        "Grant Amount Verified"
-                )
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "ACCOUNT_NUMBER",
+                "Verify beneficiary account number"
+        ));
 
-        criteria.add(
-                buildCriterion(
-                        application,
-                        VerificationStage.FINANCE,
-                        "PAYMENT_DETAILS",
-                        "Payment Details Verified"
-                )
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "IFSC_VERIFICATION",
+                "Verify IFSC code using bank document"
+        ));
 
-        verificationCriterionRepository.saveAll(
-                criteria
-        );
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "BENEFICIARY_ACCOUNT_MATCH",
+                "Verify bank account belongs to beneficiary"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "GRANT_AMOUNT",
+                "Verify sanctioned amount and scheme calculation"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "BUDGET_AVAILABILITY",
+                "Verify budget availability"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "PREVIOUS_PAYMENT",
+                "Check previous payment records"
+        ));
+
+        criteria.add(buildCriterion(
+                application,
+                VerificationStage.FINANCE,
+                "PAYMENT_ELIGIBILITY",
+                "Verify payment eligibility"
+        ));
+
+        verificationCriterionRepository.saveAll(criteria);
 
         log.info(
                 "Created {} FINANCE criteria for applicationId={}",
@@ -1397,6 +1421,79 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     // ========================================================================
+    // REQUIRED DOCUMENT VALIDATION
+    // ========================================================================
+
+    private void validateRequiredProof(
+            SchemeApplication application,
+            VerificationCriterion criterion) {
+
+        Long beneficiaryId = application.getBeneficiary().getId().longValue();
+        String code = criterion.getCriterionCode();
+        DocumentType requiredDocument = null;
+
+        switch (code) {
+            case "IDENTITY_PROOF":
+            case "AGE_PROOF":
+                requiredDocument = DocumentType.IDENTITY_PROOF;
+                break;
+
+            case "ADDRESS_PROOF":
+                requiredDocument = DocumentType.ADDRESS_PROOF;
+                break;
+
+            case "INCOME_PROOF":
+            case "ANNUAL_INCOME":
+                requiredDocument = DocumentType.INCOME_CERTIFICATE;
+                break;
+
+            case "CATEGORY_PROOF":
+            case "CATEGORY_VERIFICATION":
+                requiredDocument = DocumentType.CATEGORY_CERTIFICATE;
+                break;
+
+            case "LAND_PROOF":
+            case "LAND_OWNERSHIP":
+                requiredDocument = DocumentType.LAND_RECORD;
+                break;
+
+            case "OCCUPATION_PROOF":
+            case "OCCUPATION_VERIFICATION":
+                requiredDocument = DocumentType.OCCUPATION_PROOF;
+                break;
+
+            case "BANK_OWNERSHIP":
+            case "ACCOUNT_NUMBER":
+            case "IFSC_VERIFICATION":
+            case "BENEFICIARY_ACCOUNT_MATCH":
+                requiredDocument = DocumentType.BANK_ACCOUNT_PROOF;
+                break;
+
+            default:
+                break;
+        }
+
+        if (requiredDocument == null) {
+            return;
+        }
+
+        boolean documentExists =
+                documentRepository.existsByBeneficiaryIdAndDocumentType(
+                        beneficiaryId,
+                        requiredDocument
+                );
+
+        if (!documentExists) {
+            throw new InvalidVerificationTransitionException(
+                    "Cannot verify criterion '"
+                            + criterion.getCriterionName()
+                            + "'. Required document is missing: "
+                            + requiredDocument.name()
+            );
+        }
+    }
+
+    // ========================================================================
     // ENSURE ALL CRITERIA VERIFIED
     // ========================================================================
 
@@ -1411,32 +1508,55 @@ public class VerificationServiceImpl implements VerificationService {
                                 stage
                         );
 
-        if (criteria == null || criteria.isEmpty()) {
-
-            throw new InvalidVerificationTransitionException(
-                    "No " +
-                            stage.name() +
-                            " verification criteria have been created."
-            );
+        if (criteria == null) {
+            criteria = new ArrayList<>();
         }
 
-        List<VerificationCriterion> notVerified =
-                criteria.stream()
-                        .filter(c ->
-                                c.getStatus()
-                                        != VerificationCriterionStatus.VERIFIED
-                        )
-                        .toList();
+        // Remove only unwanted legacy FIELD criteria.
+        // Keep criteria with missing codes because unit tests may use mocks.
+        if (stage == VerificationStage.FIELD) {
 
-        if (!notVerified.isEmpty()) {
+            criteria = criteria.stream()
+                    .filter(c -> {
+
+                        String code = c.getCriterionCode();
+                        String name = c.getCriterionName();
+
+                        if ((code == null || code.isBlank())
+                                && (name == null || name.isBlank())) {
+                            return true;
+                        }
+
+                        String text = (
+                                (code == null ? "" : code)
+                                        + " "
+                                        + (name == null ? "" : name)
+                        ).toUpperCase();
+
+                        return !text.contains("INCOME")
+                                && !text.contains("CATEGORY")
+                                && !text.contains("LAND");
+                    })
+                    .toList();
+        }
+
+        int totalCriteria = criteria.size();
+
+        long verifiedCriteria = criteria.stream()
+                .filter(c ->
+                        c.getStatus() == VerificationCriterionStatus.VERIFIED
+                )
+                .count();
+
+        if (verifiedCriteria != totalCriteria || totalCriteria == 0) {
 
             throw new InvalidVerificationTransitionException(
-                    stage.name() +
-                            " Officer cannot approve until all verification " +
-                            "criteria are VERIFIED. Verified: " +
-                            (criteria.size() - notVerified.size()) +
-                            "/" +
-                            criteria.size()
+                    stage.name()
+                            + " Officer cannot approve until all verification "
+                            + "criteria are VERIFIED. Verified: "
+                            + verifiedCriteria
+                            + "/"
+                            + totalCriteria
             );
         }
     }
