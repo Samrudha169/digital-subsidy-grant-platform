@@ -137,6 +137,7 @@ const SCHEME_DOCUMENTS = {
     ],
 
     'PMEGP': [
+        { type:'LAND_RECORD', label:'Land Record / 7-12 Extract' },
         { type: 'OCCUPATION_PROOF', label: 'Business / Work Experience Proof' },
         { type: 'SCHEME_SPECIFIC_DOCUMENT', label: 'Business Project Report' },
         { type: 'OTHER_SUPPORTING_DOCUMENT', label: 'Training / Skill Certificate' },
@@ -193,6 +194,7 @@ function Eligibility() {
     const [applicationLoading, setApplicationLoading] = useState(false);
     const [applicationResult, setApplicationResult] = useState(null);
     const [applicationError, setApplicationError] = useState('');
+    const [applicationSubmitted, setApplicationSubmitted] = useState(false);
 
     /*
      * Document upload state — keyed by document type string.
@@ -213,6 +215,12 @@ function Eligibility() {
          */
         const storedBeneficiaryId =
             localStorage.getItem('beneficiaryId');
+
+        if (storedBeneficiaryId) {
+            loadExistingDocuments(
+                parseInt(storedBeneficiaryId, 10)
+            );
+        }
 
         if (!storedBeneficiaryId) {
             setLiveError(
@@ -251,6 +259,28 @@ function Eligibility() {
             schemeId:
                 selectedSchemeId || previous.schemeId,
         }));
+
+        if (storedBeneficiaryId && selectedSchemeId) {
+
+            const savedApplication =
+                localStorage.getItem(
+                    `application_${storedBeneficiaryId}_${selectedSchemeId}`
+                );
+
+            if (savedApplication) {
+                try {
+                    const savedData = JSON.parse(savedApplication);
+
+                    setApplicationResult(savedData);
+                    setApplicationSubmitted(true);
+                } catch {
+                    localStorage.removeItem(
+                        `application_${storedBeneficiaryId}_${selectedSchemeId}`
+                    );
+                }
+            }
+        }
+
 
         /*
          * When user comes from:
@@ -424,6 +454,49 @@ function Eligibility() {
     };
 
 
+    const loadExistingDocuments = async (beneficiaryId) => {
+
+        try {
+
+            const res = await fetch(
+                `${API_BASE}/beneficiaries/${beneficiaryId}/documents`
+            );
+
+            if (!res.ok) return;
+
+            const documents = await res.json();
+
+            if (!Array.isArray(documents)) return;
+
+            const existingUploads = {};
+
+            documents.forEach((doc) => {
+
+                if (!doc.documentType) return;
+
+                existingUploads[doc.documentType] = {
+                    file: {
+                        name:
+                            doc.originalFileName ||
+                            doc.fileName ||
+                            'Uploaded document',
+                    },
+                    status: 'done',
+                    error: '',
+                };
+            });
+
+            setDocUploads(existingUploads);
+
+        } catch (err) {
+
+            console.error(
+                'Failed to load existing documents:',
+                err
+            );
+        }
+    };
+
     /* ════════════════════════════════════════════════════════════
        DOCUMENT UPLOAD — single file upload per document type
     ════════════════════════════════════════════════════════════ */
@@ -525,6 +598,12 @@ function Eligibility() {
             }
 
             setApplicationResult(data);
+            setApplicationSubmitted(true);
+
+            localStorage.setItem(
+                `application_${liveForm.beneficiaryId}_${liveForm.schemeId}`,
+                JSON.stringify(data)
+            );
 
         } catch (err) {
 
@@ -581,6 +660,7 @@ function Eligibility() {
         setLiveError('');
         setLiveValidation({});
         setApplicationResult(null);
+        setApplicationSubmitted(false);
         setApplicationError('');
         setDocUploads({});
     };
@@ -1670,7 +1750,7 @@ function Eligibility() {
 
 
                                         {/* Required document upload section */}
-                                        {(() => {
+                                        {!applicationSubmitted && (() => {
                                             const schemeKey = resolveSchemeKey(liveResult.schemeName);
                                             const requiredDocs = getRequiredDocs(schemeKey);
                                             if (requiredDocs.length === 0) return null;
@@ -1788,7 +1868,7 @@ function Eligibility() {
 
 
                                             {/* Submit Application — gated on all docs uploaded */}
-                                            {(() => {
+                                            {!applicationSubmitted && (() => {
                                                 const schemeKey = resolveSchemeKey(liveResult.schemeName);
                                                 const requiredDocs = getRequiredDocs(schemeKey)
                                                 const allDone = requiredDocs.length === 0 ||

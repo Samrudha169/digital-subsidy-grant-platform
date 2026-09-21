@@ -34,6 +34,7 @@ public class BeneficiaryResponse {
     private Integer age;
     private String address;
     private String schemeName;
+    private String occupation;
 
     // ── Extended identity fields (Milestone 2) ──────────────────────────────
 

@@ -13,7 +13,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,20 +22,7 @@ import java.util.List;
 /**
  * REST controller for beneficiary management.
  *
- * <p>Base path: {@code /beneficiaries} (full path: {@code /api/v1/beneficiaries}).
- *
- * <p>Milestone 1 endpoints (POST, GET, DELETE) are preserved unchanged.
- * The PUT endpoint now accepts {@link BeneficiaryUpdateRequest} — a
- * patch-style DTO with optional fields — replacing the previous full-payload
- * requirement. This allows callers to update only the fields they need,
- * including extended eligibility fields.
- *
- * <p>Milestone 2 additions:
- * <ul>
- *   <li>{@code POST   /beneficiaries/{id}/documents}       — upload a document</li>
- *   <li>{@code GET    /beneficiaries/{id}/documents}       — list documents</li>
- *   <li>{@code PATCH  /beneficiaries/{id}/verify-identity} — Field Officer marks identity verified</li>
- * </ul>
+ * Base path: /api/v1/beneficiaries
  */
 @RestController
 @RequestMapping("/beneficiaries")
@@ -45,9 +31,9 @@ public class BeneficiaryController {
 
     private final BeneficiaryService beneficiaryService;
 
-    // ── POST /beneficiaries ─────────────────────────────────────────────────
-    // Milestone 1 behaviour preserved. Request now also accepts optional
-    // eligibility fields (annualIncome, landHolding, category, etc.).
+    // ============================================================
+    // REGISTER BENEFICIARY
+    // ============================================================
 
     @PostMapping
     public ResponseEntity<BeneficiaryResponse> registerBeneficiary(
@@ -58,147 +44,226 @@ public class BeneficiaryController {
                 .body(beneficiaryService.registerBeneficiary(request));
     }
 
-    // ── GET /beneficiaries/{id} ─────────────────────────────────────────────
+    // ============================================================
+    // GET BENEFICIARY BY ID
+    // ============================================================
 
     @GetMapping("/{id}")
     public ResponseEntity<BeneficiaryResponse> getBeneficiaryById(
             @PathVariable Integer id) {
 
-        return ResponseEntity.ok(beneficiaryService.getBeneficiaryById(id));
+        return ResponseEntity.ok(
+                beneficiaryService.getBeneficiaryById(id)
+        );
     }
 
-    // ── GET /beneficiaries/gov-id/{govId} ──────────────────────────────────
+    // ============================================================
+    // GET BENEFICIARY BY GOVERNMENT ID
+    // ============================================================
 
     @GetMapping("/gov-id/{govId}")
     public ResponseEntity<BeneficiaryResponse> getBeneficiaryByGovId(
             @PathVariable String govId) {
 
-        return ResponseEntity.ok(beneficiaryService.getBeneficiaryByGovId(govId));
+        return ResponseEntity.ok(
+                beneficiaryService.getBeneficiaryByGovId(govId)
+        );
     }
 
-    // ── GET /beneficiaries ──────────────────────────────────────────────────
+    // ============================================================
+    // GET ALL BENEFICIARIES
+    // ============================================================
 
     @GetMapping
     public ResponseEntity<List<BeneficiaryResponse>> getAllBeneficiaries() {
 
-        return ResponseEntity.ok(beneficiaryService.getAllBeneficiaries());
+        return ResponseEntity.ok(
+                beneficiaryService.getAllBeneficiaries()
+        );
     }
 
-    // ── PUT /beneficiaries/{id} ─────────────────────────────────────────────
-    // Changed from BeneficiaryRegistrationRequest to BeneficiaryUpdateRequest.
-    // All fields optional — only non-null values are applied (patch semantics).
+    // ============================================================
+    // PUT PROFILE UPDATE
+    // ============================================================
 
     @PutMapping("/{id}")
     public ResponseEntity<BeneficiaryResponse> updateBeneficiary(
             @PathVariable Integer id,
             @Valid @RequestBody BeneficiaryUpdateRequest request) {
 
-        return ResponseEntity.ok(beneficiaryService.updateBeneficiary(id, request));
+        return ResponseEntity.ok(
+                beneficiaryService.updateBeneficiary(id, request)
+        );
     }
 
-    // ── DELETE /beneficiaries/{id} ──────────────────────────────────────────
+    // ============================================================
+    // PATCH PROFILE UPDATE
+    // ============================================================
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<BeneficiaryResponse> patchBeneficiary(
+            @PathVariable Integer id,
+            @Valid @RequestBody BeneficiaryUpdateRequest request) {
+
+        return ResponseEntity.ok(
+                beneficiaryService.updateBeneficiary(id, request)
+        );
+    }
+
+    // ============================================================
+    // DELETE BENEFICIARY
+    // ============================================================
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteBeneficiary(
             @PathVariable Integer id) {
 
         beneficiaryService.deleteBeneficiary(id);
+
         return ResponseEntity.noContent().build();
     }
 
-    // ── POST /beneficiaries/{id}/documents ──────────────────────────────────
+    // ============================================================
+    // UPLOAD DOCUMENT
+    // ============================================================
 
-    /**
-     * Uploads a document for a beneficiary.
-     * Accepts multipart/form-data with the file and documentType parameter.
-     *
-     * @param id           beneficiary primary key
-     * @param file         the file binary
-     * @param documentType one of AADHAAR, PAN, LAND_RECORD, INCOME_CERTIFICATE, PHOTO, OTHER
-     * @param uploadedBy   officer or beneficiary username performing the upload
-     */
-    @PostMapping(value = "/{id}/documents", consumes = "multipart/form-data")
+    @PostMapping(
+            value = "/{id}/documents",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
     public ResponseEntity<DocumentResponse> uploadDocument(
             @PathVariable Integer id,
             @RequestParam("file") MultipartFile file,
             @RequestParam("documentType") DocumentType documentType,
-            @RequestParam(value = "uploadedBy", required = false) String uploadedBy)
-            throws IOException {
+            @RequestParam(value = "uploadedBy", required = false)
+            String uploadedBy
+    ) throws IOException {
 
-        DocumentResponse response = beneficiaryService.uploadDocument(id, file, documentType, uploadedBy);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        DocumentResponse response =
+                beneficiaryService.uploadDocument(
+                        id,
+                        file,
+                        documentType,
+                        uploadedBy
+                );
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
-    // ── GET /beneficiaries/{id}/documents ───────────────────────────────────
+    // ============================================================
+    // GET BENEFICIARY DOCUMENTS
+    // ============================================================
 
-    /**
-     * Returns all documents uploaded for a beneficiary.
-     */
     @GetMapping("/{id}/documents")
     public ResponseEntity<List<DocumentResponse>> getDocuments(
             @PathVariable Integer id) {
 
-        return ResponseEntity.ok(beneficiaryService.getDocuments(id));
+        return ResponseEntity.ok(
+                beneficiaryService.getDocuments(id)
+        );
     }
 
-    // ── PATCH /beneficiaries/{id}/verify-identity ───────────────────────────
+    // ============================================================
+    // VERIFY IDENTITY
+    // ============================================================
 
-    /**
-     * Marks a beneficiary's identity as verified by a Field Officer.
-     * A beneficiary must NOT call this on themselves — only officers may.
-     *
-     * <p>After this call, the eligibility engine's {@code identityCheck}
-     * criterion will award 10 points when re-run.
-     *
-     * @param id          beneficiary primary key
-     * @param verifiedBy  the officer's username (request param — no JWT in M2)
-     */
     @PatchMapping("/{id}/verify-identity")
     public ResponseEntity<BeneficiaryResponse> verifyIdentity(
             @PathVariable Integer id,
             @RequestParam("verifiedBy") String verifiedBy) {
 
-        return ResponseEntity.ok(beneficiaryService.verifyIdentity(id, verifiedBy));
+        return ResponseEntity.ok(
+                beneficiaryService.verifyIdentity(
+                        id,
+                        verifiedBy
+                )
+        );
     }
 
-    // ── GET /beneficiaries/{id}/documents/{documentId}/download ─────────
+    // ============================================================
+    // GET SINGLE DOCUMENT
+    // ============================================================
 
-    /**
-     * Streams the raw file bytes for a specific document belonging to a beneficiary.
-     * Sets Content-Disposition: inline so PDF/image files open in the browser;
-     * other types fall back to attachment (download).
-     *
-     * @param id         beneficiary primary key
-     * @param documentId document primary key
-     */
+    @GetMapping("/{id}/documents/{documentId}")
+    public ResponseEntity<DocumentResponse> getDocumentById(
+            @PathVariable Integer id,
+            @PathVariable Long documentId) {
+
+        return ResponseEntity.ok(
+                beneficiaryService.getDocumentById(
+                        id,
+                        documentId
+                )
+        );
+    }
+
+    // ============================================================
+    // DOWNLOAD DOCUMENT
+    // ============================================================
+
     @GetMapping("/{id}/documents/{documentId}/download")
     public ResponseEntity<byte[]> downloadDocument(
             @PathVariable Integer id,
-            @PathVariable Long documentId) throws IOException {
+            @PathVariable Long documentId
+    ) throws IOException {
 
-        // Fetch metadata first to get MIME type and filename
-        DocumentResponse meta = beneficiaryService.getDocumentById(id, documentId);
-        byte[] bytes = beneficiaryService.downloadDocument(id, documentId);
+        DocumentResponse meta =
+                beneficiaryService.getDocumentById(
+                        id,
+                        documentId
+                );
 
-        String mimeType = meta.getMimeType() != null ? meta.getMimeType() : "application/octet-stream";
+        byte[] bytes =
+                beneficiaryService.downloadDocument(
+                        id,
+                        documentId
+                );
+
+        String mimeType =
+                meta.getMimeType() != null
+                        ? meta.getMimeType()
+                        : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+
         MediaType mediaType;
+
         try {
             mediaType = MediaType.parseMediaType(mimeType);
         } catch (Exception e) {
             mediaType = MediaType.APPLICATION_OCTET_STREAM;
         }
 
-        // Inline for viewable types (PDF, images); attachment for everything else
-        boolean inline = mimeType.startsWith("image/") || mimeType.equals("application/pdf");
-        ContentDisposition disposition = inline
-                ? ContentDisposition.inline().filename(meta.getOriginalFileName()).build()
-                : ContentDisposition.attachment().filename(meta.getOriginalFileName()).build();
+        String originalFileName =
+                meta.getOriginalFileName() != null
+                        ? meta.getOriginalFileName()
+                        : "document";
+
+        boolean inline =
+                mimeType.startsWith("image/")
+                        || mimeType.equals("application/pdf");
+
+        ContentDisposition disposition =
+                inline
+                        ? ContentDisposition
+                        .inline()
+                        .filename(originalFileName)
+                        .build()
+                        : ContentDisposition
+                        .attachment()
+                        .filename(originalFileName)
+                        .build();
 
         HttpHeaders headers = new HttpHeaders();
+
         headers.setContentType(mediaType);
         headers.setContentDisposition(disposition);
         headers.setContentLength(bytes.length);
 
-        return new ResponseEntity<>(bytes, headers, HttpStatus.OK);
+        return new ResponseEntity<>(
+                bytes,
+                headers,
+                HttpStatus.OK
+        );
     }
 }

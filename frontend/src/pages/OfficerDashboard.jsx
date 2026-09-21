@@ -14,11 +14,7 @@ const ROLES = {
 
 const ROLE_STATUSES = {
     [ROLES.FIELD_OFFICER]: ['PENDING', 'UNDER_REVIEW'],
-    // District Officers work on ESCALATED applications (automatic routing sends
-    // non-direct applications to ESCALATED, not FIELD_APPROVED).
-    [ROLES.DISTRICT_OFFICER]: ['ESCALATED', 'FIELD_APPROVED'],
-    // Finance Approvers work on FIELD_APPROVED (direct route) and
-    // DISTRICT_APPROVED (escalated route after District review).
+    [ROLES.DISTRICT_OFFICER]: ['ESCALATED'],
     [ROLES.FINANCE_APPROVER]: ['FIELD_APPROVED', 'DISTRICT_APPROVED'],
 };
 
@@ -27,6 +23,69 @@ const ROLE_LABELS = {
     [ROLES.DISTRICT_OFFICER]: 'District Officer',
     [ROLES.FINANCE_APPROVER]: 'Finance Approver',
 };
+
+
+const ROLE_VISIBLE_DOCUMENT_TYPES = {
+    [ROLES.FIELD_OFFICER]: [
+        'IDENTITY_PROOF',
+        'ADDRESS_PROOF',
+        'LAND_RECORD',
+        'OCCUPATION_PROOF',
+    ],
+    [ROLES.DISTRICT_OFFICER]: [
+        'IDENTITY_PROOF',
+        'ADDRESS_PROOF',
+        'INCOME_CERTIFICATE',
+        'CATEGORY_CERTIFICATE',
+        'LAND_RECORD',
+        'OCCUPATION_PROOF',
+    ],
+    [ROLES.FINANCE_APPROVER]: [
+        'BANK_ACCOUNT_PROOF',
+        'IDENTITY_PROOF',
+    ],
+};
+
+const ROLE_HIDDEN_CRITERION_CODES = {
+    [ROLES.FIELD_OFFICER]: new Set([
+        'INCOME_PROOF',
+        'ANNUAL_INCOME',
+        'CATEGORY_PROOF',
+        'CATEGORY_VERIFICATION',
+    ]),
+    [ROLES.DISTRICT_OFFICER]: new Set(),
+    [ROLES.FINANCE_APPROVER]: new Set(),
+};
+
+function isDocumentVisibleToRole(document, officerRole, schemeName = '') {
+    const type = String(document?.documentType || '').toUpperCase();
+    const scheme = String(schemeName || '').toUpperCase();
+
+    if (
+        officerRole === ROLES.FIELD_OFFICER &&
+        scheme.includes('NSP') &&
+        type === 'LAND_RECORD'
+    ) {
+        return false;
+    }
+
+    return (ROLE_VISIBLE_DOCUMENT_TYPES[officerRole] || []).includes(type);
+}
+
+function isCriterionVisibleToRole(criterion, officerRole, schemeName = '') {
+    const code = String(criterion?.criterionCode || '').toUpperCase();
+    const scheme = String(schemeName || '').toUpperCase();
+
+    if (
+        officerRole === ROLES.FIELD_OFFICER &&
+        scheme.includes('NSP') &&
+        code.includes('LAND')
+    ) {
+        return false;
+    }
+
+    return !(ROLE_HIDDEN_CRITERION_CODES[officerRole] || new Set()).has(code);
+}
 
 const STATUS_CLASS = {
     PENDING: 'status-pending',
@@ -57,10 +116,33 @@ const FIELD_PROOF_CONFIG = {
         title: 'Identity & Address Verification',
         description:
             'Verify the beneficiary identity using Identity Proof and address using Address Proof.',
-        documentTypes: ['IDENTITY_PROOF', 'ADDRESS_PROOF'],
-        documentLabel: 'Identity Proof / Address Proof',
+        documentTypes: [
+            'IDENTITY_PROOF',
+            'ADDRESS_PROOF',
+        ],
+        documentLabel: 'Identity & Address Proof',
         type: 'DOCUMENT',
         icon: '🪪',
+    },
+
+    IDENTITY: {
+        title: 'Identity Verification',
+        description:
+            'Verify the beneficiary identity using the submitted Identity Proof.',
+        documentTypes: ['IDENTITY_PROOF'],
+        documentLabel: 'Identity Proof',
+        type: 'DOCUMENT',
+        icon: '🪪',
+    },
+
+    ADDRESS: {
+        title: 'Address Verification',
+        description:
+            'Verify the beneficiary address using the submitted Address Proof.',
+        documentTypes: ['ADDRESS_PROOF'],
+        documentLabel: 'Address Proof',
+        type: 'DOCUMENT',
+        icon: '🏠',
     },
 
     INCOME: {
@@ -103,60 +185,75 @@ const FIELD_PROOF_CONFIG = {
         icon: '🏷️',
     },
 
+    ANNUAL_INCOME: {
+        title: 'Annual Income Verification',
+        description: 'Verify the annual income using the submitted Income Certificate.',
+        documentTypes: ['INCOME_CERTIFICATE'],
+        documentLabel: 'Income Certificate',
+        type: 'DOCUMENT',
+        icon: '💰',
+    },
+
+    CATEGORY_VERIFICATION: {
+        title: 'Category Verification',
+        description: 'Verify the category using the submitted Category Certificate.',
+        documentTypes: ['CATEGORY_CERTIFICATE'],
+        documentLabel: 'Category Certificate',
+        type: 'DOCUMENT',
+        icon: '🏷️',
+    },
+
+    AGE_PROOF: {
+        title: 'Age Verification',
+        description: 'Verify age using the submitted Identity Proof.',
+        documentTypes: ['IDENTITY_PROOF'],
+        documentLabel: 'Identity Proof',
+        type: 'DOCUMENT',
+        icon: '🪪',
+    },
+
+    BANK_OWNERSHIP: {
+        title: 'Bank Account Ownership',
+        description: 'Verify bank account ownership using the submitted Bank Account Proof.',
+        documentTypes: ['BANK_ACCOUNT_PROOF'],
+        documentLabel: 'Bank Account Proof',
+        type: 'DOCUMENT',
+        icon: '🏦',
+    },
+
+    ACCOUNT_NUMBER: {
+        title: 'Account Number Verification',
+        description: 'Verify the account number against the submitted bank document.',
+        documentTypes: ['BANK_ACCOUNT_PROOF'],
+        documentLabel: 'Bank Account Proof',
+        type: 'DOCUMENT',
+        icon: '🏦',
+    },
+
+    IFSC_VERIFICATION: {
+        title: 'IFSC Verification',
+        description: 'Verify the IFSC code using the submitted bank document.',
+        documentTypes: ['BANK_ACCOUNT_PROOF'],
+        documentLabel: 'Bank Account Proof',
+        type: 'DOCUMENT',
+        icon: '🏦',
+    },
+
+    BENEFICIARY_ACCOUNT_MATCH: {
+        title: 'Beneficiary Account Match',
+        description: 'Compare beneficiary identity details with the submitted bank document.',
+        documentTypes: ['BANK_ACCOUNT_PROOF', 'IDENTITY_PROOF'],
+        documentLabel: 'Bank and Identity Proof',
+        type: 'DOCUMENT',
+        icon: '🏦',
+    },
+
     DOCUMENTS: {
         title: 'Document Completeness',
         description:
             'Review all supporting documents submitted with the application.',
         type: 'ALL_DOCUMENTS',
         icon: '📁',
-    },
-
-    JURISDICTION: {
-        title: 'District Jurisdiction Verified',
-        description:
-            'Verify that the beneficiary belongs to the jurisdiction assigned to this District Officer.',
-        type: 'JURISDICTION',
-        icon: '📍',
-    },
-
-    FIELD_REVIEW: {
-        title: 'Field Verification Review',
-        description:
-            'Review the verification work completed by the Field Officer.',
-        type: 'FIELD_REVIEW',
-        icon: '🔎',
-    },
-
-    SCHEME_REVIEW: {
-        title: 'Scheme and Application Details Verified',
-        description:
-            'Verify the scheme, application information and eligibility result.',
-        type: 'SCHEME_REVIEW',
-        icon: '📋',
-    },
-
-    DISTRICT_APPROVAL: {
-        title: 'District Approval Verified',
-        description:
-            'Review the District Officer approval and verification history.',
-        type: 'DISTRICT_APPROVAL',
-        icon: '🏛️',
-    },
-
-    GRANT_AMOUNT: {
-        title: 'Grant Amount Verified',
-        description:
-            'Verify the applicable scheme and approved grant information.',
-        type: 'GRANT_AMOUNT',
-        icon: '💰',
-    },
-
-    PAYMENT_DETAILS: {
-        title: 'Payment Details Verified',
-        description:
-            'Verify beneficiary bank account and payment information.',
-        type: 'PAYMENT_DETAILS',
-        icon: '🏦',
     },
 };
 
@@ -221,8 +318,46 @@ function getCriterionConfig(criterion) {
         return FIELD_PROOF_CONFIG[code];
     }
 
+    // Resolve identity and address criteria separately.
+    // Otherwise both backend criteria fall back to the combined card.
+    if (code === 'IDENTITY_PROOF' || code === 'IDENTITY_VERIFICATION') {
+        return FIELD_PROOF_CONFIG.IDENTITY;
+    }
+
+    if (code === 'ADDRESS_PROOF' || code === 'ADDRESS_VERIFICATION') {
+        return FIELD_PROOF_CONFIG.ADDRESS;
+    }
+
     if (code.includes('IDENTITY') || code.includes('ADDRESS')) {
         return FIELD_PROOF_CONFIG.IDENTITY_ADDRESS;
+    }
+
+    if (code === 'ANNUAL_INCOME') {
+        return FIELD_PROOF_CONFIG.ANNUAL_INCOME;
+    }
+
+    if (code === 'CATEGORY_VERIFICATION') {
+        return FIELD_PROOF_CONFIG.CATEGORY_VERIFICATION;
+    }
+
+    if (code === 'AGE_PROOF') {
+        return FIELD_PROOF_CONFIG.AGE_PROOF;
+    }
+
+    if (code === 'BANK_OWNERSHIP') {
+        return FIELD_PROOF_CONFIG.BANK_OWNERSHIP;
+    }
+
+    if (code === 'ACCOUNT_NUMBER') {
+        return FIELD_PROOF_CONFIG.ACCOUNT_NUMBER;
+    }
+
+    if (code === 'IFSC_VERIFICATION') {
+        return FIELD_PROOF_CONFIG.IFSC_VERIFICATION;
+    }
+
+    if (code === 'BENEFICIARY_ACCOUNT_MATCH') {
+        return FIELD_PROOF_CONFIG.BENEFICIARY_ACCOUNT_MATCH;
     }
 
     if (code.includes('INCOME')) {
@@ -243,30 +378,6 @@ function getCriterionConfig(criterion) {
 
     if (code.includes('DOCUMENT')) {
         return FIELD_PROOF_CONFIG.DOCUMENTS;
-    }
-
-    if (code.includes('JURISDICTION')) {
-        return FIELD_PROOF_CONFIG.JURISDICTION;
-    }
-
-    if (code.includes('FIELD_REVIEW')) {
-        return FIELD_PROOF_CONFIG.FIELD_REVIEW;
-    }
-
-    if (code.includes('SCHEME_REVIEW')) {
-        return FIELD_PROOF_CONFIG.SCHEME_REVIEW;
-    }
-
-    if (code.includes('DISTRICT_APPROVAL')) {
-        return FIELD_PROOF_CONFIG.DISTRICT_APPROVAL;
-    }
-
-    if (code.includes('GRANT_AMOUNT')) {
-        return FIELD_PROOF_CONFIG.GRANT_AMOUNT;
-    }
-
-    if (code.includes('PAYMENT_DETAILS')) {
-        return FIELD_PROOF_CONFIG.PAYMENT_DETAILS;
     }
 
     return {
@@ -650,6 +761,7 @@ function CriterionModal({
                             onConfirm,
                             onCancel,
                             loading,
+                            verificationStage,
                         }) {
     const [remarks, setRemarks] =
         useState(
@@ -678,14 +790,8 @@ function CriterionModal({
             return;
         }
 
-        const requiresProofReview =
-            ['DOCUMENT', 'ALL_DOCUMENTS'].includes(
-                config.type
-            );
-
         if (
             status === 'VERIFIED' &&
-            requiresProofReview &&
             !proofReviewed
         ) {
             setError(
@@ -712,9 +818,7 @@ function CriterionModal({
 
                     <div>
                         <span className="od-modal-eyebrow">
-                            {getStatusLabel(
-                                criterion?.stage
-                            )} Verification
+                            {verificationStage || 'Verification'} Verification
                         </span>
 
                         <h2>
@@ -846,13 +950,12 @@ function CriterionCard({
                            criterion,
                            documents,
                            beneficiary,
-                           app,
-                           fieldCriteria,
-                           verificationHistory,
                            onReview,
                            onFail,
                            proofViewed,
                            disabled,
+                           officerRole,
+                           schemeName,
                        }) {
     const config =
         getCriterionConfig(criterion);
@@ -863,6 +966,7 @@ function CriterionCard({
     const relevantDocuments =
         config.type === 'DOCUMENT'
             ? (documents || []).filter(doc =>
+                isDocumentVisibleToRole(doc, officerRole, schemeName) &&
                 config.documentTypes?.includes(
                     String(
                         doc.documentType || ''
@@ -872,33 +976,16 @@ function CriterionCard({
             : [];
 
     const allDocuments =
-        documents || [];
-
-    const isStudent =
-        String(
-            beneficiary?.occupation || ''
-        ).toLowerCase() === 'student';
-
-    const landNotRequired =
-        String(
-            criterion?.criterionCode || ''
-        ).toUpperCase() === 'LAND' &&
-        isStudent;
+        (documents || []).filter(doc =>
+            isDocumentVisibleToRole(doc, officerRole, schemeName)
+        );
 
     const hasProof =
-        landNotRequired
-            ? true
-            : config.type === 'DOCUMENT'
-                ? relevantDocuments.length > 0
-                : config.type === 'ALL_DOCUMENTS'
-                    ? allDocuments.length > 0
-                    : true;
-
-    const isNotApplicable =
-        landNotRequired;
-
-    const evidenceDoesNotRequireDocumentReview =
-        !['DOCUMENT', 'ALL_DOCUMENTS'].includes(config.type);
+        config.type === 'DOCUMENT'
+            ? relevantDocuments.length > 0
+            : config.type === 'ALL_DOCUMENTS'
+                ? allDocuments.length > 0
+                : true;
 
     const profileValue =
         beneficiary &&
@@ -969,258 +1056,6 @@ function CriterionCard({
                 </div>
 
             </div>
-
-            {isNotApplicable && (
-                <div className="od-proof-area">
-
-                    <div className="od-no-proof">
-                        <span>ℹ️</span>
-
-                        <div>
-                            <strong>
-                                Land Record Not Required
-                            </strong>
-
-                            <p>
-                                Land ownership verification is not applicable for a student beneficiary.
-                            </p>
-                        </div>
-
-                    </div>
-
-                </div>
-            )}
-
-            {/* JURISDICTION EVIDENCE */}
-
-            {config.type === 'JURISDICTION' && (
-                <div className="od-proof-area">
-
-                    <div className="od-proof-label">
-                        Jurisdiction Evidence
-                    </div>
-
-                    <div className="od-info-grid">
-                        <div className="od-info-card">
-                            <InfoRow label="State" value={beneficiary?.state} />
-                            <InfoRow label="District" value={beneficiary?.district} />
-                            <InfoRow label="Taluka" value={beneficiary?.taluka} />
-                            <InfoRow label="Village" value={beneficiary?.village} />
-                            <InfoRow label="PIN Code" value={beneficiary?.pinCode} />
-                            <InfoRow label="Address" value={beneficiary?.address} />
-                        </div>
-                    </div>
-
-                </div>
-            )}
-
-            {/* FIELD OFFICER REVIEW EVIDENCE */}
-
-            {config.type === 'FIELD_REVIEW' && (
-                <div className="od-proof-area">
-
-                    <div className="od-proof-label">
-                        Field Officer Verification
-                    </div>
-
-                    <div className="od-document-list">
-                        {(fieldCriteria || []).length === 0 ? (
-                            <div className="od-no-proof">
-                                <span>⚠️</span>
-                                <div>
-                                    <strong>Field verification data not found</strong>
-                                    <p>The Field Officer verification records could not be loaded.</p>
-                                </div>
-                            </div>
-                        ) : (
-                            fieldCriteria.map(fieldCriterion => (
-                                <div className="od-document-item" key={fieldCriterion.id}>
-                                    <div className="od-document-icon">
-                                        {fieldCriterion.status === 'VERIFIED'
-                                            ? '✓'
-                                            : fieldCriterion.status === 'FAILED'
-                                                ? '✕'
-                                                : '○'}
-                                    </div>
-
-                                    <div className="od-document-info">
-                                        <strong>{fieldCriterion.criterionName}</strong>
-                                        <span>
-                                            Status: {getStatusLabel(fieldCriterion.status)}
-                                            {fieldCriterion.verifiedBy
-                                                ? ` · Verified by ${fieldCriterion.verifiedBy}`
-                                                : ''}
-                                        </span>
-                                        {fieldCriterion.remarks && (
-                                            <span>Remarks: {fieldCriterion.remarks}</span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-
-                </div>
-            )}
-
-            {/* SCHEME / APPLICATION EVIDENCE */}
-
-            {config.type === 'SCHEME_REVIEW' && (
-                <div className="od-proof-area">
-
-                    <div className="od-proof-label">
-                        Application & Eligibility Evidence
-                    </div>
-
-                    <div className="od-info-grid">
-                        <div className="od-info-card">
-                            <InfoRow label="Application ID" value={app?.applicationId ? `#${app.applicationId}` : null} />
-                            <InfoRow label="Beneficiary" value={beneficiary?.fullName} />
-                            <InfoRow label="Scheme" value={app?.schemeName || beneficiary?.schemeName} />
-                            <InfoRow label="Eligibility Score" value={app?.eligibilityScore != null ? `${app.eligibilityScore} / 100` : null} />
-                            <InfoRow label="Eligibility Result" value={app?.eligibilityResult || 'Eligible'} />
-                            <InfoRow label="Application Status" value={app?.applicationStatus} />
-                        </div>
-                    </div>
-
-                </div>
-            )}
-
-            {/* FINANCE EVIDENCE */}
-
-            {config.type === 'DISTRICT_APPROVAL' && (
-                <div className="od-proof-area">
-                    <div className="od-proof-label">District Approval Evidence</div>
-                    <div className="od-document-list">
-                        {(verificationHistory || []).filter(entry =>
-                            String(entry.stage || '').toUpperCase() === 'DISTRICT'
-                        ).length === 0 ? (
-                            <div className="od-no-proof">
-                                <span>⚠️</span>
-                                <div>
-                                    <strong>No district approval record found</strong>
-                                    <p>Review the application status and verification history.</p>
-                                </div>
-                            </div>
-                        ) : (
-                            (verificationHistory || []).filter(entry =>
-                                String(entry.stage || '').toUpperCase() === 'DISTRICT'
-                            ).map((entry, index) => (
-                                <div className="od-document-item" key={`${entry.performedAt || ''}-${index}`}>
-                                    <div className="od-document-icon">✓</div>
-                                    <div className="od-document-info">
-                                        <strong>{String(entry.action || '').replace(/_/g, ' ')}</strong>
-                                        <span>by {entry.performedBy || 'District Officer'}</span>
-                                        {entry.remarks && <span>Remarks: {entry.remarks}</span>}
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {config.type === 'GRANT_AMOUNT' && (
-                <div className="od-proof-area">
-                    <div className="od-proof-label">Grant Information</div>
-                    <div className="od-info-grid">
-                        <div className="od-info-card">
-                            <InfoRow label="Scheme" value={app?.schemeName} />
-                            <InfoRow label="Eligibility Score" value={app?.eligibilityScore != null ? `${app.eligibilityScore} / 100` : null} />
-                            <InfoRow label="Application Status" value={app?.applicationStatus} />
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {config.type === 'PAYMENT_DETAILS' && (
-                <div className="od-proof-area">
-                    <div className="od-proof-label">
-                        Payment Information
-                    </div>
-
-                    <div className="od-info-grid">
-                        <div className="od-info-card">
-
-                            <InfoRow
-                                label="Beneficiary"
-                                value={beneficiary?.fullName}
-                            />
-
-                            <InfoRow
-                                label="Bank Account Proof"
-                                value={
-                                    allDocuments.find(
-                                        doc =>
-                                            String(
-                                                doc.documentType || ''
-                                            ).toUpperCase() ===
-                                            'BANK_ACCOUNT_PROOF'
-                                    )?.originalFileName ||
-                                    allDocuments.find(
-                                        doc =>
-                                            String(
-                                                doc.documentType || ''
-                                            ).toUpperCase() ===
-                                            'BANK_ACCOUNT_PROOF'
-                                    )?.fileName ||
-                                    'Not uploaded'
-                                }
-                            />
-
-                            {(() => {
-                                const bankProof =
-                                    allDocuments.find(
-                                        doc =>
-                                            String(
-                                                doc.documentType || ''
-                                            ).toUpperCase() ===
-                                            'BANK_ACCOUNT_PROOF'
-                                    );
-
-                                if (!bankProof) {
-                                    return null;
-                                }
-
-                                return (
-                                    <div style={{ marginTop: '16px' }}>
-                                        <a
-                                            href={`/api/v1/beneficiaries/${beneficiary?.id}/documents/${bankProof.id}/download`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="od-view-document"
-                                        >
-                                            👁 View Passbook
-                                        </a>
-                                    </div>
-                                );
-                            })()}
-
-                            <InfoRow
-                                label="Application Status"
-                                value={app?.applicationStatus}
-                            />
-
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* PROFILE EVIDENCE */}
-
-            {config.type === 'PROFILE' && (
-                <div className="od-proof-area">
-                    <div className="od-proof-label">Beneficiary Information</div>
-                    <div className="od-info-grid">
-                        <div className="od-info-card">
-                            <InfoRow label="Occupation" value={beneficiary?.occupation} />
-                            <InfoRow label="Category" value={beneficiary?.category} />
-                            <InfoRow label="Annual Income" value={beneficiary?.annualIncome} />
-                            <InfoRow label="Land Holding" value={beneficiary?.landHolding} />
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* DOCUMENT PROOF */}
 
@@ -1405,6 +1240,30 @@ function CriterionCard({
 
             )}
 
+            {config.type === 'PROFILE' && (
+
+                <div className="od-proof-area">
+
+                    <div className="od-proof-label">
+                        Evidence Review
+                    </div>
+
+                    <p>
+                        Review the official application records and supporting evidence for this criterion before verification.
+                    </p>
+
+                    <button
+                        type="button"
+                        className="od-view-document"
+                        onClick={() => onReview(criterion.id, null)}
+                    >
+                        Mark Evidence Reviewed
+                    </button>
+
+                </div>
+
+            )}
+
             {/* CRITERION FOOTER */}
 
             <div className="od-criterion-footer">
@@ -1482,7 +1341,7 @@ function CriterionCard({
                         disabled={
                             disabled ||
                             isVerified ||
-                            (!evidenceDoesNotRequireDocumentReview && !proofViewed) ||
+                            !proofViewed ||
                             !hasProof
                         }
                     >
@@ -1497,6 +1356,157 @@ function CriterionCard({
     );
 }
 
+
+// ============================================================================
+// ROLE-SPECIFIC EVIDENCE WORKSPACE
+// ============================================================================
+
+function RoleEvidenceWorkspace({
+                                   officerRole,
+                                   schemeName,
+                                   beneficiary,
+                                   documents,
+                                   onProofViewed,
+                               }) {
+    const [fieldReport, setFieldReport] = useState(null);
+    const [visitPhotos, setVisitPhotos] = useState([]);
+    const [notes, setNotes] = useState('');
+
+    const isField = officerRole === ROLES.FIELD_OFFICER;
+    const isDistrict = officerRole === ROLES.DISTRICT_OFFICER;
+    const isFinance = officerRole === ROLES.FINANCE_APPROVER;
+
+    const documentGroups = ROLE_VISIBLE_DOCUMENT_TYPES[officerRole] || [];
+
+    const visibleDocuments = (documents || []).filter(doc =>
+        documentGroups.includes(String(doc.documentType || '').toUpperCase()) &&
+        isDocumentVisibleToRole(doc, officerRole, schemeName)
+    );
+
+    return (
+        <section className="od-section" style={{ marginBottom: 24 }}>
+            <div className="od-section-heading">
+                <div>
+                    <span className="od-section-kicker">EVIDENCE WORKSPACE</span>
+                    <h2>
+                        {isField
+                            ? 'Field Visit Evidence'
+                            : isDistrict
+                                ? 'District Evidence Review'
+                                : 'Financial Evidence Review'}
+                    </h2>
+                    <p>
+                        Review the available proof before verifying criteria. Selected field files remain local
+                        until a backend upload endpoint is connected.
+                    </p>
+                </div>
+                <span className="od-section-icon">📂</span>
+            </div>
+
+            <div className="od-proof-area">
+                <div className="od-proof-label">Available Uploaded Documents</div>
+                {visibleDocuments.length === 0 ? (
+                    <div className="od-no-proof">
+                        ⚠️ No role-relevant documents found.
+                    </div>
+                ) : (
+                    <div className="od-document-list">
+                        {visibleDocuments.map(doc => (
+                            <div className="od-document-item" key={doc.id}>
+                                <div className="od-document-icon">📄</div>
+                                <div className="od-document-info">
+                                    <strong>{doc.originalFileName || doc.fileName || 'Document'}</strong>
+                                    <span>
+                                        {String(doc.documentType || 'OTHER').replace(/_/g, ' ')}
+                                        {' · '}
+                                        {formatBytes(doc.fileSize)}
+                                    </span>
+                                </div>
+                                <a
+                                    className="od-view-document"
+                                    href={`/api/v1/beneficiaries/${beneficiary?.id}/documents/${doc.id}/download`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={() => onProofViewed(`workspace-${doc.id}`, doc.id)}
+                                >
+                                    Open Proof
+                                </a>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {isField && (
+                <div className="od-proof-area" style={{ marginTop: 16 }}>
+                    <div className="od-proof-label">Field Visit Report</div>
+                    <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.txt"
+                        onChange={event => setFieldReport(event.target.files?.[0] || null)}
+                    />
+                    {fieldReport && (
+                        <p>Selected report: <strong>{fieldReport.name}</strong> ({formatBytes(fieldReport.size)})</p>
+                    )}
+
+                    <div className="od-proof-label" style={{ marginTop: 14 }}>Physical Verification Photos</div>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={event => setVisitPhotos(Array.from(event.target.files || []))}
+                    />
+                    {visitPhotos.length > 0 && (
+                        <ul>
+                            {visitPhotos.map(file => <li key={`${file.name}-${file.size}`}>{file.name}</li>)}
+                        </ul>
+                    )}
+
+                    <label className="od-modal-label" htmlFor="field-visit-notes">
+                        Field Visit Notes
+                    </label>
+                    <textarea
+                        id="field-visit-notes"
+                        className="od-modal-textarea"
+                        rows={3}
+                        placeholder="Record observations from the field visit..."
+                        value={notes}
+                        onChange={event => setNotes(event.target.value)}
+                    />
+                    <small>
+                        Attachments and notes are selected in this workspace. They require a backend multipart/API
+                        endpoint to be permanently saved.
+                    </small>
+                </div>
+            )}
+
+            {isDistrict && (
+                <div className="od-proof-area" style={{ marginTop: 16 }}>
+                    <div className="od-proof-label">District Review Checklist</div>
+                    <ul>
+                        <li>Compare field report and photos with beneficiary details.</li>
+                        <li>Check scheme eligibility, income, category and age evidence.</li>
+                        <li>Check duplicate application and previous subsidy information.</li>
+                        <li>Record a reason whenever a criterion fails or correction is requested.</li>
+                    </ul>
+                </div>
+            )}
+
+            {isFinance && (
+                <div className="od-proof-area" style={{ marginTop: 16 }}>
+                    <div className="od-proof-label">Finance Review Checklist</div>
+                    <ul>
+                        <li>Confirm bank account ownership from the bank proof.</li>
+                        <li>Match account number and IFSC with the beneficiary record.</li>
+                        <li>Confirm sanctioned amount, budget availability and previous payment status.</li>
+                        <li>Do not approve if beneficiary and bank-account details do not match.</li>
+                    </ul>
+                </div>
+            )}
+        </section>
+    );
+}
+
 // ============================================================================
 // APPLICATION REVIEW
 // ============================================================================
@@ -1507,7 +1517,6 @@ function ApplicationReview({
                                beneficiary,
                                documents,
                                criteria,
-                               supportingFieldCriteria,
                                criteriaLoading,
                                proofViewedMap,
                                onProofViewed,
@@ -1518,23 +1527,23 @@ function ApplicationReview({
                                actionLoading,
                                officerRole,
                            }) {
-    const safeCriteria =
-        Array.isArray(criteria)
-            ? criteria
-            : [];
+    const visibleCriteria =
+        (criteria || []).filter(criterion =>
+            isCriterionVisibleToRole(criterion, officerRole, app.schemeName)
+        );
 
     const verifiedCount =
-        safeCriteria.filter(
+        visibleCriteria.filter(
             c => c.status === 'VERIFIED'
         ).length;
 
     const failedCount =
-        safeCriteria.filter(
+        visibleCriteria.filter(
             c => c.status === 'FAILED'
         ).length;
 
     const totalCriteria =
-        safeCriteria.length;
+        visibleCriteria.length;
 
     const progress =
         totalCriteria > 0
@@ -1555,7 +1564,7 @@ function ApplicationReview({
 
     const canDistrictApprove =
         officerRole === ROLES.DISTRICT_OFFICER &&
-        app.applicationStatus === 'FIELD_APPROVED' &&
+        app.applicationStatus === 'ESCALATED' &&
         totalCriteria > 0 &&
         verifiedCount === totalCriteria;
 
@@ -1961,6 +1970,14 @@ function ApplicationReview({
 
             </section>
 
+            <RoleEvidenceWorkspace
+                officerRole={officerRole}
+                schemeName={app.schemeName}
+                beneficiary={displayBeneficiary}
+                documents={documents}
+                onProofViewed={onProofViewed}
+            />
+
             {/* ================================================================
                 FIELD VERIFICATION
             ================================================================ */}
@@ -2065,7 +2082,7 @@ function ApplicationReview({
                         </p>
                     </div>
 
-                ) : safeCriteria.length === 0 ? (
+                ) : visibleCriteria.length === 0 ? (
 
                     <div className="od-empty-card">
 
@@ -2088,7 +2105,7 @@ function ApplicationReview({
 
                     <div className="od-criteria-list">
 
-                        {safeCriteria.map(
+                        {visibleCriteria.map(
                             criterion => (
                                 <CriterionCard
                                     key={
@@ -2097,20 +2114,17 @@ function ApplicationReview({
                                     criterion={
                                         criterion
                                     }
+                                    officerRole={
+                                        officerRole
+                                    }
+                                    schemeName={
+                                        app.schemeName
+                                    }
                                     documents={
                                         documents
                                     }
                                     beneficiary={
                                         displayBeneficiary
-                                    }
-                                    app={
-                                        app
-                                    }
-                                    fieldCriteria={
-                                        supportingFieldCriteria
-                                    }
-                                    verificationHistory={
-                                        verificationData?.history || []
                                     }
                                     proofViewed={
                                         Boolean(
@@ -2507,9 +2521,6 @@ function OfficerDashboard() {
     const [fieldCriteria, setFieldCriteria] =
         useState([]);
 
-    const [supportingFieldCriteria, setSupportingFieldCriteria] =
-        useState([]);
-
     const [criteriaLoading, setCriteriaLoading] =
         useState(false);
 
@@ -2639,7 +2650,6 @@ function OfficerDashboard() {
             setBeneficiary(null);
             setDocuments([]);
             setFieldCriteria([]);
-            setSupportingFieldCriteria([]);
             setProofViewedMap({});
             setActionError('');
 
@@ -2658,29 +2668,6 @@ function OfficerDashboard() {
                         app.beneficiaryId
                     ),
                 ];
-
-                if (
-                    officerRole === ROLES.DISTRICT_OFFICER ||
-                    officerRole === ROLES.FINANCE_APPROVER
-                ) {
-                    requests.push(
-                        fetchVerificationCriteria(
-                            app.applicationId,
-                            'FIELD'
-                        )
-                    );
-                }
-
-                if (
-                    officerRole === ROLES.FINANCE_APPROVER
-                ) {
-                    requests.push(
-                        fetchVerificationCriteria(
-                            app.applicationId,
-                            'DISTRICT'
-                        )
-                    );
-                }
 
                 const reviewStage =
                     officerRole === ROLES.FIELD_OFFICER
@@ -2713,42 +2700,11 @@ function OfficerDashboard() {
                     results[2]
                 );
 
-                if (officerRole === ROLES.FIELD_OFFICER) {
-                    setFieldCriteria(
-                        Array.isArray(results[3])
-                            ? results[3]
-                            : []
-                    );
-
-                    setSupportingFieldCriteria([]);
-                } else if (
-                    officerRole === ROLES.DISTRICT_OFFICER
-                ) {
-                    setSupportingFieldCriteria(
-                        Array.isArray(results[3])
-                            ? results[3]
-                            : []
-                    );
-
-                    setFieldCriteria(
-                        Array.isArray(results[4])
-                            ? results[4]
-                            : []
-                    );
-                } else {
-                    setSupportingFieldCriteria(
-                        [
-                            ...(Array.isArray(results[3]) ? results[3] : []),
-                            ...(Array.isArray(results[4]) ? results[4] : []),
-                        ]
-                    );
-
-                    setFieldCriteria(
-                        Array.isArray(results[5])
-                            ? results[5]
-                            : []
-                    );
-                }
+                setFieldCriteria(
+                    Array.isArray(results[3])
+                        ? results[3]
+                        : []
+                );
 
             } catch (err) {
 
@@ -2775,7 +2731,6 @@ function OfficerDashboard() {
             setBeneficiary(null);
             setDocuments([]);
             setFieldCriteria([]);
-            setSupportingFieldCriteria([]);
             setProofViewedMap({});
             setActionError('');
 
@@ -2920,29 +2875,6 @@ function OfficerDashboard() {
             });
 
             setActionError('');
-        };
-
-    // ------------------------------------------------------------------------
-    // Open verification action
-    // ------------------------------------------------------------------------
-
-    const openVerificationAction =
-        (
-            app,
-            action
-        ) => {
-
-            setActionError('');
-            setSuccessMsg('');
-
-            setPendingAction({
-                app,
-                action,
-                requiresRemarks:
-                    REMARKS_REQUIRED_ACTIONS.has(
-                        action
-                    ),
-            });
         };
 
     // ------------------------------------------------------------------------
@@ -3164,9 +3096,6 @@ function OfficerDashboard() {
                     criteria={
                         fieldCriteria
                     }
-                    supportingFieldCriteria={
-                        supportingFieldCriteria
-                    }
                     criteriaLoading={
                         criteriaLoading
                     }
@@ -3199,6 +3128,7 @@ function OfficerDashboard() {
                     officerRole={
                         officerRole
                     }
+                    onEvidenceReviewed={handleProofViewed}
                 />
 
                 {pendingAction && (
@@ -3225,6 +3155,13 @@ function OfficerDashboard() {
                     <CriterionModal
                         criterion={
                             pendingCriterion.criterion
+                        }
+                        verificationStage={
+                            officerRole === ROLES.FIELD_OFFICER
+                                ? 'Field'
+                                : officerRole === ROLES.DISTRICT_OFFICER
+                                    ? 'District'
+                                    : 'Finance'
                         }
                         app={
                             pendingCriterion.app
@@ -3589,7 +3526,7 @@ function OfficerDashboard() {
                                                         className="..."
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            openVerificationAction(app, 'start');
+                                                            handleActionClick(app, 'start', false);
                                                         }}
                                                     >
                                                         ▶ Start Verification
@@ -3631,4 +3568,3 @@ function OfficerDashboard() {
 }
 
 export default OfficerDashboard;
-
