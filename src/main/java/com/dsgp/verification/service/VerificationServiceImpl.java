@@ -1079,6 +1079,11 @@ public class VerificationServiceImpl implements VerificationService {
         // Final approval
         // ------------------------------------------------------------
 
+        // Final approval
+// ------------------------------------------------------------
+
+        application.setSanctionedAmount(application.getScheme().getGrantAmount());
+
         updateStatus(
                 application,
                 STATUS_APPROVED

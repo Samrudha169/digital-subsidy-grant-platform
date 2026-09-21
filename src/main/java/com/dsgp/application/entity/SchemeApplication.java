@@ -6,7 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-
+import java.math.BigDecimal;
 /**
  * JPA entity for the {@code scheme_applications} table.
  *
@@ -72,6 +72,12 @@ public class SchemeApplication {
     @Column(name = "application_status", nullable = false, length = 20)
     @Builder.Default
     private String applicationStatus = "PENDING";
+    /**
+     * Amount sanctioned by the Finance Officer when the application is finally approved.
+     * Remains null until final finance approval.
+     */
+    @Column(name = "sanctioned_amount", precision = 12, scale = 2)
+    private BigDecimal sanctionedAmount;
 
     /** Timestamp when the application was submitted. Set once on insert. */
     @Column(name = "application_date", nullable = false, updatable = false)
