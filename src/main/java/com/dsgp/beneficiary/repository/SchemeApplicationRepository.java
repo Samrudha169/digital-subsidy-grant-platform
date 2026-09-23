@@ -54,4 +54,16 @@ public interface SchemeApplicationRepository extends JpaRepository<SchemeApplica
      * @param applicationStatus e.g. {@code "PENDING"}, {@code "APPROVED"}
      */
     List<SchemeApplication> findByApplicationStatus(String applicationStatus);
+
+    /**
+     * Returns the application (if any) for a specific beneficiary, scheme, and
+     * status. Used by the cooling-period check to locate a previous REJECTED
+     * application without loading all applications.
+     *
+     * @param beneficiaryId     the beneficiary's primary key
+     * @param schemeId          the scheme's primary key
+     * @param applicationStatus e.g. {@code "REJECTED"}
+     */
+    Optional<SchemeApplication> findByBeneficiaryIdAndSchemeIdAndApplicationStatus(
+            Integer beneficiaryId, Long schemeId, String applicationStatus);
 }

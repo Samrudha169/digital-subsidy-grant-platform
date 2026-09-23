@@ -1079,16 +1079,32 @@ public class VerificationServiceImpl implements VerificationService {
         );
 
         // ------------------------------------------------------------
-        // Final approval
+        // Validate and store the Finance Officer's entered sanctioned amount
         // ------------------------------------------------------------
 
-        // ------------------------------------------------------------
-// Final approval
-// ------------------------------------------------------------
+        BigDecimal enteredAmount = request.getSanctionedAmount();
 
-        application.setSanctionedAmount(
-                application.getScheme().getGrantAmount()
-        );
+        if (enteredAmount == null) {
+            throw new InvalidVerificationTransitionException(
+                    "sanctionedAmount is required for Finance approval."
+            );
+        }
+
+        if (enteredAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new InvalidVerificationTransitionException(
+                    "sanctionedAmount must be greater than zero."
+            );
+        }
+
+        BigDecimal maxAllowed = application.getScheme().getGrantAmount();
+        if (maxAllowed != null && enteredAmount.compareTo(maxAllowed) > 0) {
+            throw new InvalidVerificationTransitionException(
+                    "sanctionedAmount (" + enteredAmount
+                    + ") must not exceed the scheme's grant amount (" + maxAllowed + ")."
+            );
+        }
+
+        application.setSanctionedAmount(enteredAmount);
 
         updateStatus(
                 application,
@@ -1840,6 +1856,9 @@ public class VerificationServiceImpl implements VerificationService {
                 )
                 .applicationDate(
                         application.getApplicationDate()
+                )
+                .sanctionedAmount(
+                        application.getSanctionedAmount()
                 )
                 .history(
                         history

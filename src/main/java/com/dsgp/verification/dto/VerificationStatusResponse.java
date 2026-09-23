@@ -3,6 +3,7 @@ package com.dsgp.verification.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,11 +23,12 @@ import java.util.List;
  *   "beneficiaryName":   "Ravi Kumar",
  *   "schemeId":          5,
  *   "schemeName":        "PM-KISAN Samman Nidhi",
- *   "applicationStatus": "FIELD_APPROVED",
+ *   "applicationStatus": "APPROVED",
  *   "applicationDate":   "2025-04-10T09:15:00",
+ *   "sanctionedAmount":  5500.00,
  *   "history": [
  *     {
- *       "stage":       "FIELD",
+ *       "stage":       "FINANCE",
  *       "action":      "APPROVE",
  *       "performedBy": "officer_rajan",
  *       "performedAt": "2025-04-14T14:20:00",
@@ -64,6 +66,12 @@ public class VerificationStatusResponse {
 
     /** Timestamp when the application was originally submitted. */
     private LocalDateTime applicationDate;
+
+    /**
+     * Amount (in ₹) sanctioned by the Finance Officer upon final approval.
+     * {@code null} until the application reaches {@code APPROVED} status.
+     */
+    private BigDecimal sanctionedAmount;
 
     /**
      * Chronological list of all verification actions taken so far.

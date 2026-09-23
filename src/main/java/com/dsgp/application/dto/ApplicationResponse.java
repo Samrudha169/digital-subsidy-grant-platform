@@ -3,14 +3,18 @@ package com.dsgp.application.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Response DTO returned after a scheme application is submitted.
+ * Response DTO returned after a scheme application is submitted or retrieved.
  *
  * <p>Includes the application ID, status, eligibility score that
  * unlocked the submission, and the scheme / beneficiary details
  * required by the TrackApplication frontend view.
+ *
+ * <p>{@code sanctionedAmount} is {@code null} until the application reaches
+ * {@code APPROVED} status via Finance approval.
  */
 @Data
 @Builder
@@ -42,4 +46,10 @@ public class ApplicationResponse {
 
     /** Timestamp when the application was persisted. */
     private LocalDateTime applicationDate;
+
+    /**
+     * Amount (in ₹) sanctioned by the Finance Officer upon final approval.
+     * {@code null} until the application is {@code APPROVED}.
+     */
+    private BigDecimal sanctionedAmount;
 }

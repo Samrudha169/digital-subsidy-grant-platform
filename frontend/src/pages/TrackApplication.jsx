@@ -37,6 +37,23 @@ function formatDate(iso) {
     });
 }
 
+// Date-only (no time) — used for the reapply-after display
+function formatDateOnly(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleDateString('en-IN', {
+        day: '2-digit', month: 'long', year: 'numeric',
+    });
+}
+
+function formatCurrency(amount) {
+    if (amount == null) return null;
+    return new Intl.NumberFormat('en-IN', {
+        style:                 'currency',
+        currency:              'INR',
+        minimumFractionDigits: 2,
+    }).format(amount);
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 function TrackApplication() {
@@ -231,7 +248,61 @@ function TrackApplication() {
 
                                 </div>
 
-                                {/* Verification History */}
+                                {/* APPROVED: sanctioned amount callout */}
+                                {appData.applicationStatus === 'APPROVED' && (
+                                    <div className="track-outcome-panel track-outcome-approved">
+                                        <div className="track-outcome-icon">&#10003;</div>
+                                        <div className="track-outcome-body">
+                                            <p className="track-outcome-title">Application Approved</p>
+                                            {appData.sanctionedAmount != null ? (
+                                                <p className="track-outcome-amount">
+                                                    Sanctioned Amount:&nbsp;
+                                                    <strong>{formatCurrency(appData.sanctionedAmount)}</strong>
+                                                </p>
+                                            ) : (
+                                                <p className="track-outcome-note">
+                                                    Disbursement amount will be communicated separately.
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* REJECTED: reason + date + reapply date */}
+                                {appData.applicationStatus === 'REJECTED' && (() => {
+                                    // Find the last REJECT action in history
+                                    const rejEntry = appData.history
+                                        ?.slice()
+                                        .reverse()
+                                        .find(e => e.action === 'REJECT');
+                                    return (
+                                        <div className="track-outcome-panel track-outcome-rejected">
+                                            <div className="track-outcome-icon">&#10007;</div>
+                                            <div className="track-outcome-body">
+                                                <p className="track-outcome-title">Application Rejected</p>
+                                                {rejEntry?.remarks && (
+                                                    <p className="track-outcome-reason">
+                                                        <span className="track-outcome-label">Reason:</span>&nbsp;
+                                                        {rejEntry.remarks}
+                                                    </p>
+                                                )}
+                                                {rejEntry?.performedAt && (
+                                                    <p className="track-outcome-meta">
+                                                        <span className="track-outcome-label">Rejected On:</span>&nbsp;
+                                                        {formatDate(rejEntry.performedAt)}
+                                                    </p>
+                                                )}
+                                                {appData.reapplyAfter && (
+                                                    <p className="track-outcome-meta track-reapply">
+                                                        <span className="track-outcome-label">Reapply After:</span>&nbsp;
+                                                        {formatDateOnly(appData.reapplyAfter)}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 {appData.history && appData.history.length > 0 ? (
                                     <div className="track-history">
                                         <h3 className="track-history-title">

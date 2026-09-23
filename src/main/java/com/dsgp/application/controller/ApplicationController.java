@@ -77,10 +77,12 @@ public class ApplicationController {
                 .applicationStatus(application.getApplicationStatus())
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(application.getApplicationDate())
+                .sanctionedAmount(application.getSanctionedAmount())
                 .build();
 
         return ResponseEntity.ok(response);
     }
+
 
     // ── GET /applications/beneficiary/{beneficiaryId} ─────────────────────────
 

@@ -214,6 +214,20 @@ class VerificationServiceImplTest {
         return request;
     }
 
+    /** Builds a request pre-loaded with a sanctionedAmount — for Finance approve tests. */
+    private VerificationActionRequest financeRequest(
+            String performedBy,
+            java.math.BigDecimal sanctionedAmount) {
+
+        VerificationActionRequest request =
+                new VerificationActionRequest();
+
+        request.setPerformedBy(performedBy);
+        request.setSanctionedAmount(sanctionedAmount);
+
+        return request;
+    }
+
     private VerificationCriterion criterion(
             SchemeApplication application,
             VerificationStage stage,
@@ -1488,7 +1502,7 @@ class VerificationServiceImplTest {
         void financeApproveWithAllCriteriaMovesToApproved() {
 
             SchemeApplication application =
-                    application("DISTRICT_APPROVED");
+                    application("DISTRICT_APPROVED", new java.math.BigDecimal("6000"));
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -1514,9 +1528,9 @@ class VerificationServiceImplTest {
             VerificationStatusResponse response =
                     service.approveAtFinance(
                             APP_ID,
-                            request(
+                            financeRequest(
                                     "finance.officer",
-                                    null
+                                    new java.math.BigDecimal("5000")
                             )
                     );
 
@@ -1655,7 +1669,7 @@ class VerificationServiceImplTest {
 
             // Direct Finance route: high score + low grant skipped District.
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("FIELD_APPROVED", new java.math.BigDecimal("6000"));
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -1681,9 +1695,9 @@ class VerificationServiceImplTest {
             VerificationStatusResponse response =
                     service.approveAtFinance(
                             APP_ID,
-                            request(
+                            financeRequest(
                                     "finance.officer",
-                                    null
+                                    new java.math.BigDecimal("5000")
                             )
                     );
 
@@ -1840,6 +1854,111 @@ class VerificationServiceImplTest {
                     .isInstanceOf(
                             InvalidVerificationTransitionException.class
                     );
+        }
+
+        // ── sanctionedAmount validation ─────────────────────────────────
+
+        @Test
+        @DisplayName("null sanctionedAmount → throws")
+        void financeApprove_nullSanctionedAmount_throws() {
+
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED", new java.math.BigDecimal("6000"));
+
+            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(application));
+            mockOfficer("finance.officer", OfficerRole.FINANCE_APPROVER);
+            mockCriteria(application, VerificationStage.FINANCE, 4, 4);
+
+            assertThatThrownBy(
+                    () -> service.approveAtFinance(APP_ID, financeRequest("finance.officer", null))
+            )
+                    .isInstanceOf(InvalidVerificationTransitionException.class)
+                    .hasMessageContaining("sanctionedAmount is required");
+        }
+
+        @Test
+        @DisplayName("zero sanctionedAmount → throws")
+        void financeApprove_zeroSanctionedAmount_throws() {
+
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED", new java.math.BigDecimal("6000"));
+
+            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(application));
+            mockOfficer("finance.officer", OfficerRole.FINANCE_APPROVER);
+            mockCriteria(application, VerificationStage.FINANCE, 4, 4);
+
+            assertThatThrownBy(
+                    () -> service.approveAtFinance(
+                            APP_ID,
+                            financeRequest("finance.officer", java.math.BigDecimal.ZERO))
+            )
+                    .isInstanceOf(InvalidVerificationTransitionException.class)
+                    .hasMessageContaining("greater than zero");
+        }
+
+        @Test
+        @DisplayName("negative sanctionedAmount → throws")
+        void financeApprove_negativeSanctionedAmount_throws() {
+
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED", new java.math.BigDecimal("6000"));
+
+            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(application));
+            mockOfficer("finance.officer", OfficerRole.FINANCE_APPROVER);
+            mockCriteria(application, VerificationStage.FINANCE, 4, 4);
+
+            assertThatThrownBy(
+                    () -> service.approveAtFinance(
+                            APP_ID,
+                            financeRequest("finance.officer", new java.math.BigDecimal("-1")))
+            )
+                    .isInstanceOf(InvalidVerificationTransitionException.class)
+                    .hasMessageContaining("greater than zero");
+        }
+
+        @Test
+        @DisplayName("sanctionedAmount exceeds grantAmount → throws")
+        void financeApprove_amountExceedsGrantAmount_throws() {
+
+            java.math.BigDecimal grantAmount = new java.math.BigDecimal("6000");
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED", grantAmount);
+
+            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(application));
+            mockOfficer("finance.officer", OfficerRole.FINANCE_APPROVER);
+            mockCriteria(application, VerificationStage.FINANCE, 4, 4);
+
+            java.math.BigDecimal tooHigh = new java.math.BigDecimal("6001");
+
+            assertThatThrownBy(
+                    () -> service.approveAtFinance(APP_ID, financeRequest("finance.officer", tooHigh))
+            )
+                    .isInstanceOf(InvalidVerificationTransitionException.class)
+                    .hasMessageContaining("must not exceed");
+        }
+
+        @Test
+        @DisplayName("valid sanctionedAmount ≤ grantAmount → persisted on application")
+        void financeApprove_validAmount_persistedOnApplication() {
+
+            java.math.BigDecimal grantAmount = new java.math.BigDecimal("6000");
+            SchemeApplication application =
+                    application("DISTRICT_APPROVED", grantAmount);
+
+            given(applicationRepository.findById(APP_ID)).willReturn(Optional.of(application));
+            mockOfficer("finance.officer", OfficerRole.FINANCE_APPROVER);
+            mockCriteria(application, VerificationStage.FINANCE, 4, 4);
+            mockSave();
+            mockHistory();
+
+            java.math.BigDecimal entered = new java.math.BigDecimal("4500");
+
+            service.approveAtFinance(APP_ID, financeRequest("finance.officer", entered));
+
+            assertThat(application.getSanctionedAmount())
+                    .isEqualByComparingTo(entered);
+            assertThat(application.getApplicationStatus())
+                    .isEqualTo("APPROVED");
         }
     }
 

@@ -16,10 +16,14 @@ import com.dsgp.eligibility.repository.EligibilityResultRepository;
 import com.dsgp.scheme.exception.SchemeNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Business logic implementation for scheme application submission.
@@ -43,6 +47,21 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final SchemeRepository              schemeRepository;
     private final EligibilityResultRepository   eligibilityResultRepository;
     private final SchemeApplicationRepository   applicationRepository;
+
+    /**
+     * Number of days a beneficiary must wait before reapplying to the same
+     * scheme after a REJECTED application.
+     * Configured via {@code dsgp.application.rejection-cooling-period-days}.
+     * Set to 0 to disable the cooling period entirely.
+     *
+     * <p><strong>This is a project-level business rule, NOT an official
+     * government policy.</strong>
+     */
+    @Value("${dsgp.application.rejection-cooling-period-days:30}")
+    private int rejectionCoolingPeriodDays;
+
+    private static final DateTimeFormatter DATE_FMT =
+            DateTimeFormatter.ofPattern("dd MMMM yyyy");
 
     // ════════════════════════════════════════════════════════════════════════
     // submitApplication
@@ -84,14 +103,42 @@ public class ApplicationServiceImpl implements ApplicationService {
                     + "/100 (minimum required: 60).");
         }
 
-        // ── Rule 5: No duplicate application ─────────────────────────────────
-        if (applicationRepository.findByBeneficiaryIdAndSchemeId(beneficiaryId, schemeId)
-                .isPresent()) {
-            log.warn("Duplicate application attempt: beneficiaryId={}, schemeId={}",
-                    beneficiaryId, schemeId);
-            throw new ApplicationException(
-                    "An application for scheme '" + scheme.getSchemeName()
-                    + "' already exists for this beneficiary.");
+        // ── Rule 5: No duplicate active application; cooling period for REJECTED ─
+        Optional<SchemeApplication> existingOpt =
+                applicationRepository.findByBeneficiaryIdAndSchemeId(beneficiaryId, schemeId);
+
+        if (existingOpt.isPresent()) {
+            SchemeApplication existing = existingOpt.get();
+
+            if (!"REJECTED".equals(existing.getApplicationStatus())) {
+                // Active (non-rejected) application already exists — hard block.
+                log.warn("Duplicate application attempt: beneficiaryId={}, schemeId={}, status={}",
+                        beneficiaryId, schemeId, existing.getApplicationStatus());
+                throw new ApplicationException(
+                        "An application for scheme '" + scheme.getSchemeName()
+                        + "' already exists for this beneficiary.");
+            }
+
+            // Previous application was REJECTED — apply cooling period.
+            if (rejectionCoolingPeriodDays > 0 && existing.getApplicationDate() != null) {
+                LocalDateTime rejectedAt   = existing.getApplicationDate();
+                LocalDateTime reapplyAfter = rejectedAt.plusDays(rejectionCoolingPeriodDays);
+
+                if (LocalDateTime.now().isBefore(reapplyAfter)) {
+                    String reapplyDateStr = reapplyAfter.toLocalDate().format(DATE_FMT);
+                    log.warn(
+                            "Cooling period active: beneficiaryId={}, schemeId={}, reapplyAfter={}",
+                            beneficiaryId, schemeId, reapplyDateStr);
+                    throw new ApplicationException(
+                            "Your previous application for scheme '" + scheme.getSchemeName()
+                            + "' was rejected. You may reapply after " + reapplyDateStr + ".");
+                }
+
+                // Cooling period has expired — allow the re-application.
+                log.info(
+                        "Cooling period expired for beneficiaryId={}, schemeId={}: allowing reapplication.",
+                        beneficiaryId, schemeId);
+            }
         }
 
         // ── Rule 6: Persist with PENDING status ───────────────────────────────
@@ -122,8 +169,10 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .applicationStatus(app.getApplicationStatus())
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(app.getApplicationDate())
+                .sanctionedAmount(app.getSanctionedAmount())
                 .build();
     }
+
 
     // ── List operations ───────────────────────────────────────────────────────
 

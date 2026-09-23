@@ -24,6 +24,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
+import org.springframework.test.util.ReflectionTestUtils;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
@@ -108,6 +110,32 @@ class ApplicationServiceImplTest {
         req.setBeneficiaryId(BENEFICIARY_ID);
         req.setSchemeId(SCHEME_ID);
         return req;
+    }
+
+    /** Builds an application with status REJECTED and a configurable date. */
+    private SchemeApplication rejectedApplication(LocalDateTime rejectedAt) {
+        SchemeApplication app = SchemeApplication.builder()
+                .beneficiary(beneficiary())
+                .scheme(scheme())
+                .applicationStatus("REJECTED")
+                .build();
+        try {
+            java.lang.reflect.Field id = SchemeApplication.class.getDeclaredField("id");
+            id.setAccessible(true);
+            id.set(app, 998L);
+            java.lang.reflect.Field date = SchemeApplication.class.getDeclaredField("applicationDate");
+            date.setAccessible(true);
+            date.set(app, rejectedAt);
+        } catch (Exception ignored) {}
+        return app;
+    }
+
+    // ── Inject @Value fields not populated by Mockito ─────────────────────────
+
+    @BeforeEach
+    void injectCoolingPeriod() {
+        // @Value fields are not injected by Mockito — set explicitly.
+        ReflectionTestUtils.setField(applicationService, "rejectionCoolingPeriodDays", 30);
     }
 
     // ── Happy path ────────────────────────────────────────────────────────────
@@ -296,6 +324,114 @@ class ApplicationServiceImplTest {
                     .isInstanceOf(ApplicationException.class);
 
             then(applicationRepository).should(never()).save(any());
+        }
+    }
+
+    // ── Cooling period ────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("submitApplication — rejection cooling period")
+    class CoolingPeriod {
+
+        /** Shared stub wiring for beneficiary, scheme, and eligibility. */
+        private void mockEligiblePreconditions() {
+            given(beneficiaryRepository.findById(BENEFICIARY_ID))
+                    .willReturn(Optional.of(beneficiary()));
+            given(schemeRepository.findById(SCHEME_ID))
+                    .willReturn(Optional.of(scheme()));
+            given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(eligibleResult()));
+        }
+
+        @Test
+        @DisplayName("REJECTED within 30 days → submission blocked with reapply date")
+        void rejectedWithinCoolingPeriod_blocksSubmission() {
+            mockEligiblePreconditions();
+
+            // Rejected just 5 days ago — still inside the 30-day window.
+            LocalDateTime rejectedAt = LocalDateTime.now().minusDays(5);
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(rejectedApplication(rejectedAt)));
+
+            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+                    .isInstanceOf(ApplicationException.class)
+                    .hasMessageContaining("rejected")
+                    .hasMessageContaining("reapply after");
+        }
+
+        @Test
+        @DisplayName("REJECTED within 30 days → error message contains reapply date")
+        void rejectedWithinCoolingPeriod_errorMessageContainsDate() {
+            mockEligiblePreconditions();
+
+            LocalDateTime rejectedAt = LocalDateTime.now().minusDays(10);
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(rejectedApplication(rejectedAt)));
+
+            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+                    .isInstanceOf(ApplicationException.class)
+                    // The message must contain the scheme name so the user knows which scheme
+                    .hasMessageContaining("PM-KISAN");
+        }
+
+        @Test
+        @DisplayName("REJECTED after 30 days → submission is allowed")
+        void rejectedAfterCoolingPeriodExpired_allowsSubmission() {
+            mockEligiblePreconditions();
+
+            // Rejected 31 days ago — cooling period has elapsed.
+            LocalDateTime rejectedAt = LocalDateTime.now().minusDays(31);
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(rejectedApplication(rejectedAt)));
+            given(applicationRepository.save(any(SchemeApplication.class)))
+                    .willReturn(savedApplication());
+
+            // Must NOT throw — re-application should succeed.
+            assertThatCode(() -> applicationService.submitApplication(request()))
+                    .doesNotThrowAnyException();
+
+            then(applicationRepository).should(times(1)).save(any(SchemeApplication.class));
+        }
+
+        @Test
+        @DisplayName("non-REJECTED existing application → duplicate block still applies")
+        void activeApplicationExists_duplicateBlockApplies() {
+            mockEligiblePreconditions();
+
+            // Status is UNDER_REVIEW (non-REJECTED) — must still be blocked.
+            SchemeApplication active = SchemeApplication.builder()
+                    .beneficiary(beneficiary())
+                    .scheme(scheme())
+                    .applicationStatus("UNDER_REVIEW")
+                    .build();
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(active));
+
+            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+                    .isInstanceOf(ApplicationException.class)
+                    .hasMessageContaining("already exists");
+
+            then(applicationRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("REJECTED for a different scheme → does not block new scheme application")
+        void rejectedForDifferentScheme_doesNotBlock() {
+            // The new request targets SCHEME_ID (1L).
+            // The repository returns empty for SCHEME_ID — no prior application.
+            // A rejection on a different scheme (2L) must be irrelevant.
+            mockEligiblePreconditions();
+
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.empty());   // no application for THIS scheme
+            given(applicationRepository.save(any(SchemeApplication.class)))
+                    .willReturn(savedApplication());
+
+            // Must NOT throw — different scheme rejection is irrelevant.
+            assertThatCode(() -> applicationService.submitApplication(request()))
+                    .doesNotThrowAnyException();
+
+            then(applicationRepository).should(times(1)).save(any(SchemeApplication.class));
         }
     }
 }

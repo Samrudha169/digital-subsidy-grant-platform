@@ -508,7 +508,8 @@ async function postVerificationAction(
     applicationId,
     action,
     performedBy,
-    remarks
+    remarks,
+    sanctionedAmount
 ) {
     const body = {
         performedBy,
@@ -516,6 +517,10 @@ async function postVerificationAction(
 
     if (remarks && remarks.trim()) {
         body.remarks = remarks.trim();
+    }
+
+    if (sanctionedAmount !== undefined && sanctionedAmount !== null) {
+        body.sanctionedAmount = sanctionedAmount;
     }
 
     const res = await fetch(
@@ -625,8 +630,13 @@ function RemarksModal({
     const [remarks, setRemarks] =
         useState('');
 
+    const [sanctionedAmount, setSanctionedAmount] =
+        useState('');
+
     const [error, setError] =
         useState('');
+
+    const isFinanceApprove = action === 'finance-approve';
 
     const requiresRemarks =
         REMARKS_REQUIRED_ACTIONS.has(action);
@@ -637,7 +647,27 @@ function RemarksModal({
             .replace(/\b\w/g, c => c.toUpperCase())
         : 'Action';
 
+    // Maximum allowed = scheme grant amount (reference/upper bound)
+    const maxGrantAmount =
+        app?.scheme?.grantAmount ?? null;
+
     const submit = () => {
+        if (isFinanceApprove) {
+            const parsed = parseFloat(sanctionedAmount);
+            if (!sanctionedAmount || isNaN(parsed) || parsed <= 0) {
+                setError(
+                    'Sanctioned amount is required and must be greater than zero.'
+                );
+                return;
+            }
+            if (maxGrantAmount !== null && parsed > maxGrantAmount) {
+                setError(
+                    `Sanctioned amount cannot exceed the scheme grant amount of ₹${Number(maxGrantAmount).toLocaleString('en-IN')}.`
+                );
+                return;
+            }
+        }
+
         if (
             requiresRemarks &&
             !remarks.trim()
@@ -651,7 +681,8 @@ function RemarksModal({
         setError('');
 
         onConfirm(
-            remarks.trim()
+            remarks.trim(),
+            isFinanceApprove ? parseFloat(sanctionedAmount) : undefined
         );
     };
 
@@ -687,6 +718,44 @@ function RemarksModal({
                     </button>
                 </div>
 
+                {isFinanceApprove && (
+                    <>
+                        <label
+                            className="od-modal-label"
+                            htmlFor="finance-sanctioned-amount"
+                        >
+                            Sanctioned Amount (₹) <span>*</span>
+                        </label>
+
+                        <input
+                            id="finance-sanctioned-amount"
+                            type="number"
+                            className="od-modal-input"
+                            min="0.01"
+                            step="0.01"
+                            max={maxGrantAmount ?? undefined}
+                            placeholder={
+                                maxGrantAmount
+                                    ? `Max: ₹${Number(maxGrantAmount).toLocaleString('en-IN')}`
+                                    : 'Enter amount in ₹'
+                            }
+                            value={sanctionedAmount}
+                            onChange={e => {
+                                setSanctionedAmount(e.target.value);
+                                if (error) setError('');
+                            }}
+                            disabled={loading}
+                            autoFocus
+                        />
+
+                        {maxGrantAmount !== null && (
+                            <p className="od-modal-hint">
+                                Scheme grant amount (maximum): ₹{Number(maxGrantAmount).toLocaleString('en-IN')}
+                            </p>
+                        )}
+                    </>
+                )}
+
                 <label
                     className="od-modal-label"
                     htmlFor="verification-remarks"
@@ -717,7 +786,7 @@ function RemarksModal({
                         }
                     }}
                     disabled={loading}
-                    autoFocus
+                    autoFocus={!isFinanceApprove}
                 />
 
                 {error && (
@@ -2917,7 +2986,7 @@ function OfficerDashboard() {
     // ------------------------------------------------------------------------
 
     const handleModalConfirm =
-        async remarks => {
+        async (remarks, sanctionedAmount) => {
 
             if (!pendingAction) {
                 return;
@@ -2937,7 +3006,8 @@ function OfficerDashboard() {
                     app.applicationId,
                     action,
                     officerUsername,
-                    remarks
+                    remarks,
+                    sanctionedAmount
                 );
 
                 setSuccessMsg(

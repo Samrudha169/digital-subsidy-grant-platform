@@ -1465,6 +1465,40 @@
     border-color: rgba(93, 168, 255, 0.45);
 }
 
+.od-modal-input {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--od-border-strong);
+    outline: none;
+    border-radius: 11px;
+    background: rgba(3, 10, 20, 0.48);
+    color: var(--od-text);
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+.od-modal-input:focus {
+    border-color: rgba(93, 168, 255, 0.45);
+}
+
+/* Remove browser number-input spinners */
+.od-modal-input::-webkit-outer-spin-button,
+.od-modal-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.od-modal-input[type=number] {
+    -moz-appearance: textfield;
+}
+
+.od-modal-hint {
+    margin-top: 4px;
+    margin-bottom: 12px;
+    font-size: 10px;
+    color: var(--od-text-muted, rgba(200,210,240,0.55));
+}
+
 .od-modal-error {
     margin-top: 8px;
     color: #ff929c;
