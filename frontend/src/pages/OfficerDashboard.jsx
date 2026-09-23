@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DisbursementStagePanel from "./DisbursementStagePanel";
 import './OfficerDashboard.css';
 
 // ============================================================================
@@ -15,7 +16,11 @@ const ROLES = {
 const ROLE_STATUSES = {
     [ROLES.FIELD_OFFICER]: ['PENDING', 'UNDER_REVIEW'],
     [ROLES.DISTRICT_OFFICER]: ['ESCALATED'],
-    [ROLES.FINANCE_APPROVER]: ['FIELD_APPROVED', 'DISTRICT_APPROVED'],
+    [ROLES.FINANCE_APPROVER]: [
+        'FIELD_APPROVED',
+        'DISTRICT_APPROVED',
+        'APPROVED'
+    ],
 };
 
 const ROLE_LABELS = {
@@ -2317,6 +2322,11 @@ function ApplicationReview({
                         </div>
                     )}
 
+                {officerRole === ROLES.FINANCE_APPROVER &&
+                    app.applicationStatus === 'APPROVED' && (
+                        <DisbursementStagePanel application={app} />
+                    )}
+
             </section>
 
             {/* ================================================================
@@ -2610,6 +2620,7 @@ function OfficerDashboard() {
                         );
 
                 setApplications(all);
+                return all;
 
             } catch (err) {
 
@@ -2617,6 +2628,7 @@ function OfficerDashboard() {
                     err.message ||
                     'Failed to load applications.'
                 );
+                return [];
 
             } finally {
 
@@ -2946,25 +2958,30 @@ function OfficerDashboard() {
                     updated
                 );
 
-                await loadApplications();
+                if (action === 'finance-approve') {
+                    setSelectedApp({
+                        ...app,
+                        applicationStatus: 'APPROVED',
+                    });
+                } else {
+                    const refreshedApplications = await loadApplications();
 
-                if (
-                    selectedApp &&
-                    selectedApp.applicationId ===
-                    app.applicationId
-                ) {
+                    if (
+                        selectedApp &&
+                        selectedApp.applicationId ===
+                        app.applicationId
+                    ) {
+                        const refreshed = Array.isArray(refreshedApplications)
+                            ? refreshedApplications.find(
+                                item =>
+                                    item.applicationId ===
+                                    app.applicationId
+                            )
+                            : null;
 
-                    const refreshed =
-                        applications.find(
-                            item =>
-                                item.applicationId ===
-                                app.applicationId
-                        );
-
-                    if (refreshed) {
-                        setSelectedApp(
-                            refreshed
-                        );
+                        if (refreshed) {
+                            setSelectedApp(refreshed);
+                        }
                     }
                 }
 
@@ -3570,3 +3587,4 @@ function OfficerDashboard() {
 }
 
 export default OfficerDashboard;
+

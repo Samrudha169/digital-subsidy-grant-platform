@@ -1,0 +1,374 @@
+.disbursement-panel {
+    margin-top: 24px;
+    padding: 24px;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    background: #ffffff;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.06);
+}
+
+.disbursement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    margin-bottom: 22px;
+}
+
+.disbursement-header h3 {
+    margin: 0 0 6px;
+    font-size: 21px;
+    color: #111827;
+}
+
+.disbursement-header p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.disbursement-badge {
+    padding: 7px 12px;
+    border-radius: 20px;
+    background: #eef2ff;
+    color: #4338ca;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.disbursement-badge.warning {
+    background: #fff7ed;
+    color: #c2410c;
+}
+
+.disbursement-alert {
+    padding: 12px 15px;
+    border-radius: 9px;
+    margin-bottom: 18px;
+    font-size: 14px;
+}
+
+.disbursement-alert.error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.disbursement-alert.success {
+    background: #f0fdf4;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.disbursement-warning {
+    padding: 18px;
+    border-radius: 10px;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+}
+
+.disbursement-warning strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.disbursement-warning p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.disbursement-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.disbursement-summary-card {
+    padding: 16px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f9fafb;
+}
+
+.disbursement-summary-card span {
+    display: block;
+    color: #6b7280;
+    font-size: 12px;
+    margin-bottom: 7px;
+}
+
+.disbursement-summary-card strong {
+    color: #111827;
+    font-size: 18px;
+}
+
+.disbursement-section {
+    margin-top: 22px;
+}
+
+.disbursement-section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.disbursement-section-title h4 {
+    margin: 0;
+    font-size: 16px;
+    color: #111827;
+}
+
+.disbursement-section-title span {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+.stage-form {
+    padding: 18px;
+    border-radius: 12px;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+}
+
+.stage-form-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.stage-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.stage-field-wide {
+    grid-column: span 3;
+}
+
+.stage-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.stage-field input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #111827;
+    font-size: 14px;
+    outline: none;
+}
+
+.stage-field input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.stage-primary-button {
+    margin-top: 16px;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 8px;
+    background: #4f46e5;
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.stage-primary-button:hover {
+    background: #4338ca;
+}
+
+.stage-primary-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.stage-refresh-button {
+    padding: 7px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.stage-refresh-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.stage-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.stage-card {
+    padding: 17px;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #ffffff;
+}
+
+.stage-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.stage-number {
+    font-weight: 700;
+    font-size: 15px;
+    color: #111827;
+}
+
+.stage-status {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.stage-status.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.stage-status.verified {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.stage-status.released {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.stage-card-details {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.stage-card-details span {
+    display: block;
+    color: #6b7280;
+    font-size: 11px;
+    margin-bottom: 4px;
+}
+
+.stage-card-details strong {
+    display: block;
+    color: #111827;
+    font-size: 13px;
+    word-break: break-word;
+}
+
+.stage-card-actions {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.stage-verify-button,
+.stage-release-button {
+    padding: 9px 15px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.stage-verify-button {
+    background: #2563eb;
+}
+
+.stage-verify-button:hover {
+    background: #1d4ed8;
+}
+
+.stage-release-button {
+    background: #15803d;
+}
+
+.stage-release-button:hover {
+    background: #166534;
+}
+
+.stage-verify-button:disabled,
+.stage-release-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.stage-released-label {
+    padding: 8px 12px;
+    border-radius: 7px;
+    background: #f0fdf4;
+    color: #15803d;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.stage-empty-state {
+    padding: 25px;
+    text-align: center;
+    border: 1px dashed #d1d5db;
+    border-radius: 10px;
+    color: #6b7280;
+    font-size: 14px;
+}
+
+@media (max-width: 900px) {
+    .disbursement-summary {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stage-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stage-field-wide {
+        grid-column: span 1;
+    }
+
+    .stage-card-details {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .disbursement-panel {
+        padding: 16px;
+    }
+
+    .disbursement-header {
+        flex-direction: column;
+    }
+
+    .disbursement-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .stage-card-details {
+        grid-template-columns: 1fr;
+    }
+}

@@ -37,6 +37,8 @@ import java.util.Set;
 
 import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
 import com.dsgp.beneficiary.entity.DocumentType;
+import com.dsgp.disbursement.entity.DisbursementType;
+import com.dsgp.disbursement.service.DisbursementPlanService;
 
 @Service
 @RequiredArgsConstructor
@@ -68,6 +70,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final VerificationRecordRepository verificationRecordRepository;
     private final VerificationCriterionRepository verificationCriterionRepository;
     private final BeneficiaryDocumentRepository documentRepository;
+    private final DisbursementPlanService disbursementPlanService;
 
     // ========================================================================
     // ROUTING THRESHOLDS  (configurable via application.properties)
@@ -1079,14 +1082,22 @@ public class VerificationServiceImpl implements VerificationService {
         // Final approval
         // ------------------------------------------------------------
 
-        // Final approval
+        // ------------------------------------------------------------
+// Final approval
 // ------------------------------------------------------------
 
-        application.setSanctionedAmount(application.getScheme().getGrantAmount());
+        application.setSanctionedAmount(
+                application.getScheme().getGrantAmount()
+        );
 
         updateStatus(
                 application,
                 STATUS_APPROVED
+        );
+
+        disbursementPlanService.createPlan(
+                application,
+                DisbursementType.STAGED
         );
 
         recordAction(

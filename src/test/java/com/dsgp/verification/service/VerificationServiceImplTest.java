@@ -43,6 +43,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import com.dsgp.disbursement.service.DisbursementPlanService;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("VerificationServiceImpl")
@@ -51,6 +52,10 @@ class VerificationServiceImplTest {
     // ========================================================================
     // MOCKS
     // ========================================================================
+
+
+    @Mock
+    private DisbursementPlanService disbursementPlanService;
 
     @Mock
     private SchemeApplicationRepository applicationRepository;
