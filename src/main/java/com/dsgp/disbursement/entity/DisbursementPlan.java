@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 @Table(name = "disbursement_plans")
@@ -22,6 +23,7 @@ public class DisbursementPlan {
 
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "application_id", nullable = false, unique = true)
+    @JsonIgnore
     private SchemeApplication application;
 
     @Column(name = "total_amount", precision = 12, scale = 2, nullable = false)

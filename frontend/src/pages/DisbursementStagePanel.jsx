@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./DisbursementStagePanel.css";
 
-const API_BASE = "/api/disbursements";
+const API_BASE = "/api/v1/api/disbursements";
 
 function formatAmount(value) {
     if (value === null || value === undefined || value === "") {
@@ -41,12 +41,15 @@ export default function DisbursementStagePanel({ application }) {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    const [stageNumber, setStageNumber] = useState("");
+    const [stageNumber, setStageNumber] = useState(1);
     const [amount, setAmount] = useState("");
     const [milestone, setMilestone] = useState("");
     const [dueDate, setDueDate] = useState("");
 
     const planId = plan?.id || null;
+
+    console.log("DISBURSEMENT PLAN STATE:", plan);
+    console.log("DISBURSEMENT PLAN ID:", planId);
 
     /*
      * Load the disbursement plan using the application ID,
@@ -145,7 +148,28 @@ export default function DisbursementStagePanel({ application }) {
     }, [applicationId]);
 
     /*
-     * Calculate amounts from the stages.
+     * Automatically calculate the next stage number.
+     *
+     * Example:
+     * Stage 1 exists → next = Stage 2
+     * Stage 1,2 exist → next = Stage 3
+     * Stage 1,2,3 exist → next = Stage 4
+     */
+    useEffect(() => {
+        setStageNumber(
+            stages.length > 0
+                ? Math.max(
+                ...stages.map(
+                    stage =>
+                        Number(stage.stageNumber) || 0
+                )
+            ) + 1
+                : 1
+        );
+    }, [stages]);
+
+    /*
+     * Calculate released amount from released stages.
      */
     const releasedAmount = stages.reduce(
         (sum, stage) =>
@@ -155,6 +179,9 @@ export default function DisbursementStagePanel({ application }) {
         0
     );
 
+    /*
+     * Calculate total amount allocated to stages.
+     */
     const plannedAmount = stages.reduce(
         (sum, stage) =>
             sum + Number(stage.amount || 0),
@@ -178,6 +205,61 @@ export default function DisbursementStagePanel({ application }) {
         Number(sanctionedAmount) - plannedAmount,
         0
     );
+
+    /*
+     * Create a disbursement plan for this approved application.
+     */
+    const handleCreatePlan = async () => {
+        if (!applicationId) {
+            setError("Application ID is not available.");
+            return;
+        }
+
+        setSaving(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const response = await fetch(
+                `${API_BASE}/application/${applicationId}/plan?type=STAGED`,
+                {
+                    method: "POST",
+                }
+            );
+
+            const data = await response
+                .json()
+                .catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ||
+                    data?.error ||
+                    "Unable to create disbursement plan."
+                );
+            }
+
+            setPlan(data);
+
+            setSuccess(
+                "Disbursement plan created successfully."
+            );
+
+            await loadPlanAndStages();
+        } catch (err) {
+            console.error(
+                "Create disbursement plan error:",
+                err
+            );
+
+            setError(
+                err.message ||
+                "Unable to create disbursement plan."
+            );
+        } finally {
+            setSaving(false);
+        }
+    };
 
     /*
      * Create a new stage.
@@ -254,7 +336,6 @@ export default function DisbursementStagePanel({ application }) {
                 );
             }
 
-            setStageNumber("");
             setAmount("");
             setMilestone("");
             setDueDate("");
@@ -390,6 +471,7 @@ export default function DisbursementStagePanel({ application }) {
                 <div className="disbursement-header">
                     <div>
                         <h3>Disbursement</h3>
+
                         <p>
                             Manage staged disbursement for this
                             approved application.
@@ -415,6 +497,16 @@ export default function DisbursementStagePanel({ application }) {
             </section>
         );
     }
+
+    console.log(
+        "RENDER CHECK:",
+        {
+            planId,
+            loading,
+            plan,
+            applicationId
+        }
+    );
 
     /*
      * Application exists but no disbursement plan exists.
@@ -452,6 +544,17 @@ export default function DisbursementStagePanel({ application }) {
                         No disbursement plan is currently linked
                         to this approved application.
                     </p>
+
+                    <button
+                        type="button"
+                        className="stage-primary-button"
+                        onClick={handleCreatePlan}
+                        disabled={saving}
+                    >
+                        {saving
+                            ? "Creating Plan..."
+                            : "Create Disbursement Plan"}
+                    </button>
                 </div>
             </section>
         );
@@ -459,6 +562,8 @@ export default function DisbursementStagePanel({ application }) {
 
     return (
         <section className="disbursement-panel">
+
+            {/* HEADER */}
             <div className="disbursement-header">
                 <div>
                     <h3>Staged Disbursement</h3>
@@ -474,19 +579,23 @@ export default function DisbursementStagePanel({ application }) {
                 </span>
             </div>
 
+            {/* ERROR */}
             {error && (
                 <div className="disbursement-alert error">
                     {error}
                 </div>
             )}
 
+            {/* SUCCESS */}
             {success && (
                 <div className="disbursement-alert success">
                     {success}
                 </div>
             )}
 
+            {/* SUMMARY */}
             <div className="disbursement-summary">
+
                 <div className="disbursement-summary-card">
                     <span>Sanctioned Amount</span>
 
@@ -518,9 +627,12 @@ export default function DisbursementStagePanel({ application }) {
                         {formatAmount(remainingAmount)}
                     </strong>
                 </div>
+
             </div>
 
+            {/* CREATE STAGE SECTION */}
             <div className="disbursement-section">
+
                 <div className="disbursement-section-title">
                     <h4>Create Disbursement Stage</h4>
 
@@ -533,96 +645,142 @@ export default function DisbursementStagePanel({ application }) {
                     </span>
                 </div>
 
-                <form
-                    className="stage-form"
-                    onSubmit={handleAddStage}
-                >
-                    <div className="stage-form-grid">
-                        <div className="stage-field">
-                            <label>Stage Number</label>
+                {/*
+                 * SHOW FORM ONLY WHEN SOME AMOUNT IS REMAINING.
+                 * When remaining amount is 0, show completion message.
+                 */}
+                {remainingAmount > 0 ? (
 
-                            <input
-                                type="number"
-                                min="1"
-                                value={stageNumber}
-                                onChange={(e) =>
-                                    setStageNumber(
-                                        e.target.value
-                                    )
-                                }
-                                placeholder="e.g. 1"
-                                disabled={saving}
-                            />
+                    <form
+                        className="stage-form"
+                        onSubmit={handleAddStage}
+                    >
+
+                        <div className="stage-form-grid">
+
+                            {/* AUTO STAGE NUMBER */}
+                            <div className="stage-field">
+                                <label>Stage Number</label>
+
+                                <div className="auto-stage-number">
+                                    <span>
+                                        Stage {stageNumber}
+                                    </span>
+
+                                    <span>
+                                        Auto
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* AMOUNT */}
+                            <div className="stage-field">
+                                <label>Amount</label>
+
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="0.01"
+                                    value={amount}
+                                    onChange={(e) =>
+                                        setAmount(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="e.g. 50000"
+                                    disabled={saving}
+                                />
+                            </div>
+
+                            {/* DUE DATE */}
+                            <div className="stage-field">
+                                <label>Due Date</label>
+
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) =>
+                                        setDueDate(
+                                            e.target.value
+                                        )
+                                    }
+                                    disabled={saving}
+                                />
+                            </div>
+
+                            {/* MILESTONE */}
+                            <div className="stage-field stage-field-wide">
+                                <label>Milestone</label>
+
+                                <input
+                                    type="text"
+                                    value={milestone}
+                                    onChange={(e) =>
+                                        setMilestone(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="e.g. Purchase of approved equipment"
+                                    disabled={saving}
+                                />
+                            </div>
+
                         </div>
 
-                        <div className="stage-field">
-                            <label>Amount</label>
+                        <button
+                            type="submit"
+                            className="stage-primary-button"
+                            disabled={saving}
+                        >
+                            {saving
+                                ? "Processing..."
+                                : "Add Stage"}
+                        </button>
 
-                            <input
-                                type="number"
-                                min="1"
-                                step="0.01"
-                                value={amount}
-                                onChange={(e) =>
-                                    setAmount(
-                                        e.target.value
-                                    )
-                                }
-                                placeholder="e.g. 50000"
-                                disabled={saving}
-                            />
+                    </form>
+
+                ) : (
+
+                    /* COMPLETED MESSAGE */
+                    <div className="stage-complete-message">
+
+                        <div className="stage-complete-icon">
+                            ✓
                         </div>
 
-                        <div className="stage-field">
-                            <label>Due Date</label>
+                        <div className="stage-complete-content">
 
-                            <input
-                                type="date"
-                                value={dueDate}
-                                onChange={(e) =>
-                                    setDueDate(
-                                        e.target.value
-                                    )
-                                }
-                                disabled={saving}
-                            />
+                            <strong>
+                                Disbursement allocation completed
+                            </strong>
+
+                            <p>
+                                The full sanctioned amount of{" "}
+                                <strong>
+                                    {formatAmount(
+                                        sanctionedAmount
+                                    )}
+                                </strong>{" "}
+                                has been allocated across the
+                                disbursement stages.
+                            </p>
+
                         </div>
 
-                        <div className="stage-field stage-field-wide">
-                            <label>Milestone</label>
-
-                            <input
-                                type="text"
-                                value={milestone}
-                                onChange={(e) =>
-                                    setMilestone(
-                                        e.target.value
-                                    )
-                                }
-                                placeholder="e.g. Purchase of approved equipment"
-                                disabled={saving}
-                            />
-                        </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        className="stage-primary-button"
-                        disabled={
-                            saving ||
-                            remainingAmount <= 0
-                        }
-                    >
-                        {saving
-                            ? "Processing..."
-                            : "Add Stage"}
-                    </button>
-                </form>
+                )}
+
             </div>
 
+            {/* DISBURSEMENT STAGES */}
             <div className="disbursement-section">
+
                 <div className="disbursement-section-title">
-                    <h4>Disbursement Stages</h4>
+
+                    <h4>
+                        Disbursement Stages
+                    </h4>
 
                     <button
                         type="button"
@@ -636,19 +794,26 @@ export default function DisbursementStagePanel({ application }) {
                             ? "Loading..."
                             : "Refresh"}
                     </button>
+
                 </div>
 
                 {loading ? (
+
                     <div className="stage-empty-state">
                         Loading disbursement stages...
                     </div>
+
                 ) : stages.length === 0 ? (
+
                     <div className="stage-empty-state">
                         No disbursement stages have been
                         created yet.
                     </div>
+
                 ) : (
+
                     <div className="stage-list">
+
                         {stages
                             .slice()
                             .sort(
@@ -661,11 +826,15 @@ export default function DisbursementStagePanel({ application }) {
                                     )
                             )
                             .map((stage) => (
+
                                 <div
                                     className="stage-card"
                                     key={stage.id}
                                 >
+
+                                    {/* STAGE HEADER */}
                                     <div className="stage-card-top">
+
                                         <div className="stage-number">
                                             Stage{" "}
                                             {stage.stageNumber}
@@ -673,16 +842,18 @@ export default function DisbursementStagePanel({ application }) {
 
                                         <span
                                             className={`stage-status ${String(
-                                                stage.status ||
-                                                ""
+                                                stage.status || ""
                                             ).toLowerCase()}`}
                                         >
                                             {stage.status ||
                                                 "PENDING"}
                                         </span>
+
                                     </div>
 
+                                    {/* STAGE DETAILS */}
                                     <div className="stage-card-details">
+
                                         <div>
                                             <span>
                                                 Amount
@@ -729,9 +900,12 @@ export default function DisbursementStagePanel({ application }) {
                                                 )}
                                             </strong>
                                         </div>
+
                                     </div>
 
+                                    {/* STAGE ACTIONS */}
                                     <div className="stage-card-actions">
+
                                         {stage.status ===
                                             "PENDING" && (
                                                 <button
@@ -774,12 +948,19 @@ export default function DisbursementStagePanel({ application }) {
                                                 ✓ Payment Released
                                             </span>
                                             )}
+
                                     </div>
+
                                 </div>
+
                             ))}
+
                     </div>
+
                 )}
+
             </div>
+
         </section>
     );
 }

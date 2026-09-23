@@ -372,3 +372,80 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* =========================================================
+   AUTO STAGE NUMBER
+   ========================================================= */
+
+.auto-stage-number {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #f3f4f6;
+    font-weight: 600;
+    color: #111827;
+    box-sizing: border-box;
+}
+
+.auto-stage-number::after {
+    content: "Auto";
+    margin-left: auto;
+    font-size: 12px;
+    font-weight: 500;
+    color: #6b7280;
+}
+
+
+/* =========================================================
+   DISBURSEMENT ALLOCATION COMPLETED
+   ========================================================= */
+
+.stage-complete-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 18px;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.stage-complete-icon {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #dcfce7;
+    color: #15803d;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.stage-complete-message strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.stage-complete-message p {
+    margin: 0;
+    color: #64748b;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.stage-complete-message p strong {
+    display: inline;
+    margin: 0;
+    color: #0f172a;
+    font-size: 16px;
+    font-weight: 700;
+}

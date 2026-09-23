@@ -9,8 +9,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.dsgp.application.entity.SchemeApplication;
+import com.dsgp.beneficiary.repository.SchemeApplicationRepository;
+import com.dsgp.disbursement.entity.DisbursementType;
+import com.dsgp.disbursement.service.DisbursementPlanService;
 
 import java.util.List;
+
 
 @RestController
 @RequestMapping("/api/disbursements")
@@ -19,7 +24,8 @@ public class DisbursementController {
 
     private final DisbursementStageService disbursementStageService;
     private final DisbursementPlanRepository disbursementPlanRepository;
-
+    private final DisbursementPlanService disbursementPlanService;
+    private final SchemeApplicationRepository schemeApplicationRepository;
     /*
      * Get disbursement plan using application ID
      */
@@ -32,6 +38,28 @@ public class DisbursementController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    /*
+     * Create disbursement plan for an approved application
+     */
+    @PostMapping("/application/{applicationId}/plan")
+    public ResponseEntity<DisbursementPlan> createPlan(
+            @PathVariable Long applicationId,
+            @RequestParam DisbursementType type) {
+
+        SchemeApplication application =
+                schemeApplicationRepository.findById(applicationId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Application not found: " + applicationId));
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(disbursementPlanService.createPlan(
+                        application,
+                        type
+                ));
+    }
+
 
     /*
      * Create a new disbursement stage
