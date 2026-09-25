@@ -1,7 +1,68 @@
 import React, { useEffect, useState } from "react";
 import "./DisbursementStagePanel.css";
 
-const API_BASE = "/api/v1/disbursements";
+const API_BASE = "/api/v1/api/disbursements";
+
+const getComplianceInfo = (stage) => {
+    const status = stage.complianceStatus || "PENDING";
+
+    if (status === "COMPLETED") {
+        return {
+            type: "completed",
+            label: "Compliance Completed",
+            message: "All required compliance conditions have been verified."
+        };
+    }
+
+    if (status === "NON_COMPLIANT") {
+        return {
+            type: "non-compliant",
+            label: "Non-Compliant",
+            message: "The required compliance conditions were not satisfied."
+        };
+    }
+
+    if (!stage.dueDate) {
+        return {
+            type: "pending",
+            label: "Compliance Pending",
+            message: "Compliance verification is still pending."
+        };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const dueDate = new Date(stage.dueDate);
+    dueDate.setHours(0, 0, 0, 0);
+
+    const differenceInDays = Math.ceil(
+        (dueDate - today) / (1000 * 60 * 60 * 24)
+    );
+
+    if (differenceInDays < 0) {
+        return {
+            type: "overdue",
+            label: "Compliance Overdue",
+            message: `${Math.abs(differenceInDays)} day(s) overdue.`
+        };
+    }
+
+    if (differenceInDays === 0) {
+        return {
+            type: "due-today",
+            label: "Compliance Due Today",
+            message: "Compliance verification is due today."
+        };
+    }
+
+    return {
+        type: "pending",
+        label: "Compliance Pending",
+        message: `Due in ${differenceInDays} day(s).`
+    };
+};
+
 
 function formatAmount(value) {
     if (value === null || value === undefined || value === "") {
@@ -203,6 +264,18 @@ export default function DisbursementStagePanel({ application }) {
         Number(sanctionedAmount) - plannedAmount,
         0
     );
+
+    const complianceAlerts = stages
+        .map((stage) => ({
+            stage,
+            info: getComplianceInfo(stage)
+        }))
+        .filter(({ info }) =>
+            info.type === "overdue" ||
+            info.type === "due-today" ||
+            info.type === "non-compliant"
+        );
+
 
     /*
      * Create a disbursement plan for this approved application.
@@ -461,6 +534,57 @@ export default function DisbursementStagePanel({ application }) {
     };
 
     /*
+ * Update compliance status of a released stage.
+ */
+    const handleComplianceUpdate = async (stageId, status) => {
+        setSaving(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const response = await fetch(
+                `${API_BASE}/stages/${stageId}/compliance?status=${status}`,
+                {
+                    method: "PUT",
+                }
+            );
+
+            const data = await response
+                .json()
+                .catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ||
+                    data?.error ||
+                    "Unable to update compliance status."
+                );
+            }
+
+            setSuccess(
+                status === "COMPLETED"
+                    ? "Stage compliance marked as completed."
+                    : "Stage marked as non-compliant."
+            );
+
+            await loadPlanAndStages();
+        } catch (err) {
+            console.error(
+                "Compliance update error:",
+                err
+            );
+
+            setError(
+                err.message ||
+                "Unable to update compliance status."
+            );
+        } finally {
+            setSaving(false);
+        }
+    };
+
+
+    /*
      * No application ID.
      */
     if (!applicationId) {
@@ -633,6 +757,49 @@ export default function DisbursementStagePanel({ application }) {
                 </div>
 
             </div>
+
+            {/* COMPLIANCE ALERTS */}
+            {complianceAlerts.length > 0 && (
+                <div className="compliance-alerts-section">
+                    <div className="compliance-alerts-header">
+                        <h4>Compliance Alerts</h4>
+                        <span>
+                {complianceAlerts.length} alert
+                            {complianceAlerts.length > 1 ? "s" : ""}
+            </span>
+                    </div>
+
+                    <div className="compliance-alert-list">
+                        {complianceAlerts.map(({ stage, info }) => (
+                            <div
+                                key={stage.id}
+                                className={`compliance-alert-item ${info.type}`}
+                            >
+                                <div className="compliance-alert-icon">
+                                    {info.type === "non-compliant"
+                                        ? "!"
+                                        : "!"}
+                                </div>
+
+                                <div className="compliance-alert-content">
+                                    <strong>
+                                        Stage {stage.stageNumber} — {info.label}
+                                    </strong>
+
+                                    <span>
+                            {info.message}
+                        </span>
+
+                                    <small>
+                                        Milestone: {stage.milestone || "-"}
+                                    </small>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
 
             {/* CREATE STAGE SECTION */}
             <div className="disbursement-section">
@@ -829,12 +996,14 @@ export default function DisbursementStagePanel({ application }) {
                                         b.stageNumber || 0
                                     )
                             )
-                            .map((stage) => (
+                            .map((stage) => {
+                                const complianceInfo = getComplianceInfo(stage);
 
-                                <div
-                                    className="stage-card"
-                                    key={stage.id}
-                                >
+                                return (
+                                    <div
+                                        className="stage-card"
+                                        key={stage.id}
+                                    >
 
                                     {/* STAGE HEADER */}
                                     <div className="stage-card-top">
@@ -938,6 +1107,18 @@ export default function DisbursementStagePanel({ application }) {
 
                                     </div>
 
+                                    <div>
+                                        <span className="compliance-label">Compliance</span>
+
+                                        <strong className={`compliance-status ${complianceInfo.type}`}>
+                                            {complianceInfo.label}
+                                        </strong>
+
+                                        <small className={`compliance-message ${complianceInfo.type}`}>
+                                            {complianceInfo.message}
+                                        </small>
+                                    </div>
+
                                     {/* STAGE ACTIONS */}
                                     <div className="stage-card-actions">
 
@@ -979,16 +1160,45 @@ export default function DisbursementStagePanel({ application }) {
 
                                         {stage.status ===
                                             "RELEASED" && (
-                                                <span className="stage-released-label">
-                                                ✓ Payment Released
-                                            </span>
+                                                <>
+                                                    <span className="stage-released-label">
+                                                        ✓ Payment Released
+                                                    </span>
+
+                                                    <select
+                                                        value={
+                                                            stage.complianceStatus ||
+                                                            "PENDING"
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleComplianceUpdate(
+                                                                stage.id,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        disabled={saving}
+                                                        className="compliance-select"
+                                                    >
+                                                        <option value="PENDING">
+                                                            Compliance Pending
+                                                        </option>
+
+                                                        <option value="COMPLETED">
+                                                            Completed
+                                                        </option>
+
+                                                        <option value="NON_COMPLIANT">
+                                                            Non-Compliant
+                                                        </option>
+                                                    </select>
+                                                </>
                                             )}
 
                                     </div>
 
-                                </div>
-
-                            ))}
+                                    </div>
+                                );
+                            })}
 
                     </div>
 

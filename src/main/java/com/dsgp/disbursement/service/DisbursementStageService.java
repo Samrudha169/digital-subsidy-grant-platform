@@ -6,6 +6,7 @@ import com.dsgp.disbursement.entity.DisbursementStageStatus;
 import com.dsgp.disbursement.entity.DisbursementStatus;
 import com.dsgp.disbursement.repository.DisbursementPlanRepository;
 import com.dsgp.disbursement.repository.DisbursementStageRepository;
+import com.dsgp.disbursement.entity.ComplianceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -106,6 +107,26 @@ public class DisbursementStageService {
         }
 
         stage.setStatus(DisbursementStageStatus.VERIFIED);
+
+        return disbursementStageRepository.save(stage);
+    }
+
+    @Transactional
+    public DisbursementStage updateComplianceStatus(
+            Long stageId,
+            ComplianceStatus complianceStatus) {
+
+        DisbursementStage stage = disbursementStageRepository.findById(stageId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Disbursement stage not found: " + stageId));
+
+        if (complianceStatus == null) {
+            throw new IllegalArgumentException(
+                    "Compliance status cannot be null.");
+        }
+
+        stage.setComplianceStatus(complianceStatus);
 
         return disbursementStageRepository.save(stage);
     }

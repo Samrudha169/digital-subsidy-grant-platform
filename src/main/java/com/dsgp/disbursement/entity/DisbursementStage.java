@@ -45,6 +45,12 @@ public class DisbursementStage {
     private DisbursementStageStatus status =
             DisbursementStageStatus.PENDING;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "compliance_status", nullable = false, length = 20)
+    @Builder.Default
+    private ComplianceStatus complianceStatus =
+            ComplianceStatus.PENDING;
+
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
 
