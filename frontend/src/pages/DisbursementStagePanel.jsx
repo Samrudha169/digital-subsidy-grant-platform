@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./DisbursementStagePanel.css";
 
-const API_BASE = "/api/v1/api/disbursements";
+const API_BASE = "/api/v1/disbursements";
 
 function formatAmount(value) {
     if (value === null || value === undefined || value === "") {
@@ -48,8 +48,6 @@ export default function DisbursementStagePanel({ application }) {
 
     const planId = plan?.id || null;
 
-    console.log("DISBURSEMENT PLAN STATE:", plan);
-    console.log("DISBURSEMENT PLAN ID:", planId);
 
     /*
      * Load the disbursement plan using the application ID,
@@ -498,16 +496,6 @@ export default function DisbursementStagePanel({ application }) {
         );
     }
 
-    console.log(
-        "RENDER CHECK:",
-        {
-            planId,
-            loading,
-            plan,
-            applicationId
-        }
-    );
-
     /*
      * Application exists but no disbursement plan exists.
      */
@@ -625,6 +613,22 @@ export default function DisbursementStagePanel({ application }) {
 
                     <strong>
                         {formatAmount(remainingAmount)}
+                    </strong>
+                </div>
+
+                <div className="disbursement-summary-card">
+                    <span>Plan Status</span>
+
+                    <strong>
+                        {plan?.status ?? "-"}
+                    </strong>
+                </div>
+
+                <div className="disbursement-summary-card">
+                    <span>Disbursement Type</span>
+
+                    <strong>
+                        {plan?.disbursementType ?? "-"}
                     </strong>
                 </div>
 
@@ -840,14 +844,32 @@ export default function DisbursementStagePanel({ application }) {
                                             {stage.stageNumber}
                                         </div>
 
-                                        <span
-                                            className={`stage-status ${String(
-                                                stage.status || ""
-                                            ).toLowerCase()}`}
-                                        >
-                                            {stage.status ||
-                                                "PENDING"}
-                                        </span>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+
+                                            {stage.overdue && (
+                                                <span
+                                                    className="stage-status"
+                                                    style={{
+                                                        background: "#7f1d1d",
+                                                        color: "#fca5a5",
+                                                        border: "1px solid #991b1b",
+                                                    }}
+                                                    title="This stage has passed its due date and has not been released."
+                                                >
+                                                    ⚠ OVERDUE
+                                                </span>
+                                            )}
+
+                                            <span
+                                                className={`stage-status ${String(
+                                                    stage.status || ""
+                                                ).toLowerCase()}`}
+                                            >
+                                                {stage.status ||
+                                                    "PENDING"}
+                                            </span>
+
+                                        </div>
 
                                     </div>
 
@@ -885,6 +907,19 @@ export default function DisbursementStagePanel({ application }) {
                                             <strong>
                                                 {formatDate(
                                                     stage.dueDate
+                                                )}
+                                                {stage.overdue && (
+                                                    <span
+                                                        style={{
+                                                            marginLeft: "6px",
+                                                            fontSize: "0.75rem",
+                                                            color: "#fca5a5",
+                                                            fontWeight: "600",
+                                                        }}
+                                                        title="Non-compliant: payment overdue"
+                                                    >
+                                                        (Non-compliant)
+                                                    </span>
                                                 )}
                                             </strong>
                                         </div>

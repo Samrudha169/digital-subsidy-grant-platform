@@ -7,6 +7,7 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 @Entity
 @Table(name = "disbursement_plans")
@@ -59,5 +60,10 @@ public class DisbursementPlan {
         if (remainingAmount == null && totalAmount != null) {
             remainingAmount = totalAmount;
         }
+    }
+
+    @JsonProperty("applicationId")
+    public Long getApplicationId() {
+        return application != null ? application.getId() : null;
     }
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DisbursementStagePanel from "./DisbursementStagePanel";
+import DisbursementAnalyticsPanel from "./DisbursementAnalyticsPanel";
 import './OfficerDashboard.css';
 
 // ============================================================================
@@ -3649,6 +3650,9 @@ function OfficerDashboard() {
                     </section>
 
                 )}
+
+                {/* ── DISBURSEMENT ANALYTICS ─────────────────────────── */}
+                <DisbursementAnalyticsPanel />
 
             </main>
 

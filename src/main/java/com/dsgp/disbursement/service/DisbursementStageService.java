@@ -165,4 +165,21 @@ public class DisbursementStageService {
         return disbursementStageRepository
                 .findByDisbursementPlanIdOrderByStageNumberAsc(planId);
     }
+
+    /*
+     * A stage is overdue when its due date is set and falls
+     * strictly before today. Released stages are excluded
+     * because payment has already been made.
+     */
+    public boolean isOverdue(DisbursementStage stage) {
+        if (stage.getDueDate() == null) {
+            return false;
+        }
+
+        if (stage.getStatus() == DisbursementStageStatus.RELEASED) {
+            return false;
+        }
+
+        return stage.getDueDate().isBefore(LocalDate.now());
+    }
 }
