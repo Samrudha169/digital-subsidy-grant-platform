@@ -47,7 +47,7 @@ VALUES
  NULL,
  NULL,
  NULL,
- NULL,
+ 50000.00,
  1),
 
 -- ── PMEGP ────────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ VALUES
  NULL,
  NULL,
  NULL,
- NULL,
+ 1750000.00,
  1);
 -- =============================================================================
 -- Milestone 2 — Correct PM-KISAN seed to match EligibilityScoringEngine.java
