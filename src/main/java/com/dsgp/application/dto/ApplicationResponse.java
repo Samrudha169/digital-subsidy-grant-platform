@@ -9,47 +9,49 @@ import java.time.LocalDateTime;
 /**
  * Response DTO returned after a scheme application is submitted or retrieved.
  *
- * <p>Includes the application ID, status, eligibility score that
- * unlocked the submission, and the scheme / beneficiary details
- * required by the TrackApplication frontend view.
- *
- * <p>{@code sanctionedAmount} is {@code null} until the application reaches
- * {@code APPROVED} status via Finance approval.
+ * Includes application, beneficiary, scheme, eligibility,
+ * sanction and disbursement information.
  */
 @Data
 @Builder
 public class ApplicationResponse {
 
-    /** Primary key of the created {@code scheme_applications} row. */
+    /** Primary key of the created scheme_applications row. */
     private Long applicationId;
 
     /** Internal ID of the beneficiary. */
     private Integer beneficiaryId;
 
-    /** Full name of the beneficiary (for display). */
+    /** Full name of the beneficiary. */
     private String beneficiaryName;
 
     /** Internal ID of the scheme. */
     private Long schemeId;
 
-    /** Human-readable scheme name (for display). */
+    /** Human-readable scheme name. */
     private String schemeName;
 
-    /**
-     * Current workflow status.
-     * Always {@code "PENDING"} immediately after submission.
-     */
+    /** Current workflow status. */
     private String applicationStatus;
 
-    /** The eligibility score that qualified this application (0-100). */
+    /** The eligibility score that qualified this application. */
     private int eligibilityScore;
 
     /** Timestamp when the application was persisted. */
     private LocalDateTime applicationDate;
 
-    /**
-     * Amount (in ₹) sanctioned by the Finance Officer upon final approval.
-     * {@code null} until the application is {@code APPROVED}.
-     */
+    /** Amount sanctioned by the Finance Officer. */
     private BigDecimal sanctionedAmount;
+
+    /**
+     * Current disbursement stage for this application.
+     *
+     * Example:
+     * 1 = Stage 1
+     * 2 = Stage 2
+     * 3 = Stage 3
+     *
+     * Null means that no disbursement stage has been created yet.
+     */
+    private Integer currentDisbursementStage;
 }

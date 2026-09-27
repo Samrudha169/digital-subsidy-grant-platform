@@ -1,22 +1,21 @@
 package com.dsgp.disbursement.controller;
 
+import com.dsgp.application.entity.SchemeApplication;
+import com.dsgp.beneficiary.repository.SchemeApplicationRepository;
 import com.dsgp.disbursement.dto.DisbursementStageRequest;
+import com.dsgp.disbursement.entity.ComplianceStatus;
 import com.dsgp.disbursement.entity.DisbursementPlan;
 import com.dsgp.disbursement.entity.DisbursementStage;
+import com.dsgp.disbursement.entity.DisbursementType;
 import com.dsgp.disbursement.repository.DisbursementPlanRepository;
+import com.dsgp.disbursement.service.DisbursementPlanService;
 import com.dsgp.disbursement.service.DisbursementStageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.dsgp.application.entity.SchemeApplication;
-import com.dsgp.beneficiary.repository.SchemeApplicationRepository;
-import com.dsgp.disbursement.entity.DisbursementType;
-import com.dsgp.disbursement.service.DisbursementPlanService;
-import com.dsgp.disbursement.entity.ComplianceStatus;
 
 import java.util.List;
-
 
 @RestController
 @RequestMapping("/api/disbursements")
@@ -27,6 +26,7 @@ public class DisbursementController {
     private final DisbursementPlanRepository disbursementPlanRepository;
     private final DisbursementPlanService disbursementPlanService;
     private final SchemeApplicationRepository schemeApplicationRepository;
+
     /*
      * Get disbursement plan using application ID
      */
@@ -54,13 +54,13 @@ public class DisbursementController {
                                 new IllegalArgumentException(
                                         "Application not found: " + applicationId));
 
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
                 .body(disbursementPlanService.createPlan(
                         application,
                         type
                 ));
     }
-
 
     /*
      * Create a new disbursement stage
@@ -70,7 +70,8 @@ public class DisbursementController {
             @PathVariable Long planId,
             @RequestBody DisbursementStageRequest request) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
                 .body(disbursementStageService.createStage(
                         planId,
                         request.getStageNumber(),
@@ -94,6 +95,8 @@ public class DisbursementController {
 
     /*
      * Verify a disbursement stage
+     *
+     * Compliance must be COMPLETED before this succeeds.
      */
     @PutMapping("/stages/{stageId}/verify")
     public ResponseEntity<DisbursementStage> verifyStage(
@@ -116,15 +119,27 @@ public class DisbursementController {
         );
     }
 
+    /*
+     * Update compliance status for a disbursement stage
+     *
+     * Required:
+     * status      = PENDING / COMPLETED / NON_COMPLIANT
+     * remarks     = Finance Officer's compliance review remarks
+     * verifiedBy  = Finance Officer who performed the review
+     */
     @PutMapping("/stages/{stageId}/compliance")
     public ResponseEntity<DisbursementStage> updateComplianceStatus(
             @PathVariable Long stageId,
-            @RequestParam ComplianceStatus status) {
+            @RequestParam ComplianceStatus status,
+            @RequestParam String remarks,
+            @RequestParam String verifiedBy) {
 
         return ResponseEntity.ok(
                 disbursementStageService.updateComplianceStatus(
                         stageId,
-                        status
+                        status,
+                        remarks,
+                        verifiedBy
                 )
         );
     }

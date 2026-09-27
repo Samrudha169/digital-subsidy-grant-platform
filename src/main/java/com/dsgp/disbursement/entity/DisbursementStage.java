@@ -54,6 +54,15 @@ public class DisbursementStage {
     @Column(name = "released_at")
     private LocalDateTime releasedAt;
 
+    @Column(name = "compliance_remarks", length = 1000)
+    private String complianceRemarks;
+
+    @Column(name = "compliance_verified_at")
+    private LocalDateTime complianceVerifiedAt;
+
+    @Column(name = "compliance_verified_by", length = 255)
+    private String complianceVerifiedBy;
+
     /*
      * A stage is overdue when its due date is set, falls strictly
      * before today, and payment has not yet been released.

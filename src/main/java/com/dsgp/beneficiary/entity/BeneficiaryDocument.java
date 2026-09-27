@@ -34,6 +34,12 @@ public class BeneficiaryDocument {
                 foreignKey = @ForeignKey(name = "fk_doc_beneficiary"))
     private Beneficiary beneficiary;
 
+    @Column(name = "application_id")
+    private Long applicationId;
+
+    @Column(name = "stage_number")
+    private Integer stageNumber;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "document_type", nullable = false, length = 30)
     private DocumentType documentType;

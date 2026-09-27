@@ -43,4 +43,18 @@ public interface BeneficiaryDocumentRepository extends JpaRepository<Beneficiary
      * @return {@code true} if the document already exists
      */
     boolean existsByBeneficiaryIdAndDocumentType(Long beneficiaryId, DocumentType documentType);
+
+    List<BeneficiaryDocument> findByBeneficiaryIdAndApplicationIdAndStageNumber(
+            Long beneficiaryId,
+            Long applicationId,
+            Integer stageNumber
+    );
+
+    Optional<BeneficiaryDocument> findByBeneficiaryIdAndApplicationIdAndStageNumberAndDocumentType(
+            Long beneficiaryId,
+            Long applicationId,
+            Integer stageNumber,
+            DocumentType documentType
+    );
+
 }

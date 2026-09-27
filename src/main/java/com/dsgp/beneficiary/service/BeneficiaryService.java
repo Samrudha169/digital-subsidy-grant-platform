@@ -10,100 +10,119 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.util.List;
 
-/**
- * Service contract for beneficiary management operations.
- *
- * <p>Two update overloads are provided:
- * <ul>
- *   <li>{@link #updateBeneficiary(Integer, BeneficiaryRegistrationRequest)} —
- *       retained for Milestone 1 backward compatibility (all legacy fields).</li>
- *   <li>{@link #updateBeneficiary(Integer, BeneficiaryUpdateRequest)} —
- *       preferred Milestone 2 path (optional patch-style update with extended
- *       eligibility fields).</li>
- * </ul>
- */
 public interface BeneficiaryService {
 
+    // ============================================================
+    // BENEFICIARY
+    // ============================================================
+
     BeneficiaryResponse registerBeneficiary(
-            BeneficiaryRegistrationRequest request);
+            BeneficiaryRegistrationRequest request
+    );
 
-    BeneficiaryResponse getBeneficiaryById(Integer id);
+    BeneficiaryResponse getBeneficiaryById(
+            Integer id
+    );
 
-    BeneficiaryResponse getBeneficiaryByGovId(String govId);
+    BeneficiaryResponse getBeneficiaryByGovId(
+            String govId
+    );
 
     List<BeneficiaryResponse> getAllBeneficiaries();
 
-    /** Milestone 1 update path — kept for backward compatibility. */
     BeneficiaryResponse updateBeneficiary(
             Integer id,
-            BeneficiaryRegistrationRequest request);
+            BeneficiaryRegistrationRequest request
+    );
 
-    /**
-     * Milestone 2 update path — patch-style; only non-null fields are applied.
-     * Used by {@code PUT /beneficiaries/{id}} from Milestone 2 onward.
-     */
     BeneficiaryResponse updateBeneficiary(
             Integer id,
-            BeneficiaryUpdateRequest request);
+            BeneficiaryUpdateRequest request
+    );
 
-    void deleteBeneficiary(Integer id);
+    void deleteBeneficiary(
+            Integer id
+    );
 
-    // ── Milestone 2: Document upload ─────────────────────────────────────────
+    // ============================================================
+    // DOCUMENT UPLOAD
+    // ============================================================
 
-    /**
-     * Stores a document file for a beneficiary and persists the metadata.
+    /*
+     * Existing document upload method.
      *
-     * @param beneficiaryId the beneficiary's primary key
-     * @param file          the uploaded file
-     * @param documentType  the type of document
-     * @param uploadedBy    username of the uploader (officer or beneficiary)
-     * @return the persisted document metadata
+     * This is kept so existing code continues to work.
      */
-    DocumentResponse uploadDocument(Integer beneficiaryId,
-                                    MultipartFile file,
-                                    DocumentType documentType,
-                                    String uploadedBy) throws IOException;
+    DocumentResponse uploadDocument(
+            Integer beneficiaryId,
+            MultipartFile file,
+            DocumentType documentType,
+            String uploadedBy
+    ) throws IOException;
 
-    /**
-     * Returns all documents uploaded for a beneficiary.
+
+    /*
+     * NEW:
      *
-     * @param beneficiaryId the beneficiary's primary key
-     * @return list of document metadata (no file binaries)
+     * Upload a document for a specific application
+     * and a specific disbursement stage.
+     *
+     * Example:
+     *
+     * applicationId = 42
+     * stageNumber = 2
+     * documentType = STAGE_2_INVOICE
      */
-    List<DocumentResponse> getDocuments(Integer beneficiaryId);
+    DocumentResponse uploadDocument(
+            Integer beneficiaryId,
+            Long applicationId,
+            Integer stageNumber,
+            MultipartFile file,
+            DocumentType documentType,
+            String uploadedBy
+    ) throws IOException;
 
-    /**
-     * Returns the metadata for a single document by its ID,
-     * verifying it belongs to the given beneficiary.
+
+    // ============================================================
+    // DOCUMENT RETRIEVAL
+    // ============================================================
+
+    List<DocumentResponse> getDocuments(
+            Integer beneficiaryId
+    );
+
+
+    /*
+     * NEW:
      *
-     * @param beneficiaryId the beneficiary's primary key
-     * @param documentId    the document's primary key
-     * @return the document metadata
+     * Get only the documents belonging to
+     * one application and one disbursement stage.
      */
-    DocumentResponse getDocumentById(Integer beneficiaryId, Long documentId);
+    List<DocumentResponse> getDocumentsByApplicationAndStage(
+            Integer beneficiaryId,
+            Long applicationId,
+            Integer stageNumber
+    );
 
-    /**
-     * Reads the raw file bytes for a specific document.
-     * Used by the download endpoint to stream the file to the caller.
-     *
-     * @param beneficiaryId the beneficiary's primary key
-     * @param documentId    the document's primary key
-     * @return raw file bytes
-     */
-    byte[] downloadDocument(Integer beneficiaryId, Long documentId) throws IOException;
 
-    // ── Milestone 2: Identity verification ───────────────────────────────────
+    DocumentResponse getDocumentById(
+            Integer beneficiaryId,
+            Long documentId
+    );
 
-    /**
-     * Marks a beneficiary's identity as verified by an authorized Field Officer.
-     * Sets {@code identityVerified = true} on the {@link com.dsgp.beneficiary.entity.Beneficiary}.
-     *
-     * <p>After this call, re-running the eligibility engine will award
-     * 10 identity points in the {@code identityCheck} criterion.
-     *
-     * @param beneficiaryId the beneficiary's primary key
-     * @param verifiedBy    the officer's username (audit trail)
-     * @return the updated beneficiary response
-     */
-    BeneficiaryResponse verifyIdentity(Integer beneficiaryId, String verifiedBy);
-}
+
+    byte[] downloadDocument(
+            Integer beneficiaryId,
+            Long documentId
+    ) throws IOException;
+
+
+    // ============================================================
+    // IDENTITY VERIFICATION
+    // ============================================================
+
+    BeneficiaryResponse verifyIdentity(
+            Integer beneficiaryId,
+            String verifiedBy
+    );
+}

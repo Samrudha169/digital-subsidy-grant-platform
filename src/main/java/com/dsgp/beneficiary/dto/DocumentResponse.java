@@ -27,4 +27,7 @@ public class DocumentResponse {
     private LocalDateTime uploadedAt;
     private String uploadedBy;
     private boolean verified;
+
+    private Long applicationId;
+    private Integer stageNumber;
 }

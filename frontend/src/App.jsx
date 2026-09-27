@@ -22,6 +22,8 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import OfficerLogin from './pages/OfficerLogin';
 import OfficerDashboard from './pages/OfficerDashboard';
+import MyApplications from './pages/MyApplications';
+import Notifications from './pages/Notifications';
 
 function App() {
 
@@ -34,6 +36,7 @@ function App() {
         { name: 'Find Schemes', path: '/schemes' },
         { name: 'Eligibility', path: '/eligibility' },
         { name: 'Track Application', path: '/track' },
+        { name: '🔔 Notifications', path: '/notifications' },
         { name: 'About', path: '/about' }
     ];
 
@@ -214,6 +217,16 @@ function App() {
                     <Route
                         path="/officer/dashboard"
                         element={<OfficerDashboard />}
+                    />
+
+                    <Route
+                        path="/my-applications"
+                        element={<MyApplications />}
+                    />
+
+                    <Route
+                        path="/notifications"
+                        element={<Notifications />}
                     />
 
                 </Routes>

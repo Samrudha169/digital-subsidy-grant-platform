@@ -198,11 +198,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneral(
             Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception at {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+
+        ex.printStackTrace();
+
+        log.error(
+                "Unhandled exception at {}: {}",
+                request.getRequestURI(),
+                ex.getMessage(),
+                ex
+        );
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(build(HttpStatus.INTERNAL_SERVER_ERROR,
-                        "An unexpected error occurred. Please contact support.",
-                        request.getRequestURI(), null));
+                .body(build(
+                        HttpStatus.INTERNAL_SERVER_ERROR,
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null
+                ));
     }
 
     // ── Builder Helper ────────────────────────────────────────────────────────

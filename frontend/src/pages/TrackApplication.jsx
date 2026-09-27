@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import './TrackApplication.css';
 
 // ── Status display helpers ────────────────────────────────────────────────────
@@ -58,10 +59,82 @@ function formatCurrency(amount) {
 
 function TrackApplication() {
 
-    const [applicationId, setApplicationId] = useState('');
-    const [loading,       setLoading]       = useState(false);
-    const [error,         setError]         = useState(null);   // string | null
-    const [appData,       setAppData]       = useState(null);   // VerificationStatusResponse | null
+    const [searchParams] = useSearchParams();
+
+    const [applicationId, setApplicationId] = useState(
+        searchParams.get('applicationId') || ''
+    );
+
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [appData, setAppData] = useState(null);
+
+    useEffect(() => {
+
+        const idFromUrl = searchParams.get('applicationId');
+
+        if (!idFromUrl) {
+            return;
+        }
+
+        const trackApplication = async () => {
+
+            setLoading(true);
+            setError(null);
+
+            try {
+
+                const res = await fetch(
+                    `/api/v1/verification/applications/${idFromUrl}`
+                );
+
+                if (res.status === 404) {
+
+                    setError(
+                        `No application found with ID ${idFromUrl}.`
+                    );
+
+                    return;
+                }
+
+                if (!res.ok) {
+
+                    const body = await res.json().catch(() => null);
+
+                    setError(
+                        body?.message ||
+                        `Server error (${res.status}). Please try again later.`
+                    );
+
+                    return;
+                }
+
+                const data = await res.json();
+
+                setAppData(data);
+
+            } catch (err) {
+
+                console.error('Tracking error:', err);
+
+                setError(
+                    'Unable to reach the server. Please check your connection.'
+                );
+
+            } finally {
+
+                setLoading(false);
+
+            }
+
+        };
+
+        trackApplication();
+
+    }, [searchParams]);
+
+
+
 
     // ── Form submission ───────────────────────────────────────────────────────
 

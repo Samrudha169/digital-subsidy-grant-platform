@@ -434,6 +434,35 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
             DocumentType documentType,
             String uploadedBy) throws IOException {
 
+        /*
+         * Existing/legacy document upload.
+         *
+         * Stage-specific documents must use the new method below.
+         */
+        return uploadDocument(
+                beneficiaryId,
+                null,
+                null,
+                file,
+                documentType,
+                uploadedBy
+        );
+    }
+
+
+// ============================================================
+// STAGE-SPECIFIC DOCUMENT UPLOAD
+// ============================================================
+
+    @Override
+    public DocumentResponse uploadDocument(
+            Integer beneficiaryId,
+            Long applicationId,
+            Integer stageNumber,
+            MultipartFile file,
+            DocumentType documentType,
+            String uploadedBy) throws IOException {
+
         Beneficiary beneficiary =
                 beneficiaryRepository.findById(beneficiaryId)
                         .orElseThrow(
@@ -448,35 +477,81 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
             );
         }
 
+        /*
+         * Validate stage-specific document information.
+         *
+         * Stage 2 and Stage 3 documents MUST have:
+         *
+         * applicationId
+         * stageNumber
+         */
+        validateStageDocumentMetadata(
+                applicationId,
+                stageNumber,
+                documentType
+        );
+
         validateFile(file);
 
         /*
-         * IMPORTANT:
+         * For normal beneficiary documents:
          *
-         * If this beneficiary already has this document type,
-         * delete the old database record and old physical file.
+         * beneficiary + documentType
          *
-         * This means the latest uploaded document replaces
-         * the previous document instead of appearing twice.
+         * For stage documents:
+         *
+         * beneficiary + application + stage + documentType
+         *
+         * This prevents a Stage 2 invoice from replacing
+         * a Stage 3 document or a document from another application.
          */
+        if (applicationId != null && stageNumber != null) {
 
-        documentRepository
-                .findByBeneficiaryIdAndDocumentType(
-                        beneficiaryId.longValue(),
-                        documentType
-                )
-                .ifPresent(oldDocument -> {
+            documentRepository
+                    .findByBeneficiaryIdAndApplicationIdAndStageNumberAndDocumentType(
+                            beneficiaryId.longValue(),
+                            applicationId,
+                            stageNumber,
+                            documentType
+                    )
+                    .ifPresent(oldDocument -> {
 
-                    deletePhysicalFile(oldDocument);
+                        deletePhysicalFile(oldDocument);
 
-                    documentRepository.delete(oldDocument);
+                        documentRepository.delete(oldDocument);
 
-                    log.info(
-                            "Replaced previous {} document for beneficiary {}",
-                            documentType,
-                            beneficiaryId
-                    );
-                });
+                        log.info(
+                                "Replaced previous {} document for beneficiary {}, application {}, stage {}",
+                                documentType,
+                                beneficiaryId,
+                                applicationId,
+                                stageNumber
+                        );
+                    });
+
+        } else {
+
+            /*
+             * Existing behaviour for normal beneficiary documents.
+             */
+            documentRepository
+                    .findByBeneficiaryIdAndDocumentType(
+                            beneficiaryId.longValue(),
+                            documentType
+                    )
+                    .ifPresent(oldDocument -> {
+
+                        deletePhysicalFile(oldDocument);
+
+                        documentRepository.delete(oldDocument);
+
+                        log.info(
+                                "Replaced previous {} document for beneficiary {}",
+                                documentType,
+                                beneficiaryId
+                        );
+                    });
+        }
 
         String originalFileName =
                 file.getOriginalFilename();
@@ -522,9 +597,14 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
             );
         }
 
+        /*
+         * Create database record.
+         */
         BeneficiaryDocument document =
                 BeneficiaryDocument.builder()
                         .beneficiary(beneficiary)
+                        .applicationId(applicationId)
+                        .stageNumber(stageNumber)
                         .documentType(documentType)
                         .fileName(storedFileName)
                         .originalFileName(originalFileName)
@@ -539,9 +619,11 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 documentRepository.save(document);
 
         log.info(
-                "Document {} uploaded for beneficiary {}",
+                "Document {} uploaded for beneficiary {}, application {}, stage {}",
                 documentType,
-                beneficiaryId
+                beneficiaryId,
+                applicationId,
+                stageNumber
         );
 
         return mapToDocumentResponse(saved);
@@ -570,6 +652,51 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 .map(this::mapToDocumentResponse)
                 .toList();
     }
+
+    // ============================================================
+// GET DOCUMENTS BY APPLICATION AND STAGE
+// ============================================================
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentResponse> getDocumentsByApplicationAndStage(
+            Integer beneficiaryId,
+            Long applicationId,
+            Integer stageNumber) {
+
+        // Validate beneficiary exists
+        beneficiaryRepository.findById(beneficiaryId)
+                .orElseThrow(
+                        () -> new BeneficiaryNotFoundException(
+                                beneficiaryId
+                        )
+                );
+
+        if (applicationId == null) {
+            throw new IllegalArgumentException(
+                    "Application ID is required."
+            );
+        }
+
+        if (stageNumber == null
+                || (stageNumber != 2 && stageNumber != 3)) {
+
+            throw new IllegalArgumentException(
+                    "Stage number must be 2 or 3."
+            );
+        }
+
+        return documentRepository
+                .findByBeneficiaryIdAndApplicationIdAndStageNumber(
+                        beneficiaryId.longValue(),
+                        applicationId,
+                        stageNumber
+                )
+                .stream()
+                .map(this::mapToDocumentResponse)
+                .toList();
+    }
+
 
     // ============================================================
     // GET SINGLE DOCUMENT
@@ -673,6 +800,68 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
     // ============================================================
     // PRIVATE HELPERS
     // ============================================================
+
+    private void validateStageDocumentMetadata(
+            Long applicationId,
+            Integer stageNumber,
+            DocumentType documentType) {
+
+        boolean stage2Document =
+                documentType == DocumentType.STAGE_2_INVOICE
+                        || documentType == DocumentType.STAGE_2_PAYMENT_PROOF
+                        || documentType == DocumentType.STAGE_2_ACTIVITY_PHOTO;
+
+        boolean stage3Document =
+                documentType == DocumentType.FINAL_COMPLETION_REPORT
+                        || documentType == DocumentType.UTILIZATION_STATEMENT
+                        || documentType == DocumentType.FINAL_PROJECT_PHOTO
+                        || documentType == DocumentType.FINAL_PAYMENT_PROOF;
+
+        /*
+         * Normal beneficiary documents do not need
+         * applicationId or stageNumber.
+         */
+        if (!stage2Document && !stage3Document) {
+            return;
+        }
+
+        /*
+         * Stage documents MUST belong to an application.
+         */
+        if (applicationId == null) {
+            throw new IllegalArgumentException(
+                    "Application ID is required for stage documents."
+            );
+        }
+
+        /*
+         * Stage number is mandatory.
+         */
+        if (stageNumber == null) {
+            throw new IllegalArgumentException(
+                    "Stage number is required for stage documents."
+            );
+        }
+
+        /*
+         * Stage 2 documents can only be uploaded to Stage 2.
+         */
+        if (stage2Document && stageNumber != 2) {
+            throw new IllegalArgumentException(
+                    "Stage 2 documents can only be uploaded for Stage 2."
+            );
+        }
+
+        /*
+         * Stage 3 documents can only be uploaded to Stage 3.
+         */
+        if (stage3Document && stageNumber != 3) {
+            throw new IllegalArgumentException(
+                    "Stage 3 documents can only be uploaded for Stage 3."
+            );
+        }
+    }
+
 
     private void validateFile(MultipartFile file) {
 
@@ -780,6 +969,12 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 .id(d.getId())
                 .beneficiaryId(
                         d.getBeneficiary().getId().longValue()
+                )
+                .applicationId(
+                        d.getApplicationId()
+                )
+                .stageNumber(
+                        d.getStageNumber()
                 )
                 .documentType(
                         d.getDocumentType()

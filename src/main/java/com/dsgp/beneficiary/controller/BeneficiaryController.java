@@ -133,8 +133,19 @@ public class BeneficiaryController {
     )
     public ResponseEntity<DocumentResponse> uploadDocument(
             @PathVariable Integer id,
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("documentType") DocumentType documentType,
+
+            @RequestParam("file")
+            MultipartFile file,
+
+            @RequestParam("documentType")
+            DocumentType documentType,
+
+            @RequestParam(value = "applicationId", required = false)
+            Long applicationId,
+
+            @RequestParam(value = "stageNumber", required = false)
+            Integer stageNumber,
+
             @RequestParam(value = "uploadedBy", required = false)
             String uploadedBy
     ) throws IOException {
@@ -142,6 +153,8 @@ public class BeneficiaryController {
         DocumentResponse response =
                 beneficiaryService.uploadDocument(
                         id,
+                        applicationId,
+                        stageNumber,
                         file,
                         documentType,
                         uploadedBy
@@ -162,6 +175,23 @@ public class BeneficiaryController {
 
         return ResponseEntity.ok(
                 beneficiaryService.getDocuments(id)
+        );
+    }
+
+
+    @GetMapping("/{id}/documents/application/{applicationId}/stage/{stageNumber}")
+    public ResponseEntity<List<DocumentResponse>> getDocumentsByApplicationAndStage(
+            @PathVariable Integer id,
+            @PathVariable Long applicationId,
+            @PathVariable Integer stageNumber
+    ) {
+
+        return ResponseEntity.ok(
+                beneficiaryService.getDocumentsByApplicationAndStage(
+                        id,
+                        applicationId,
+                        stageNumber
+                )
         );
     }
 

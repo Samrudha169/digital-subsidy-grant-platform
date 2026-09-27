@@ -111,6 +111,8 @@ function Dashboard({ onLogout }) {
                             Home
                         </Link>
 
+
+
                         <button
                             className="dashboard-logout-button"
                             onClick={handleLogout}
@@ -272,29 +274,29 @@ function Dashboard({ onLogout }) {
                             </Link>
 
 
-                            {/* TRACK */}
+                            {/* MY APPLICATIONS */}
 
                             <Link
-                                to="/track"
+                                to="/my-applications"
                                 className="dashboard-action-card"
                             >
 
                                 <div className="dashboard-action-icon">
-                                    🔍
+                                    📋
                                 </div>
 
                                 <h3>
-                                    Track Application
+                                    My Applications
                                 </h3>
 
                                 <p>
-                                    Check the current status of your
-                                    submitted application
+                                    View and track all your submitted
+                                    scheme applications
                                 </p>
 
                                 <span>
-                                    Track Status →
-                                </span>
+        View Applications →
+    </span>
 
                             </Link>
 
