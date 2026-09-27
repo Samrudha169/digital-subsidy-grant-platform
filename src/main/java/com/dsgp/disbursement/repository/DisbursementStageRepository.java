@@ -29,4 +29,13 @@ public interface DisbursementStageRepository
             LocalDate from,
             LocalDate to
     );
+
+    /*
+     * Used by the non-compliance scheduler: find non-RELEASED stages
+     * whose due date is strictly before the given date (i.e. overdue).
+     */
+    List<DisbursementStage> findByStatusNotAndDueDateBefore(
+            DisbursementStageStatus excludedStatus,
+            LocalDate before
+    );
 }
