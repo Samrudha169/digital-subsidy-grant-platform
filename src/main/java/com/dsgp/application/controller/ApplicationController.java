@@ -78,6 +78,7 @@ public class ApplicationController {
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(application.getApplicationDate())
                 .sanctionedAmount(application.getSanctionedAmount())
+                .grantAmount(application.getScheme().getGrantAmount())
                 .build();
 
         return ResponseEntity.ok(response);

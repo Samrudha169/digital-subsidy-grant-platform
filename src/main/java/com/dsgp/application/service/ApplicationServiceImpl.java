@@ -170,6 +170,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(app.getApplicationDate())
                 .sanctionedAmount(app.getSanctionedAmount())
+                .grantAmount(app.getScheme().getGrantAmount())
                 .build();
     }
 

@@ -648,9 +648,10 @@ function RemarksModal({
             .replace(/\b\w/g, c => c.toUpperCase())
         : 'Action';
 
-    // Maximum allowed = scheme grant amount (reference/upper bound)
+    // Maximum allowed = scheme grant amount (reference/upper bound).
+    // grantAmount is now a direct field on ApplicationResponse — not nested.
     const maxGrantAmount =
-        app?.scheme?.grantAmount ?? null;
+        app?.grantAmount ?? null;
 
     const submit = () => {
         if (isFinanceApprove) {
@@ -1812,6 +1813,46 @@ function ApplicationReview({
                     </div>
 
                 </div>
+
+                <div className="od-summary-card">
+
+                    <span className="od-summary-icon">
+                        💰
+                    </span>
+
+                    <div>
+                        <span>
+                            Scheme Maximum
+                        </span>
+
+                        <strong>
+                            {app.grantAmount != null
+                                ? `₹${Number(app.grantAmount).toLocaleString('en-IN')}`
+                                : '—'}
+                        </strong>
+                    </div>
+
+                </div>
+
+                {app.sanctionedAmount != null && (
+                    <div className="od-summary-card">
+
+                        <span className="od-summary-icon">
+                            ✅
+                        </span>
+
+                        <div>
+                            <span>
+                                Sanctioned Amount
+                            </span>
+
+                            <strong>
+                                ₹{Number(app.sanctionedAmount).toLocaleString('en-IN')}
+                            </strong>
+                        </div>
+
+                    </div>
+                )}
 
             </section>
 

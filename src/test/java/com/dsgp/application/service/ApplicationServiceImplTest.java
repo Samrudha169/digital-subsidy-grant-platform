@@ -166,6 +166,11 @@ class ApplicationServiceImplTest {
             assertThat(response.getSchemeId()).isEqualTo(SCHEME_ID);
             assertThat(response.getSchemeName()).isEqualTo("PM-KISAN Samman Nidhi");
             assertThat(response.getBeneficiaryName()).isEqualTo("Ravi Kumar");
+            // grantAmount must be populated from the scheme (6000.00 per fixture)
+            assertThat(response.getGrantAmount())
+                    .isNotNull()
+                    .isEqualByComparingTo(new BigDecimal("6000.00"));
+
         }
 
         @Test

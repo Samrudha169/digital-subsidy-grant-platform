@@ -989,3 +989,15 @@
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+/* Grant reference amount note in the Next Steps card */
+.elig-grant-note {
+    margin: 0.75rem 0 0;
+    padding: 0.6rem 0.875rem;
+    background: rgba(99, 102, 241, 0.07);
+    border-left: 3px solid #6366f1;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.875rem;
+    color: #374151;
+    line-height: 1.5;
+}

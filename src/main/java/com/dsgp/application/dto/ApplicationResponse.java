@@ -52,4 +52,12 @@ public class ApplicationResponse {
      * {@code null} until the application is {@code APPROVED}.
      */
     private BigDecimal sanctionedAmount;
+
+    /**
+     * The scheme's configured maximum/reference grant amount (in ₹).
+     * Sourced from {@code Scheme.grantAmount} and always populated.
+     * Used by the Finance Officer UI to cap the sanctioned-amount input
+     * and by the beneficiary UI to display the scheme's grant reference.
+     */
+    private BigDecimal grantAmount;
 }

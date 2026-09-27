@@ -17,6 +17,8 @@ const KNOWN_SCHEMES = [
         description:
             'Income support scheme providing ₹6,000 per year to eligible farmer families.',
         path: '/schemes/pm-kisan',
+        // Matches seed data: grant_amount = 6000.00
+        grantAmount: 6000,
     },
     {
         id: 2,
@@ -28,6 +30,8 @@ const KNOWN_SCHEMES = [
         description:
             'Centralised platform offering scholarships for eligible students.',
         path: '/schemes/nsp',
+        // Matches seed data: grant_amount = 50000.00
+        grantAmount: 50000,
     },
     {
         id: 3,
@@ -39,6 +43,8 @@ const KNOWN_SCHEMES = [
         description:
             'Credit-linked subsidy scheme supporting self-employment through micro-enterprises.',
         path: '/schemes/pmegp',
+        // Matches seed data: grant_amount = 1750000.00
+        grantAmount: 1750000,
     },
 ];
 
@@ -1163,6 +1169,15 @@ function Eligibility() {
                                         </strong>
                                         . The scheme has been selected
                                         automatically.
+                                        {selectedScheme.grantAmount != null && (
+                                            <>
+                                                {' '}Reference grant amount:{' '}
+                                                <strong>
+                                                    ₹{Number(selectedScheme.grantAmount).toLocaleString('en-IN')}
+                                                </strong>
+                                                .
+                                            </>
+                                        )}
                                     </span>
 
                                 </div>
@@ -1747,6 +1762,24 @@ function Eligibility() {
                                             application process.
 
                                         </p>
+
+                                        {/* Grant reference amount */}
+                                        {(() => {
+                                            const ks = KNOWN_SCHEMES.find(
+                                                s => s.name === liveResult.schemeName ||
+                                                     s.fullName === liveResult.schemeName
+                                            );
+                                            return ks?.grantAmount != null ? (
+                                                <p className="elig-grant-note">
+                                                    <strong>Scheme reference grant amount: </strong>
+                                                    ₹{Number(ks.grantAmount).toLocaleString('en-IN')}.
+                                                    The final sanctioned amount is
+                                                    determined by the Finance Officer
+                                                    upon review and may not exceed this
+                                                    figure.
+                                                </p>
+                                            ) : null;
+                                        })()}
 
 
                                         {/* Required document upload section */}
