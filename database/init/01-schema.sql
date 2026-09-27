@@ -290,3 +290,65 @@ CREATE TABLE IF NOT EXISTS villages (
     CONSTRAINT uk_village_name_taluka
         UNIQUE (name, taluka_id)
 );
+
+
+-- =============================================================================
+-- Milestone 3 additions
+-- =============================================================================
+
+-- -----------------------------------------------------------------------------
+-- scheme_applications: sanctioned_amount column
+-- Added by the Finance Officer at final approval (VerificationServiceImpl).
+-- The JPA entity already carries this field; it is missing from the base DDL.
+-- -----------------------------------------------------------------------------
+ALTER TABLE scheme_applications
+    ADD COLUMN IF NOT EXISTS sanctioned_amount DECIMAL(12,2);
+
+
+-- =============================================================================
+-- TABLE: disbursement_plans                                  [Milestone 3]
+-- One plan per approved application. Created automatically by
+-- VerificationServiceImpl when Finance approves.
+--
+-- status values: PENDING | PARTIALLY_RELEASED | FULLY_RELEASED | COMPLETED
+-- disbursement_type values: SINGLE | STAGED
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS disbursement_plans (
+    id                  BIGINT        AUTO_INCREMENT PRIMARY KEY,
+    application_id      BIGINT        NOT NULL UNIQUE,
+    total_amount        DECIMAL(12,2) NOT NULL,
+    released_amount     DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    remaining_amount    DECIMAL(12,2) NOT NULL,
+    disbursement_type   VARCHAR(20)   NOT NULL,
+    status              VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_plan_application
+        FOREIGN KEY (application_id)
+        REFERENCES scheme_applications(id)
+);
+
+
+-- =============================================================================
+-- TABLE: disbursement_stages                                 [Milestone 3]
+-- Individual payment milestones within a disbursement plan.
+-- Created manually via POST /api/disbursements/{planId}/stages.
+--
+-- status values:            PENDING | VERIFIED | RELEASED
+-- compliance_status values: PENDING | COMPLETED | NON_COMPLIANT
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS disbursement_stages (
+    id                   BIGINT        AUTO_INCREMENT PRIMARY KEY,
+    disbursement_plan_id BIGINT        NOT NULL,
+    stage_number         INT           NOT NULL,
+    amount               DECIMAL(12,2) NOT NULL,
+    milestone            VARCHAR(500)  NOT NULL,
+    due_date             DATE,
+    status               VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    compliance_status    VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
+    released_at          DATETIME,
+
+    CONSTRAINT fk_stage_plan
+        FOREIGN KEY (disbursement_plan_id)
+        REFERENCES disbursement_plans(id)
+);
