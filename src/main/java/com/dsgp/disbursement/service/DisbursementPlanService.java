@@ -38,7 +38,7 @@ public class DisbursementPlanService {
             );
         }
 
-        if (disbursementPlanRepository.existsByApplicationId(application.getId())) {
+        if (disbursementPlanRepository.existsByApplication_Id(application.getId())) {
             throw new IllegalStateException(
                     "A disbursement plan already exists for this application."
             );

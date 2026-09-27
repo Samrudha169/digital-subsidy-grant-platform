@@ -8,7 +8,7 @@ import java.util.Optional;
 public interface DisbursementPlanRepository
         extends JpaRepository<DisbursementPlan, Long> {
 
-    Optional<DisbursementPlan> findByApplicationId(Long applicationId);
+    Optional<DisbursementPlan> findByApplication_Id(Long applicationId);
 
-    boolean existsByApplicationId(Long applicationId);
+    boolean existsByApplication_Id(Long applicationId);
 }

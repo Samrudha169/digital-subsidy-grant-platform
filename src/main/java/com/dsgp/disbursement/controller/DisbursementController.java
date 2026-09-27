@@ -13,6 +13,7 @@ import com.dsgp.application.entity.SchemeApplication;
 import com.dsgp.beneficiary.repository.SchemeApplicationRepository;
 import com.dsgp.disbursement.entity.DisbursementType;
 import com.dsgp.disbursement.service.DisbursementPlanService;
+import com.dsgp.disbursement.entity.ComplianceStatus;
 
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class DisbursementController {
             @PathVariable Long applicationId) {
 
         return disbursementPlanRepository
-                .findByApplicationId(applicationId)
+                .findByApplication_Id(applicationId)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -112,6 +113,19 @@ public class DisbursementController {
 
         return ResponseEntity.ok(
                 disbursementStageService.releaseStage(stageId)
+        );
+    }
+
+    @PutMapping("/stages/{stageId}/compliance")
+    public ResponseEntity<DisbursementStage> updateComplianceStatus(
+            @PathVariable Long stageId,
+            @RequestParam ComplianceStatus status) {
+
+        return ResponseEntity.ok(
+                disbursementStageService.updateComplianceStatus(
+                        stageId,
+                        status
+                )
         );
     }
 }
