@@ -26,7 +26,7 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
-
+import java.math.BigDecimal;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
@@ -92,6 +92,7 @@ class ApplicationControllerTest {
         ApplicationRequest req = new ApplicationRequest();
         req.setBeneficiaryId(101);
         req.setSchemeId(1L);
+        req.setRequestedAmount(new BigDecimal("5000.00"));
         return req;
     }
 

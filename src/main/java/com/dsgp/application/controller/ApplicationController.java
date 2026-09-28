@@ -14,7 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -78,6 +78,7 @@ public class ApplicationController {
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(application.getApplicationDate())
                 .sanctionedAmount(application.getSanctionedAmount())
+                .requestedAmount(application.getRequestedAmount())
                 .grantAmount(application.getScheme().getGrantAmount())
                 .build();
 

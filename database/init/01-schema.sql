@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS scheme_applications (
                                                    beneficiary_id      INT NOT NULL,
                                                    scheme_id           BIGINT NOT NULL,
                                                    application_status  VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    requested_amount    DECIMAL(12,2) NOT NULL,
     application_date    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_application_beneficiary

@@ -73,6 +73,12 @@ public class SchemeApplication {
     @Builder.Default
     private String applicationStatus = "PENDING";
     /**
+     * Amount requested by the beneficiary when submitting the application.
+     * Must not exceed the maximum grant amount configured for the scheme.
+     */
+    @Column(name = "requested_amount", precision = 12, scale = 2, nullable = false)
+    private BigDecimal requestedAmount;
+    /**
      * Amount sanctioned by the Finance Officer when the application is finally approved.
      * Remains null until final finance approval.
      */

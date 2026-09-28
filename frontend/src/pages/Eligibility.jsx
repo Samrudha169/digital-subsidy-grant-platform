@@ -201,7 +201,7 @@ function Eligibility() {
     const [applicationResult, setApplicationResult] = useState(null);
     const [applicationError, setApplicationError] = useState('');
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
-
+    const [requestedAmount, setRequestedAmount] = useState('');
     /*
      * Document upload state — keyed by document type string.
      * Each entry: { file: File|null, status: 'idle'|'uploading'|'done'|'error', error: string }
@@ -361,6 +361,9 @@ function Eligibility() {
             ...liveForm,
             [e.target.name]: e.target.value,
         });
+        if (e.target.name === 'schemeId') {
+            setRequestedAmount('');
+        }
 
         if (liveValidation[e.target.name]) {
             setLiveValidation({
@@ -569,12 +572,32 @@ function Eligibility() {
 
         try {
 
+            const amount = Number(requestedAmount);
+
+            if (!requestedAmount || amount <= 0) {
+                setApplicationError('Please enter a requested amount greater than 0.');
+                return;
+            }
+
+            if (
+                selectedScheme?.grantAmount != null &&
+                amount > Number(selectedScheme.grantAmount)
+            ) {
+                setApplicationError(
+                    `Requested amount cannot exceed ₹${Number(
+                        selectedScheme.grantAmount
+                    ).toLocaleString('en-IN')}.`
+                );
+                return;
+            }
+
             const payload = {
                 beneficiaryId:
                     parseInt(liveForm.beneficiaryId, 10),
-
                 schemeId:
                     parseInt(liveForm.schemeId, 10),
+                requestedAmount:
+                    Number(requestedAmount),
             };
 
             const res = await fetch(
@@ -668,6 +691,7 @@ function Eligibility() {
         setApplicationResult(null);
         setApplicationSubmitted(false);
         setApplicationError('');
+        setRequestedAmount('');
         setDocUploads({});
     };
 
@@ -1780,6 +1804,47 @@ function Eligibility() {
                                                 </p>
                                             ) : null;
                                         })()}
+                                        {/* Requested amount */}
+                                        <div
+                                            className="eligibility-form-group"
+                                            style={{ marginTop: '1rem' }}
+                                        >
+                                            <label htmlFor="requestedAmount">
+                                                Requested Amount (₹)
+                                                <span
+                                                    className="field-required"
+                                                    aria-hidden="true"
+                                                >
+            {' '}*
+        </span>
+                                            </label>
+
+                                            <input
+                                                id="requestedAmount"
+                                                name="requestedAmount"
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                max={selectedScheme?.grantAmount ?? undefined}
+                                                value={requestedAmount}
+                                                onChange={(e) =>
+                                                    setRequestedAmount(e.target.value)
+                                                }
+                                                className="elig-input"
+                                                placeholder="Enter amount you are requesting"
+                                                required
+                                            />
+
+                                            {selectedScheme?.grantAmount != null && (
+                                                <span className="field-hint">
+            Maximum allowed: ₹
+                                                    {Number(
+                                                        selectedScheme.grantAmount
+                                                    ).toLocaleString('en-IN')}
+        </span>
+                                            )}
+                                        </div>
+
 
 
                                         {/* Required document upload section */}

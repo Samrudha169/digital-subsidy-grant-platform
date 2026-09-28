@@ -105,10 +105,11 @@ class ApplicationServiceImplTest {
         return app;
     }
 
-    private ApplicationRequest request() {
+    private ApplicationRequest validRequest() {
         ApplicationRequest req = new ApplicationRequest();
-        req.setBeneficiaryId(BENEFICIARY_ID);
-        req.setSchemeId(SCHEME_ID);
+        req.setBeneficiaryId(101);
+        req.setSchemeId(1L);
+        req.setRequestedAmount(new BigDecimal("5000.00"));
         return req;
     }
 
@@ -158,7 +159,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.save(any(SchemeApplication.class)))
                     .willReturn(savedApplication());
 
-            ApplicationResponse response = applicationService.submitApplication(request());
+            ApplicationResponse response = applicationService.submitApplication(validRequest());
 
             assertThat(response.getApplicationStatus()).isEqualTo("PENDING");
             assertThat(response.getEligibilityScore()).isEqualTo(80);
@@ -187,7 +188,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.save(any(SchemeApplication.class)))
                     .willReturn(savedApplication());
 
-            applicationService.submitApplication(request());
+            applicationService.submitApplication(validRequest());
 
             then(applicationRepository).should(times(1)).save(any(SchemeApplication.class));
         }
@@ -204,7 +205,7 @@ class ApplicationServiceImplTest {
         void submit_unknownBeneficiary_throws() {
             given(beneficiaryRepository.findById(BENEFICIARY_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(BeneficiaryNotFoundException.class)
                     .hasMessageContaining(String.valueOf(BENEFICIARY_ID));
         }
@@ -223,7 +224,7 @@ class ApplicationServiceImplTest {
                     .willReturn(Optional.of(beneficiary()));
             given(schemeRepository.findById(SCHEME_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(SchemeNotFoundException.class)
                     .hasMessageContaining(String.valueOf(SCHEME_ID));
         }
@@ -245,7 +246,7 @@ class ApplicationServiceImplTest {
             given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class)
                     .hasMessageContaining("Eligibility has not been checked");
         }
@@ -267,7 +268,7 @@ class ApplicationServiceImplTest {
             given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(ineligibleResult()));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class)
                     .hasMessageContaining("not eligible")
                     .hasMessageContaining("40");   // score appears in message
@@ -283,7 +284,7 @@ class ApplicationServiceImplTest {
             given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(ineligibleResult()));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class);
 
             then(applicationRepository).should(never()).save(any());
@@ -308,7 +309,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(savedApplication()));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class)
                     .hasMessageContaining("already exists");
         }
@@ -325,7 +326,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(savedApplication()));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class);
 
             then(applicationRepository).should(never()).save(any());
@@ -358,7 +359,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(rejectedApplication(rejectedAt)));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class)
                     .hasMessageContaining("rejected")
                     .hasMessageContaining("reapply after");
@@ -373,7 +374,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(rejectedApplication(rejectedAt)));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class)
                     // The message must contain the scheme name so the user knows which scheme
                     .hasMessageContaining("PM-KISAN");
@@ -392,7 +393,7 @@ class ApplicationServiceImplTest {
                     .willReturn(savedApplication());
 
             // Must NOT throw — re-application should succeed.
-            assertThatCode(() -> applicationService.submitApplication(request()))
+            assertThatCode(() -> applicationService.submitApplication(validRequest()))
                     .doesNotThrowAnyException();
 
             then(applicationRepository).should(times(1)).save(any(SchemeApplication.class));
@@ -412,7 +413,7 @@ class ApplicationServiceImplTest {
             given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
                     .willReturn(Optional.of(active));
 
-            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+            assertThatThrownBy(() -> applicationService.submitApplication(validRequest()))
                     .isInstanceOf(ApplicationException.class)
                     .hasMessageContaining("already exists");
 
@@ -433,7 +434,7 @@ class ApplicationServiceImplTest {
                     .willReturn(savedApplication());
 
             // Must NOT throw — different scheme rejection is irrelevant.
-            assertThatCode(() -> applicationService.submitApplication(request()))
+            assertThatCode(() -> applicationService.submitApplication(validRequest()))
                     .doesNotThrowAnyException();
 
             then(applicationRepository).should(times(1)).save(any(SchemeApplication.class));

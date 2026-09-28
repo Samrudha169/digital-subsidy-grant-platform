@@ -1,7 +1,10 @@
 package com.dsgp.application.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.math.BigDecimal;
 
 /**
  * Request DTO for submitting a new scheme application.
@@ -20,4 +23,8 @@ public class ApplicationRequest {
 
     @NotNull(message = "schemeId is required")
     private Long schemeId;
+
+    @NotNull(message = "requestedAmount is required")
+    @DecimalMin(value = "0.01", message = "requestedAmount must be greater than 0")
+    private BigDecimal requestedAmount;
 }

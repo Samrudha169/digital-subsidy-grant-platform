@@ -52,6 +52,10 @@ public class ApplicationResponse {
      * {@code null} until the application is {@code APPROVED}.
      */
     private BigDecimal sanctionedAmount;
+    /**
+     * Amount requested by the beneficiary when submitting the application.
+     */
+    private BigDecimal requestedAmount;
 
     /**
      * The scheme's configured maximum/reference grant amount (in ₹).

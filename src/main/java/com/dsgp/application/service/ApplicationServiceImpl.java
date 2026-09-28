@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -72,9 +72,9 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         Integer beneficiaryId = request.getBeneficiaryId();
         Long    schemeId      = request.getSchemeId();
-
-        log.debug("Application submission requested: beneficiaryId={}, schemeId={}",
-                beneficiaryId, schemeId);
+        BigDecimal requestedAmount = request.getRequestedAmount();
+        log.debug("Application submission requested: beneficiaryId={}, schemeId={}, requestedAmount={}",
+                beneficiaryId, schemeId, requestedAmount);
 
         // ── Rule 1: Beneficiary must exist ───────────────────────────────────
         Beneficiary beneficiary = beneficiaryRepository.findById(beneficiaryId)
@@ -85,7 +85,12 @@ public class ApplicationServiceImpl implements ApplicationService {
         // ── Rule 2: Scheme must exist ─────────────────────────────────────────
         Scheme scheme = schemeRepository.findById(schemeId)
                 .orElseThrow(() -> new SchemeNotFoundException(schemeId));
-
+        if (requestedAmount.compareTo(scheme.getGrantAmount()) > 0) {
+            throw new ApplicationException(
+                    "Requested amount cannot exceed the maximum grant amount of ₹"
+                            + scheme.getGrantAmount()
+                            + " for scheme '" + scheme.getSchemeName() + "'.");
+        }
         // ── Rule 3 & 4: Eligibility must have been checked and must be ELIGIBLE ─
         EligibilityResult eligibilityResult = eligibilityResultRepository
                 .findByBeneficiaryIdAndSchemeId(beneficiaryId, schemeId)
@@ -146,6 +151,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .beneficiary(beneficiary)
                 .scheme(scheme)
                 .applicationStatus("PENDING")
+                .requestedAmount(requestedAmount)
                 .build();
         // applicationDate is set by @PrePersist on SchemeApplication
 
@@ -170,6 +176,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(app.getApplicationDate())
                 .sanctionedAmount(app.getSanctionedAmount())
+                .requestedAmount(app.getRequestedAmount())
                 .grantAmount(app.getScheme().getGrantAmount())
                 .build();
     }
