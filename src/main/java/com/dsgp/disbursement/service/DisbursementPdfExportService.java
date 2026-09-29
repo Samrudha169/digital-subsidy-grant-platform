@@ -19,11 +19,13 @@ import java.util.Map;
  * Generates a downloadable PDF report of disbursement analytics
  * using OpenPDF (com.github.librepdf:openpdf).
  *
- * <p>Three sections are produced:
+ * <p>Five sections are produced:
  * <ol>
  *   <li>Summary       – sanctioned, planned, released, remaining</li>
  *   <li>By Scheme     – released amount per scheme</li>
  *   <li>By State      – released amount per state</li>
+ *   <li>By District   – released amount per district</li>
+ *   <li>By Village    – released amount per village</li>
  * </ol>
  *
  * All data comes from {@link DisbursementAnalyticsService#getAnalytics()}.
@@ -70,6 +72,10 @@ public class DisbursementPdfExportService {
                     "Scheme", data.getReleasedByScheme());
             addBreakdownSection(document, "Released by State",
                     "State", data.getReleasedByState());
+            addBreakdownSection(document, "Released by District",
+                    "District", data.getReleasedByDistrict());
+            addBreakdownSection(document, "Released by Village",
+                    "Village", data.getReleasedByVillage());
 
         } finally {
             if (document.isOpen()) {

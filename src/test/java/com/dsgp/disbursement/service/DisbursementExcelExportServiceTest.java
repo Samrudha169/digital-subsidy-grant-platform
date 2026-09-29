@@ -91,12 +91,12 @@ class DisbursementExcelExportServiceTest {
         }
 
         @Test
-        @DisplayName("workbook contains exactly 3 sheets")
-        void workbook_hasExactlyThreeSheets() throws IOException {
+        @DisplayName("workbook contains exactly 5 sheets")
+        void workbook_hasExactlyFiveSheets() throws IOException {
             byte[] result = excelExportService.generateExcelReport();
 
             try (Workbook wb = WorkbookFactory.create(new ByteArrayInputStream(result))) {
-                assertThat(wb.getNumberOfSheets()).isEqualTo(3);
+                assertThat(wb.getNumberOfSheets()).isEqualTo(5);
             }
         }
 

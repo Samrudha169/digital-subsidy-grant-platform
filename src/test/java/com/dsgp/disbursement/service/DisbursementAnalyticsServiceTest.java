@@ -43,11 +43,13 @@ class DisbursementAnalyticsServiceTest {
 
     // ── Fixtures ─────────────────────────────────────────────────────────────
 
-    private Beneficiary beneficiary(String state) {
+    private Beneficiary beneficiary(String state, String district, String village) {
         Beneficiary b = new Beneficiary();
         b.setId(1);
         b.setFullName("Ravi Kumar");
         b.setState(state);
+        b.setDistrict(district);
+        b.setVillage(village);
         return b;
     }
 
@@ -59,7 +61,12 @@ class DisbursementAnalyticsServiceTest {
     }
 
     private SchemeApplication application(String schemeName, String state, BigDecimal sanctioned) {
-        Beneficiary b = beneficiary(state);
+        return application(schemeName, state, "Pune", "Vadgaon", sanctioned);
+    }
+
+    private SchemeApplication application(String schemeName, String state, String district,
+                                          String village, BigDecimal sanctioned) {
+        Beneficiary b = beneficiary(state, district, village);
         Scheme sc = scheme(schemeName);
 
         SchemeApplication app = SchemeApplication.builder()
@@ -124,7 +131,7 @@ class DisbursementAnalyticsServiceTest {
         }
 
         @Test
-        @DisplayName("returns empty scheme and state maps")
+        @DisplayName("returns empty scheme, state, district and village maps")
         void noPlans_emptyBreakdownMaps() {
             given(disbursementPlanRepository.findAll()).willReturn(List.of());
             given(disbursementStageRepository.findAll()).willReturn(List.of());
@@ -133,6 +140,8 @@ class DisbursementAnalyticsServiceTest {
 
             assertThat(result.getReleasedByScheme()).isEmpty();
             assertThat(result.getReleasedByState()).isEmpty();
+            assertThat(result.getReleasedByDistrict()).isEmpty();
+            assertThat(result.getReleasedByVillage()).isEmpty();
         }
     }
 
@@ -350,6 +359,188 @@ class DisbursementAnalyticsServiceTest {
             DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
 
             assertThat(result.getTotalReleased()).isEqualByComparingTo("12000.00");
+        }
+    }
+
+    // ── District-wise breakdown ────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("district-wise analytics")
+    class DistrictWise {
+
+        @Test
+        @DisplayName("groups released amounts by beneficiary district")
+        void multiplePlansInSameDistrict_aggregatesReleasedByDistrict() {
+            SchemeApplication app1 = application("PM-KISAN", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            SchemeApplication app2 = application("NSP", "Maharashtra", "Pune", "Khed",
+                    new BigDecimal("4000.00"));
+            DisbursementPlan p1 = plan(app1, new BigDecimal("6000.00"), BigDecimal.ZERO);
+            DisbursementPlan p2 = plan(app2, new BigDecimal("4000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p1, p2));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByDistrict()).containsKey("Pune");
+            assertThat(result.getReleasedByDistrict().get("Pune")).isEqualByComparingTo("10000.00");
+        }
+
+        @Test
+        @DisplayName("separates different districts into different map entries")
+        void twoDistricts_separateMapEntries() {
+            SchemeApplication app1 = application("PM-KISAN", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            SchemeApplication app2 = application("PM-KISAN", "Maharashtra", "Nashik", "Igatpuri",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p1 = plan(app1, new BigDecimal("6000.00"), BigDecimal.ZERO);
+            DisbursementPlan p2 = plan(app2, new BigDecimal("6000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p1, p2));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByDistrict()).containsKeys("Pune", "Nashik");
+            assertThat(result.getReleasedByDistrict().get("Pune")).isEqualByComparingTo("6000.00");
+            assertThat(result.getReleasedByDistrict().get("Nashik")).isEqualByComparingTo("6000.00");
+        }
+
+        @Test
+        @DisplayName("null district falls back to 'Unknown District'")
+        void nullDistrict_fallsBackToUnknownDistrict() {
+            SchemeApplication app = application("PM-KISAN", "Maharashtra", null, "Vadgaon",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p = plan(app, new BigDecimal("6000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByDistrict()).containsKey("Unknown District");
+        }
+
+        @Test
+        @DisplayName("blank district falls back to 'Unknown District'")
+        void blankDistrict_fallsBackToUnknownDistrict() {
+            SchemeApplication app = application("PM-KISAN", "Maharashtra", "  ", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p = plan(app, new BigDecimal("6000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByDistrict()).containsKey("Unknown District");
+        }
+
+        @Test
+        @DisplayName("does not include unreleased plans in district breakdown")
+        void unreleasedPlan_notInDistrictBreakdown() {
+            SchemeApplication app = application("PM-KISAN", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p = plan(app, BigDecimal.ZERO, new BigDecimal("6000.00"));
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByDistrict()).doesNotContainKey("Pune");
+        }
+    }
+
+    // ── Village-wise breakdown ─────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("village-wise analytics")
+    class VillageWise {
+
+        @Test
+        @DisplayName("groups released amounts by beneficiary village")
+        void multiplePlansInSameVillage_aggregatesReleasedByVillage() {
+            SchemeApplication app1 = application("PM-KISAN", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            SchemeApplication app2 = application("NSP", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("4000.00"));
+            DisbursementPlan p1 = plan(app1, new BigDecimal("6000.00"), BigDecimal.ZERO);
+            DisbursementPlan p2 = plan(app2, new BigDecimal("4000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p1, p2));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByVillage()).containsKey("Vadgaon");
+            assertThat(result.getReleasedByVillage().get("Vadgaon")).isEqualByComparingTo("10000.00");
+        }
+
+        @Test
+        @DisplayName("separates different villages into different map entries")
+        void twoVillages_separateMapEntries() {
+            SchemeApplication app1 = application("PM-KISAN", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            SchemeApplication app2 = application("PM-KISAN", "Maharashtra", "Nashik", "Igatpuri",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p1 = plan(app1, new BigDecimal("6000.00"), BigDecimal.ZERO);
+            DisbursementPlan p2 = plan(app2, new BigDecimal("6000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p1, p2));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByVillage()).containsKeys("Vadgaon", "Igatpuri");
+            assertThat(result.getReleasedByVillage().get("Vadgaon")).isEqualByComparingTo("6000.00");
+            assertThat(result.getReleasedByVillage().get("Igatpuri")).isEqualByComparingTo("6000.00");
+        }
+
+        @Test
+        @DisplayName("null village falls back to 'Unknown Village'")
+        void nullVillage_fallsBackToUnknownVillage() {
+            SchemeApplication app = application("PM-KISAN", "Maharashtra", "Pune", null,
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p = plan(app, new BigDecimal("6000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByVillage()).containsKey("Unknown Village");
+        }
+
+        @Test
+        @DisplayName("blank village falls back to 'Unknown Village'")
+        void blankVillage_fallsBackToUnknownVillage() {
+            SchemeApplication app = application("PM-KISAN", "Maharashtra", "Pune", "",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p = plan(app, new BigDecimal("6000.00"), BigDecimal.ZERO);
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByVillage()).containsKey("Unknown Village");
+        }
+
+        @Test
+        @DisplayName("does not include unreleased plans in village breakdown")
+        void unreleasedPlan_notInVillageBreakdown() {
+            SchemeApplication app = application("PM-KISAN", "Maharashtra", "Pune", "Vadgaon",
+                    new BigDecimal("6000.00"));
+            DisbursementPlan p = plan(app, BigDecimal.ZERO, new BigDecimal("6000.00"));
+
+            given(disbursementPlanRepository.findAll()).willReturn(List.of(p));
+            given(disbursementStageRepository.findAll()).willReturn(List.of());
+
+            DisbursementAnalyticsResponse result = disbursementAnalyticsService.getAnalytics();
+
+            assertThat(result.getReleasedByVillage()).doesNotContainKey("Vadgaon");
         }
     }
 }

@@ -17,11 +17,13 @@ import java.util.Map;
  * Builds a downloadable .xlsx report from the existing
  * {@link DisbursementAnalyticsResponse} data.
  *
- * <p>Three sheets are produced:
+ * <p>Five sheets are produced:
  * <ol>
  *   <li>Summary       – sanctioned, planned, released, remaining</li>
  *   <li>By Scheme     – released amount per scheme</li>
  *   <li>By State      – released amount per state</li>
+ *   <li>By District   – released amount per district</li>
+ *   <li>By Village    – released amount per village</li>
  * </ol>
  *
  * No analytics calculations are performed here; all figures come
@@ -56,6 +58,12 @@ public class DisbursementExcelExportService {
                     titleStyle, headerStyle, labelStyle, amountStyle);
             writeBreakdownSheet(workbook, "Released by State",
                     data.getReleasedByState(), "State",
+                    titleStyle, headerStyle, labelStyle, amountStyle);
+            writeBreakdownSheet(workbook, "Released by District",
+                    data.getReleasedByDistrict(), "District",
+                    titleStyle, headerStyle, labelStyle, amountStyle);
+            writeBreakdownSheet(workbook, "Released by Village",
+                    data.getReleasedByVillage(), "Village",
                     titleStyle, headerStyle, labelStyle, amountStyle);
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();

@@ -175,8 +175,13 @@
 
 .analytics-breakdown-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+/* Scheme table spans all 3 columns */
+.analytics-breakdown-wide {
+    grid-column: 1 / -1;
 }
 
 .analytics-breakdown-section {
@@ -242,6 +247,16 @@
 
 /* ── Responsive ─────────────────────────────────────────── */
 
+@media (max-width: 1100px) {
+    .analytics-breakdown-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .analytics-breakdown-wide {
+        grid-column: 1 / -1;
+    }
+}
+
 @media (max-width: 900px) {
     .analytics-summary-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -249,6 +264,10 @@
 
     .analytics-breakdown-grid {
         grid-template-columns: 1fr;
+    }
+
+    .analytics-breakdown-wide {
+        grid-column: auto;
     }
 }
 

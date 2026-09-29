@@ -69,6 +69,8 @@ class DisbursementAnalyticsControllerTest {
                 .releasedByScheme(Map.of("PM-KISAN", new BigDecimal("6000.00"),
                         "NSP", new BigDecimal("4000.00")))
                 .releasedByState(Map.of("Maharashtra", new BigDecimal("10000.00")))
+                .releasedByDistrict(Map.of("Pune", new BigDecimal("10000.00")))
+                .releasedByVillage(Map.of("Vadgaon", new BigDecimal("10000.00")))
                 .build();
     }
 
@@ -80,6 +82,8 @@ class DisbursementAnalyticsControllerTest {
                 .totalRemaining(BigDecimal.ZERO)
                 .releasedByScheme(Map.of())
                 .releasedByState(Map.of())
+                .releasedByDistrict(Map.of())
+                .releasedByVillage(Map.of())
                 .build();
     }
 

@@ -39,4 +39,18 @@ public class DisbursementAnalyticsResponse {
      * Value → total released for beneficiaries in that state
      */
     private final Map<String, BigDecimal> releasedByState;
+
+    /**
+     * Released amount grouped by beneficiary district.
+     * Key   → district name (e.g. "Pune"); falls back to "Unknown District"
+     * Value → total released for beneficiaries in that district
+     */
+    private final Map<String, BigDecimal> releasedByDistrict;
+
+    /**
+     * Released amount grouped by beneficiary village.
+     * Key   → village name (e.g. "Vadgaon"); falls back to "Unknown Village"
+     * Value → total released for beneficiaries in that village
+     */
+    private final Map<String, BigDecimal> releasedByVillage;
 }

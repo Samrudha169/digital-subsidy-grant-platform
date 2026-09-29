@@ -3448,6 +3448,13 @@ function OfficerDashboard() {
                     ERROR
                 ============================================================ */}
 
+                {/* ── DISBURSEMENT ANALYTICS ─────────────────────────── */}
+                <DisbursementAnalyticsPanel />
+
+                {/* ============================================================
+                    ERROR
+                ============================================================ */}
+
                 {fetchError && (
 
                     <div className="od-notification od-notification-error">
@@ -3692,8 +3699,6 @@ function OfficerDashboard() {
 
                 )}
 
-                {/* ── DISBURSEMENT ANALYTICS ─────────────────────────── */}
-                <DisbursementAnalyticsPanel />
 
             </main>
 

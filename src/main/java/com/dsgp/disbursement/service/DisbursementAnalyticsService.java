@@ -34,6 +34,8 @@ public class DisbursementAnalyticsService {
      *   <li>Total sanctioned, planned, released, and remaining amounts</li>
      *   <li>Released amount broken down by scheme</li>
      *   <li>Released amount broken down by beneficiary state</li>
+     *   <li>Released amount broken down by beneficiary district</li>
+     *   <li>Released amount broken down by beneficiary village</li>
      * </ul>
      *
      * @return {@link DisbursementAnalyticsResponse} with all metrics
@@ -48,8 +50,10 @@ public class DisbursementAnalyticsService {
         BigDecimal totalReleased   = BigDecimal.ZERO;
         BigDecimal totalRemaining  = BigDecimal.ZERO;
 
-        Map<String, BigDecimal> releasedByScheme = new HashMap<>();
-        Map<String, BigDecimal> releasedByState  = new HashMap<>();
+        Map<String, BigDecimal> releasedByScheme   = new HashMap<>();
+        Map<String, BigDecimal> releasedByState    = new HashMap<>();
+        Map<String, BigDecimal> releasedByDistrict = new HashMap<>();
+        Map<String, BigDecimal> releasedByVillage  = new HashMap<>();
 
         for (DisbursementPlan plan : plans) {
 
@@ -81,6 +85,18 @@ public class DisbursementAnalyticsService {
             String state = resolveState(plan);
 
             releasedByState.merge(state, released, BigDecimal::add);
+
+            // ── Released by district ───────────────────────────────────────
+
+            String district = resolveDistrict(plan);
+
+            releasedByDistrict.merge(district, released, BigDecimal::add);
+
+            // ── Released by village ────────────────────────────────────────
+
+            String village = resolveVillage(plan);
+
+            releasedByVillage.merge(village, released, BigDecimal::add);
         }
 
         // ── Total planned = sum of all stage amounts ───────────────────────
@@ -97,6 +113,8 @@ public class DisbursementAnalyticsService {
                 .totalRemaining(totalRemaining)
                 .releasedByScheme(releasedByScheme)
                 .releasedByState(releasedByState)
+                .releasedByDistrict(releasedByDistrict)
+                .releasedByVillage(releasedByVillage)
                 .build();
     }
 
@@ -129,6 +147,36 @@ public class DisbursementAnalyticsService {
             return (state != null && !state.isBlank()) ? state : "Unknown State";
         } catch (Exception e) {
             return "Unknown State";
+        }
+    }
+
+    /**
+     * Navigates plan → application → beneficiary to get the district.
+     * Falls back to "Unknown District" if the field is null or blank.
+     */
+    private String resolveDistrict(DisbursementPlan plan) {
+        try {
+            String district = plan.getApplication()
+                    .getBeneficiary()
+                    .getDistrict();
+            return (district != null && !district.isBlank()) ? district : "Unknown District";
+        } catch (Exception e) {
+            return "Unknown District";
+        }
+    }
+
+    /**
+     * Navigates plan → application → beneficiary to get the village.
+     * Falls back to "Unknown Village" if the field is null or blank.
+     */
+    private String resolveVillage(DisbursementPlan plan) {
+        try {
+            String village = plan.getApplication()
+                    .getBeneficiary()
+                    .getVillage();
+            return (village != null && !village.isBlank()) ? village : "Unknown Village";
+        } catch (Exception e) {
+            return "Unknown Village";
         }
     }
 

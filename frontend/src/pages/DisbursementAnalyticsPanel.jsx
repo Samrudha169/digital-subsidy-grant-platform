@@ -202,38 +202,6 @@ export default function DisbursementAnalyticsPanel() {
                     {/* BREAKDOWN TABLES */}
                     <div className="analytics-breakdown-grid">
 
-                        {/* BY SCHEME */}
-                        <div className="analytics-breakdown-section">
-                            <h4 className="analytics-breakdown-title">
-                                Released by Scheme
-                            </h4>
-
-                            {Object.keys(data.releasedByScheme || {}).length === 0 ? (
-                                <p className="analytics-empty">
-                                    No releases recorded yet.
-                                </p>
-                            ) : (
-                                <table className="analytics-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Scheme</th>
-                                            <th>Released</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {Object.entries(data.releasedByScheme)
-                                            .sort((a, b) => b[1] - a[1])
-                                            .map(([scheme, amount]) => (
-                                                <tr key={scheme}>
-                                                    <td>{scheme}</td>
-                                                    <td>{formatAmount(amount)}</td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                            )}
-                        </div>
-
                         {/* BY STATE */}
                         <div className="analytics-breakdown-section">
                             <h4 className="analytics-breakdown-title">
@@ -249,7 +217,7 @@ export default function DisbursementAnalyticsPanel() {
                                     <thead>
                                         <tr>
                                             <th>State</th>
-                                            <th>Released</th>
+                                            <th>Released Amount</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -258,6 +226,102 @@ export default function DisbursementAnalyticsPanel() {
                                             .map(([state, amount]) => (
                                                 <tr key={state}>
                                                     <td>{state}</td>
+                                                    <td>{formatAmount(amount)}</td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* BY DISTRICT */}
+                        <div className="analytics-breakdown-section">
+                            <h4 className="analytics-breakdown-title">
+                                Released by District
+                            </h4>
+
+                            {Object.keys(data.releasedByDistrict || {}).length === 0 ? (
+                                <p className="analytics-empty">
+                                    No releases recorded yet.
+                                </p>
+                            ) : (
+                                <table className="analytics-table">
+                                    <thead>
+                                        <tr>
+                                            <th>District</th>
+                                            <th>Released Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(data.releasedByDistrict)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .map(([district, amount]) => (
+                                                <tr key={district}>
+                                                    <td>{district}</td>
+                                                    <td>{formatAmount(amount)}</td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* BY VILLAGE */}
+                        <div className="analytics-breakdown-section">
+                            <h4 className="analytics-breakdown-title">
+                                Released by Village
+                            </h4>
+
+                            {Object.keys(data.releasedByVillage || {}).length === 0 ? (
+                                <p className="analytics-empty">
+                                    No releases recorded yet.
+                                </p>
+                            ) : (
+                                <table className="analytics-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Village</th>
+                                            <th>Released Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(data.releasedByVillage)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .map(([village, amount]) => (
+                                                <tr key={village}>
+                                                    <td>{village}</td>
+                                                    <td>{formatAmount(amount)}</td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+
+                        {/* BY SCHEME */}
+                        <div className="analytics-breakdown-section analytics-breakdown-wide">
+                            <h4 className="analytics-breakdown-title">
+                                Released by Scheme
+                            </h4>
+
+                            {Object.keys(data.releasedByScheme || {}).length === 0 ? (
+                                <p className="analytics-empty">
+                                    No releases recorded yet.
+                                </p>
+                            ) : (
+                                <table className="analytics-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Scheme</th>
+                                            <th>Released Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {Object.entries(data.releasedByScheme)
+                                            .sort((a, b) => b[1] - a[1])
+                                            .map(([scheme, amount]) => (
+                                                <tr key={scheme}>
+                                                    <td>{scheme}</td>
                                                     <td>{formatAmount(amount)}</td>
                                                 </tr>
                                             ))}
