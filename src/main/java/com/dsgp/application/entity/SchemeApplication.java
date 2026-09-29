@@ -78,6 +78,11 @@ public class SchemeApplication {
      */
     @Column(name = "sanctioned_amount", precision = 12, scale = 2)
     private BigDecimal sanctionedAmount;
+    /**
+     * Amount requested by the beneficiary when submitting the application.
+     */
+    @Column(name = "requested_amount", precision = 12, scale = 2, nullable = false)
+    private BigDecimal requestedAmount;
 
     /** Timestamp when the application was submitted. Set once on insert. */
     @Column(name = "application_date", nullable = false, updatable = false)

@@ -109,74 +109,7 @@ function Home() {
     return (
         <div className="dsgp-app">
 
-            {/* HEADER */}
-            {!isOfficerLoggedIn && (
-                <header className="header">
-                    <div className="site-header">
-                        <div className="header-inner">
-                            <div className="header-container">
 
-                                <div className="brand">
-                                    <h1 className="brand-title">
-                                        DSGP
-                                    </h1>
-
-                                    <p className="brand-subtitle">
-                                        Digital Subsidy & Grant Platform
-                                    </p>
-                                </div>
-
-                                <nav className="nav">
-
-                                    <Link
-                                        to="/"
-                                        className="nav-link"
-                                    >
-                                        Home
-                                    </Link>
-
-                                    <Link
-                                        to="/schemes"
-                                        className="nav-link"
-                                    >
-                                        Find Schemes
-                                    </Link>
-
-                                    <Link
-                                        to="/eligibility"
-                                        className="nav-link"
-                                    >
-                                        Eligibility
-                                    </Link>
-
-                                    <Link
-                                        to="/track"
-                                        className="nav-link"
-                                    >
-                                        Track Application
-                                    </Link>
-
-                                    <Link
-                                        to="/about"
-                                        className="nav-link"
-                                    >
-                                        About
-                                    </Link>
-
-                                    <Link
-                                        to="/login"
-                                        className="nav-link nav-login"
-                                    >
-                                        Login / Register
-                                    </Link>
-
-                                </nav>
-
-                            </div>
-                        </div>
-                    </div>
-                </header>
-            )}
 
             <main>
 

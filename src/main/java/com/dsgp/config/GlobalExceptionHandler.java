@@ -192,7 +192,25 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(build(HttpStatus.BAD_REQUEST, message, request.getRequestURI(), null));
     }
+// ── Disbursement Module Exceptions ────────────────────────────────────────
 
+    /**
+     * Disbursement business-rule violations such as attempting to release
+     * an overdue or non-compliant stage — HTTP 409 Conflict.
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(
+            IllegalStateException ex, HttpServletRequest request) {
+
+        log.warn("Disbursement operation rejected: {}", ex.getMessage());
+
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(build(
+                        HttpStatus.CONFLICT,
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null));
+    }
     // ── Catch-All ─────────────────────────────────────────────────────────────
 
     @ExceptionHandler(Exception.class)

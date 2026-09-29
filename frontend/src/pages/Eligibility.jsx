@@ -195,12 +195,13 @@ function Eligibility() {
     const [applicationResult, setApplicationResult] = useState(null);
     const [applicationError, setApplicationError] = useState('');
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
-
+    const [requestedAmount, setRequestedAmount] = useState('');
     /*
      * Document upload state — keyed by document type string.
      * Each entry: { file: File|null, status: 'idle'|'uploading'|'done'|'error', error: string }
      */
     const [docUploads, setDocUploads] = useState({});
+
 
     /* ════════════════════════════════════════════════════════════
        AUTO-LOAD BENEFICIARY + SCHEME
@@ -569,6 +570,9 @@ function Eligibility() {
 
                 schemeId:
                     parseInt(liveForm.schemeId, 10),
+
+                requestedAmount:
+                    Number(requestedAmount),
             };
 
             const res = await fetch(
@@ -1848,7 +1852,34 @@ function Eligibility() {
                                             );
                                         })()}
 
+                                        {/* Requested Amount */}
+                                        <div className="eligibility-form-group">
+                                            <label htmlFor="requestedAmount">
+                                                Requested Amount (₹)
+                                                <span className="field-required" aria-hidden="true">
+            {' '}*
+        </span>
+                                            </label>
 
+                                            <input
+                                                id="requestedAmount"
+                                                name="requestedAmount"
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                value={requestedAmount}
+                                                onChange={(e) => setRequestedAmount(e.target.value)}
+                                                placeholder="Enter requested amount"
+                                                className="elig-input"
+                                                required
+                                            />
+
+                                            {selectedScheme?.backendId === 1 && (
+                                                <span className="field-hint">
+            Maximum grant: ₹6,000
+        </span>
+                                            )}
+                                        </div>
                                         <div className="next-steps-actions">
 
                                             <Link

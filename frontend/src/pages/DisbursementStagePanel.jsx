@@ -1,9 +1,7 @@
-
 import React, { useEffect, useState } from "react";
 import "./DisbursementStagePanel.css";
 
 const API_BASE = "/api/v1/api/disbursements";
-const BENEFICIARY_API_BASE = "/api/v1/beneficiaries";
 
 const getComplianceInfo = (stage) => {
     const status = stage.complianceStatus || "PENDING";
@@ -65,6 +63,7 @@ const getComplianceInfo = (stage) => {
     };
 };
 
+
 function formatAmount(value) {
     if (value === null || value === undefined || value === "") {
         return "₹0.00";
@@ -72,7 +71,7 @@ function formatAmount(value) {
 
     return `₹${Number(value).toLocaleString("en-IN", {
         minimumFractionDigits: 2,
-        maximumFractionDigits: 2
+        maximumFractionDigits: 2,
     })}`;
 }
 
@@ -83,130 +82,19 @@ function formatDate(value) {
         return new Date(value).toLocaleDateString("en-IN", {
             day: "2-digit",
             month: "short",
-            year: "numeric"
+            year: "numeric",
         });
     } catch {
         return value;
     }
 }
 
-
-const getStageEvidenceInstructions = (stageNumber) => {
-    switch (Number(stageNumber)) {
-        case 1:
-            return {
-                title: "Initial Verification Documents",
-                description:
-                    "Verify the beneficiary's eligibility and initial setup before releasing Stage 1.",
-                items: [
-                    "Identity / beneficiary proof",
-                    "Bank account proof",
-                    "Approval / sanction / setup documents"
-                ]
-            };
-
-        case 2:
-            return {
-                title: "Proof of Stage 1 Fund Utilization",
-                description:
-                    "Verify that the Stage 1 funds were used for the approved purchase or activity.",
-                items: [
-                    "Equipment or purchase invoice",
-                    "Payment receipt or transaction proof",
-                    "Photos of purchased equipment or completed activity"
-                ]
-            };
-
-        case 3:
-            return {
-                title: "Final Completion & Previous Fund Utilization",
-                description:
-                    "Verify completion of the approved project and proper utilization of the funds already released in Stages 1 and 2.",
-                items: [
-                    "Final completion report",
-                    "Utilization / expenditure statement for previously released funds",
-                    "Final project / equipment photos",
-                    "Remaining invoices or payment proofs, if applicable"
-                ]
-            };
-
-        default:
-            return {
-                title: "Required Evidence",
-                description:
-                    "Verify the documents and evidence required for this disbursement stage.",
-                items: [
-                    "Required supporting documents",
-                    "Payment / expenditure proof",
-                    "Relevant project evidence"
-                ]
-            };
-    }
-};
-
-const getStageDocumentRequirements = (stageNumber) => {
-    switch (Number(stageNumber)) {
-        case 2:
-            return [
-                {
-                    type: "STAGE_2_INVOICE",
-                    title: "Equipment / Purchase Invoice",
-                    required: true
-                },
-                {
-                    type: "STAGE_2_PAYMENT_PROOF",
-                    title: "Payment / Transaction Proof",
-                    required: true
-                },
-                {
-                    type: "STAGE_2_ACTIVITY_PHOTO",
-                    title: "Equipment / Activity Photos",
-                    required: true
-                }
-            ];
-
-        case 3:
-            return [
-                {
-                    type: "FINAL_COMPLETION_REPORT",
-                    title: "Final Completion Report",
-                    required: true
-                },
-                {
-                    type: "UTILIZATION_STATEMENT",
-                    title: "Utilization / Expenditure Statement",
-                    required: true
-                },
-                {
-                    type: "FINAL_PROJECT_PHOTO",
-                    title: "Final Project / Equipment Photos",
-                    required: true
-                },
-                {
-                    type: "FINAL_PAYMENT_PROOF",
-                    title: "Remaining Invoice / Payment Proof",
-                    required: false
-                }
-            ];
-
-        default:
-            return [];
-    }
-};
-
 export default function DisbursementStagePanel({ application }) {
-
     const applicationId =
         application?.applicationId ?? application?.id;
 
-    const beneficiaryId =
-        application?.beneficiaryId ?? application?.beneficiary?.id;
-
     const [plan, setPlan] = useState(null);
     const [stages, setStages] = useState([]);
-
-    const [stageDocuments, setStageDocuments] = useState({});
-    const [documentsLoading, setDocumentsLoading] = useState(false);
 
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -214,27 +102,19 @@ export default function DisbursementStagePanel({ application }) {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
 
-    /*
-     * Temporary compliance form data for each stage.
-     *
-     * Example:
-     * {
-     *   1: {
-     *      status: "COMPLETED",
-     *      remarks: "Documents verified.",
-     *      verifiedBy: "Finance Officer"
-     *   }
-     * }
-     */
-    const [complianceForms, setComplianceForms] = useState({});
+    const [stageNumber, setStageNumber] = useState(1);
+    const [amount, setAmount] = useState("");
+    const [milestone, setMilestone] = useState("");
+    const [dueDate, setDueDate] = useState("");
 
     const planId = plan?.id || null;
 
+
     /*
-     * Load the disbursement plan and all stages.
+     * Load the disbursement plan using the application ID,
+     * then load all stages belonging to that plan.
      */
     const loadPlanAndStages = async () => {
-
         if (!applicationId) {
             setPlan(null);
             setStages([]);
@@ -246,7 +126,6 @@ export default function DisbursementStagePanel({ application }) {
         setError("");
 
         try {
-
             /*
              * Step 1:
              * Find the disbursement plan linked to this application.
@@ -280,7 +159,6 @@ export default function DisbursementStagePanel({ application }) {
              */
             if (!planData?.id) {
                 setStages([]);
-
                 throw new Error(
                     "Disbursement plan ID was not returned by the server."
                 );
@@ -298,29 +176,12 @@ export default function DisbursementStagePanel({ application }) {
 
             const stagesData = await stagesResponse.json();
 
-            const loadedStages = Array.isArray(stagesData)
-                ? stagesData
-                : [];
-
-            setStages(loadedStages);
-
-            /*
-             * Load existing compliance information into the form.
-             */
-            const existingForms = {};
-
-            loadedStages.forEach((stage) => {
-                existingForms[stage.id] = {
-                    status: stage.complianceStatus || "PENDING",
-                    remarks: stage.complianceRemarks || "",
-                    verifiedBy: stage.complianceVerifiedBy || ""
-                };
-            });
-
-            setComplianceForms(existingForms);
-
+            setStages(
+                Array.isArray(stagesData)
+                    ? stagesData
+                    : []
+            );
         } catch (err) {
-
             console.error(
                 "Disbursement loading error:",
                 err
@@ -330,103 +191,12 @@ export default function DisbursementStagePanel({ application }) {
                 err.message ||
                 "Unable to load disbursement data."
             );
-
         } finally {
             setLoading(false);
         }
     };
 
-    const loadStageDocuments = async (loadedStages = stages) => {
-
-        if (!beneficiaryId || !applicationId) {
-            setStageDocuments({});
-            return;
-        }
-
-        const stageNumbers = loadedStages
-            .map((stage) => Number(stage.stageNumber))
-            .filter((stageNumber) => stageNumber === 2 || stageNumber === 3);
-
-        if (stageNumbers.length === 0) {
-            setStageDocuments({});
-            return;
-        }
-
-        setDocumentsLoading(true);
-
-        try {
-
-            const results = await Promise.all(
-                stageNumbers.map(async (stageNumber) => {
-                    const response = await fetch(
-                        `${BENEFICIARY_API_BASE}/${beneficiaryId}/documents/application/${applicationId}/stage/${stageNumber}`
-                    );
-
-                    if (!response.ok) {
-                        return [stageNumber, []];
-                    }
-
-                    const data = await response.json();
-                    return [
-                        stageNumber,
-                        Array.isArray(data) ? data : []
-                    ];
-                })
-            );
-
-            setStageDocuments(
-                Object.fromEntries(results)
-            );
-
-        } catch (err) {
-            console.error(
-                "Stage document loading error:",
-                err
-            );
-            setStageDocuments({});
-        } finally {
-            setDocumentsLoading(false);
-        }
-    };
-
-    const getStageDocument = (stageNumber, documentType) => {
-        const documents =
-            stageDocuments[Number(stageNumber)] || [];
-
-        return documents.find(
-            (document) =>
-                document.documentType === documentType
-        );
-    };
-
-    const handleDocumentDownload = (documentId) => {
-        if (!beneficiaryId || !documentId) {
-            return;
-        }
-
-        window.open(
-            `${BENEFICIARY_API_BASE}/${beneficiaryId}/documents/${documentId}/download`,
-            "_blank"
-        );
-    };
-
-    const hasRequiredStageDocuments = (stageNumber) => {
-        const requirements =
-            getStageDocumentRequirements(stageNumber)
-                .filter((item) => item.required);
-
-        return requirements.every((requirement) =>
-            Boolean(
-                getStageDocument(
-                    stageNumber,
-                    requirement.type
-                )
-            )
-        );
-    };
-
     useEffect(() => {
-
         if (applicationId) {
             loadPlanAndStages();
         } else {
@@ -434,14 +204,28 @@ export default function DisbursementStagePanel({ application }) {
             setStages([]);
             setError("Application ID is not available.");
         }
-
     }, [applicationId]);
 
+    /*
+     * Automatically calculate the next stage number.
+     *
+     * Example:
+     * Stage 1 exists → next = Stage 2
+     * Stage 1,2 exist → next = Stage 3
+     * Stage 1,2,3 exist → next = Stage 4
+     */
     useEffect(() => {
-        if (applicationId && beneficiaryId && stages.length > 0) {
-            loadStageDocuments(stages);
-        }
-    }, [applicationId, beneficiaryId, stages]);
+        setStageNumber(
+            stages.length > 0
+                ? Math.max(
+                ...stages.map(
+                    stage =>
+                        Number(stage.stageNumber) || 0
+                )
+            ) + 1
+                : 1
+        );
+    }, [stages]);
 
     /*
      * Calculate released amount from released stages.
@@ -474,10 +258,10 @@ export default function DisbursementStagePanel({ application }) {
         0;
 
     /*
-     * Remaining amount to be released.
+     * Remaining amount according to the stages currently planned.
      */
     const remainingAmount = Math.max(
-        Number(sanctionedAmount) - releasedAmount,
+        Number(sanctionedAmount) - plannedAmount,
         0
     );
 
@@ -492,11 +276,11 @@ export default function DisbursementStagePanel({ application }) {
             info.type === "non-compliant"
         );
 
+
     /*
-     * Create a disbursement plan.
+     * Create a disbursement plan for this approved application.
      */
     const handleCreatePlan = async () => {
-
         if (!applicationId) {
             setError("Application ID is not available.");
             return;
@@ -507,11 +291,10 @@ export default function DisbursementStagePanel({ application }) {
         setSuccess("");
 
         try {
-
             const response = await fetch(
                 `${API_BASE}/application/${applicationId}/plan?type=STAGED`,
                 {
-                    method: "POST"
+                    method: "POST",
                 }
             );
 
@@ -534,9 +317,7 @@ export default function DisbursementStagePanel({ application }) {
             );
 
             await loadPlanAndStages();
-
         } catch (err) {
-
             console.error(
                 "Create disbursement plan error:",
                 err
@@ -546,60 +327,50 @@ export default function DisbursementStagePanel({ application }) {
                 err.message ||
                 "Unable to create disbursement plan."
             );
-
         } finally {
             setSaving(false);
         }
     };
 
     /*
-     * Update a compliance form field.
+     * Create a new stage.
      */
-    const updateComplianceForm = (
-        stageId,
-        field,
-        value
-    ) => {
+    const handleAddStage = async (event) => {
+        event.preventDefault();
 
-        setComplianceForms((previous) => ({
-            ...previous,
-
-            [stageId]: {
-                ...(previous[stageId] || {
-                    status: "PENDING",
-                    remarks: "",
-                    verifiedBy: ""
-                }),
-
-                [field]: value
-            }
-        }));
-    };
-
-    /*
-     * Save compliance review.
-     */
-    const handleComplianceUpdate = async (stageId) => {
-
-        const form = complianceForms[stageId];
-
-        if (!form) {
-            setError("Compliance information is not available.");
+        if (!planId) {
+            setError(
+                "Disbursement plan is not available for this application."
+            );
             return;
         }
 
-        if (!form.status) {
-            setError("Please select a compliance status.");
+        if (!stageNumber || Number(stageNumber) <= 0) {
+            setError("Enter a valid stage number.");
             return;
         }
 
-        if (!form.remarks?.trim()) {
-            setError("Please enter compliance remarks.");
+        if (!amount || Number(amount) <= 0) {
+            setError("Enter a valid stage amount.");
             return;
         }
 
-        if (!form.verifiedBy?.trim()) {
-            setError("Please enter the name of the verifying officer.");
+        if (Number(amount) > remainingAmount) {
+            setError(
+                `Stage amount cannot exceed the remaining amount of ${formatAmount(
+                    remainingAmount
+                )}.`
+            );
+            return;
+        }
+
+        if (!milestone.trim()) {
+            setError("Enter the milestone.");
+            return;
+        }
+
+        if (!dueDate) {
+            setError("Select a due date.");
             return;
         }
 
@@ -608,17 +379,19 @@ export default function DisbursementStagePanel({ application }) {
         setSuccess("");
 
         try {
-
-            const params = new URLSearchParams({
-                status: form.status,
-                remarks: form.remarks.trim(),
-                verifiedBy: form.verifiedBy.trim()
-            });
-
             const response = await fetch(
-                `${API_BASE}/stages/${stageId}/compliance?${params.toString()}`,
+                `${API_BASE}/${planId}/stages`,
                 {
-                    method: "PUT"
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        stageNumber: Number(stageNumber),
+                        amount: Number(amount),
+                        milestone: milestone.trim(),
+                        dueDate,
+                    }),
                 }
             );
 
@@ -630,32 +403,29 @@ export default function DisbursementStagePanel({ application }) {
                 throw new Error(
                     data?.message ||
                     data?.error ||
-                    "Unable to update compliance status."
+                    "Unable to create disbursement stage."
                 );
             }
 
+            setAmount("");
+            setMilestone("");
+            setDueDate("");
+
             setSuccess(
-                form.status === "COMPLETED"
-                    ? "Compliance review completed successfully."
-                    : form.status === "NON_COMPLIANT"
-                        ? "Stage marked as non-compliant."
-                        : "Compliance status saved successfully."
+                "Disbursement stage created successfully."
             );
 
             await loadPlanAndStages();
-
         } catch (err) {
-
             console.error(
-                "Compliance update error:",
+                "Create stage error:",
                 err
             );
 
             setError(
                 err.message ||
-                "Unable to update compliance status."
+                "Unable to create disbursement stage."
             );
-
         } finally {
             setSaving(false);
         }
@@ -663,45 +433,17 @@ export default function DisbursementStagePanel({ application }) {
 
     /*
      * Verify a stage.
-     *
-     * Backend will also enforce that compliance
-     * must be COMPLETED.
      */
     const handleVerify = async (stageId) => {
-
-        const stage = stages.find(
-            (item) => item.id === stageId
-        );
-
-        if (stage?.complianceStatus !== "COMPLETED") {
-            setError(
-                "Compliance must be completed before verifying this stage."
-            );
-            return;
-        }
-
-        const stageNumber = Number(stage?.stageNumber);
-
-        if (
-            (stageNumber === 2 || stageNumber === 3) &&
-            !hasRequiredStageDocuments(stageNumber)
-        ) {
-            setError(
-                `Please review and ensure all required Stage ${stageNumber} documents have been uploaded before verifying this stage.`
-            );
-            return;
-        }
-
         setSaving(true);
         setError("");
         setSuccess("");
 
         try {
-
             const response = await fetch(
                 `${API_BASE}/stages/${stageId}/verify`,
                 {
-                    method: "PUT"
+                    method: "PUT",
                 }
             );
 
@@ -722,9 +464,7 @@ export default function DisbursementStagePanel({ application }) {
             );
 
             await loadPlanAndStages();
-
         } catch (err) {
-
             console.error(
                 "Verify stage error:",
                 err
@@ -734,7 +474,6 @@ export default function DisbursementStagePanel({ application }) {
                 err.message ||
                 "Unable to verify stage."
             );
-
         } finally {
             setSaving(false);
         }
@@ -744,7 +483,6 @@ export default function DisbursementStagePanel({ application }) {
      * Release a verified stage.
      */
     const handleRelease = async (stageId) => {
-
         const confirmed = window.confirm(
             "Are you sure you want to release this stage?"
         );
@@ -756,11 +494,10 @@ export default function DisbursementStagePanel({ application }) {
         setSuccess("");
 
         try {
-
             const response = await fetch(
                 `${API_BASE}/stages/${stageId}/release`,
                 {
-                    method: "PUT"
+                    method: "PUT",
                 }
             );
 
@@ -781,9 +518,7 @@ export default function DisbursementStagePanel({ application }) {
             );
 
             await loadPlanAndStages();
-
         } catch (err) {
-
             console.error(
                 "Release stage error:",
                 err
@@ -793,11 +528,61 @@ export default function DisbursementStagePanel({ application }) {
                 err.message ||
                 "Unable to release stage."
             );
-
         } finally {
             setSaving(false);
         }
     };
+
+    /*
+ * Update compliance status of a released stage.
+ */
+    const handleComplianceUpdate = async (stageId, status) => {
+        setSaving(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const response = await fetch(
+                `${API_BASE}/stages/${stageId}/compliance?status=${status}`,
+                {
+                    method: "PUT",
+                }
+            );
+
+            const data = await response
+                .json()
+                .catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message ||
+                    data?.error ||
+                    "Unable to update compliance status."
+                );
+            }
+
+            setSuccess(
+                status === "COMPLETED"
+                    ? "Stage compliance marked as completed."
+                    : "Stage marked as non-compliant."
+            );
+
+            await loadPlanAndStages();
+        } catch (err) {
+            console.error(
+                "Compliance update error:",
+                err
+            );
+
+            setError(
+                err.message ||
+                "Unable to update compliance status."
+            );
+        } finally {
+            setSaving(false);
+        }
+    };
+
 
     /*
      * No application ID.
@@ -805,7 +590,6 @@ export default function DisbursementStagePanel({ application }) {
     if (!applicationId) {
         return (
             <section className="disbursement-panel">
-
                 <div className="disbursement-header">
                     <div>
                         <h3>Disbursement</h3>
@@ -832,7 +616,6 @@ export default function DisbursementStagePanel({ application }) {
                         plan cannot be loaded.
                     </p>
                 </div>
-
             </section>
         );
     }
@@ -843,7 +626,6 @@ export default function DisbursementStagePanel({ application }) {
     if (!planId && !loading) {
         return (
             <section className="disbursement-panel">
-
                 <div className="disbursement-header">
                     <div>
                         <h3>Disbursement</h3>
@@ -866,7 +648,6 @@ export default function DisbursementStagePanel({ application }) {
                 )}
 
                 <div className="disbursement-warning">
-
                     <strong>
                         Disbursement plan not found.
                     </strong>
@@ -886,9 +667,7 @@ export default function DisbursementStagePanel({ application }) {
                             ? "Creating Plan..."
                             : "Create Disbursement Plan"}
                     </button>
-
                 </div>
-
             </section>
         );
     }
@@ -898,12 +677,11 @@ export default function DisbursementStagePanel({ application }) {
 
             {/* HEADER */}
             <div className="disbursement-header">
-
                 <div>
                     <h3>Staged Disbursement</h3>
 
                     <p>
-                        Automatically generated disbursement schedule
+                        Create, verify and release payment stages
                         for this approved application.
                     </p>
                 </div>
@@ -911,7 +689,6 @@ export default function DisbursementStagePanel({ application }) {
                 <span className="disbursement-badge">
                     PLAN #{planId}
                 </span>
-
             </div>
 
             {/* ERROR */}
@@ -984,95 +761,186 @@ export default function DisbursementStagePanel({ application }) {
             {/* COMPLIANCE ALERTS */}
             {complianceAlerts.length > 0 && (
                 <div className="compliance-alerts-section">
-
                     <div className="compliance-alerts-header">
-
                         <h4>Compliance Alerts</h4>
-
                         <span>
-                            {complianceAlerts.length} alert
+                {complianceAlerts.length} alert
                             {complianceAlerts.length > 1 ? "s" : ""}
-                        </span>
-
+            </span>
                     </div>
 
                     <div className="compliance-alert-list">
-
                         {complianceAlerts.map(({ stage, info }) => (
-
                             <div
                                 key={stage.id}
                                 className={`compliance-alert-item ${info.type}`}
                             >
-
                                 <div className="compliance-alert-icon">
-                                    !
+                                    {info.type === "non-compliant"
+                                        ? "!"
+                                        : "!"}
                                 </div>
 
                                 <div className="compliance-alert-content">
-
                                     <strong>
                                         Stage {stage.stageNumber} — {info.label}
                                     </strong>
 
                                     <span>
-                                        {info.message}
-                                    </span>
+                            {info.message}
+                        </span>
 
                                     <small>
                                         Milestone: {stage.milestone || "-"}
                                     </small>
-
                                 </div>
-
                             </div>
-
                         ))}
-
                     </div>
-
                 </div>
             )}
 
-            {/* AUTOMATIC DISBURSEMENT SCHEDULE */}
+
+            {/* CREATE STAGE SECTION */}
             <div className="disbursement-section">
 
                 <div className="disbursement-section-title">
-
-                    <h4>Automatic Disbursement Schedule</h4>
+                    <h4>Create Disbursement Stage</h4>
 
                     <span>
-                        System Generated
+                        {remainingAmount > 0
+                            ? `${formatAmount(
+                                remainingAmount
+                            )} available`
+                            : "Full amount planned"}
                     </span>
-
                 </div>
 
-                <div className="stage-complete-message">
+                {/*
+                 * SHOW FORM ONLY WHEN SOME AMOUNT IS REMAINING.
+                 * When remaining amount is 0, show completion message.
+                 */}
+                {remainingAmount > 0 ? (
 
-                    <div className="stage-complete-icon">
-                        ✓
+                    <form
+                        className="stage-form"
+                        onSubmit={handleAddStage}
+                    >
+
+                        <div className="stage-form-grid">
+
+                            {/* AUTO STAGE NUMBER */}
+                            <div className="stage-field">
+                                <label>Stage Number</label>
+
+                                <div className="auto-stage-number">
+                                    <span>
+                                        Stage {stageNumber}
+                                    </span>
+
+                                    <span>
+                                        Auto
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* AMOUNT */}
+                            <div className="stage-field">
+                                <label>Amount</label>
+
+                                <input
+                                    type="number"
+                                    min="1"
+                                    step="0.01"
+                                    value={amount}
+                                    onChange={(e) =>
+                                        setAmount(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="e.g. 50000"
+                                    disabled={saving}
+                                />
+                            </div>
+
+                            {/* DUE DATE */}
+                            <div className="stage-field">
+                                <label>Due Date</label>
+
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) =>
+                                        setDueDate(
+                                            e.target.value
+                                        )
+                                    }
+                                    disabled={saving}
+                                />
+                            </div>
+
+                            {/* MILESTONE */}
+                            <div className="stage-field stage-field-wide">
+                                <label>Milestone</label>
+
+                                <input
+                                    type="text"
+                                    value={milestone}
+                                    onChange={(e) =>
+                                        setMilestone(
+                                            e.target.value
+                                        )
+                                    }
+                                    placeholder="e.g. Purchase of approved equipment"
+                                    disabled={saving}
+                                />
+                            </div>
+
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="stage-primary-button"
+                            disabled={saving}
+                        >
+                            {saving
+                                ? "Processing..."
+                                : "Add Stage"}
+                        </button>
+
+                    </form>
+
+                ) : (
+
+                    /* COMPLETED MESSAGE */
+                    <div className="stage-complete-message">
+
+                        <div className="stage-complete-icon">
+                            ✓
+                        </div>
+
+                        <div className="stage-complete-content">
+
+                            <strong>
+                                Disbursement allocation completed
+                            </strong>
+
+                            <p>
+                                The full sanctioned amount of{" "}
+                                <strong>
+                                    {formatAmount(
+                                        sanctionedAmount
+                                    )}
+                                </strong>{" "}
+                                has been allocated across the
+                                disbursement stages.
+                            </p>
+
+                        </div>
+
                     </div>
 
-                    <div className="stage-complete-content">
-
-                        <strong>
-                            Disbursement stages generated automatically
-                        </strong>
-
-                        <p>
-                            The system has automatically allocated the full
-                            sanctioned amount across the configured
-                            disbursement stages.
-                        </p>
-
-                        <p>
-                            Finance Officer must complete compliance review,
-                            verify the stage, and then release the payment.
-                        </p>
-
-                    </div>
-
-                </div>
+                )}
 
             </div>
 
@@ -1089,7 +957,9 @@ export default function DisbursementStagePanel({ application }) {
                         type="button"
                         className="stage-refresh-button"
                         onClick={loadPlanAndStages}
-                        disabled={loading || saving}
+                        disabled={
+                            loading || saving
+                        }
                     >
                         {loading
                             ? "Loading..."
@@ -1119,29 +989,15 @@ export default function DisbursementStagePanel({ application }) {
                             .slice()
                             .sort(
                                 (a, b) =>
-                                    Number(a.stageNumber || 0) -
-                                    Number(b.stageNumber || 0)
+                                    Number(
+                                        a.stageNumber || 0
+                                    ) -
+                                    Number(
+                                        b.stageNumber || 0
+                                    )
                             )
                             .map((stage) => {
-
-                                const complianceInfo =
-                                    getComplianceInfo(stage);
-
-                                const complianceForm =
-                                    complianceForms[stage.id] || {
-                                        status:
-                                            stage.complianceStatus ||
-                                            "PENDING",
-                                        remarks:
-                                            stage.complianceRemarks ||
-                                            "",
-                                        verifiedBy:
-                                            stage.complianceVerifiedBy ||
-                                            ""
-                                    };
-
-                                const complianceCompleted =
-                                    stage.complianceStatus === "COMPLETED";
+                                const complianceInfo = getComplianceInfo(stage);
 
                                 return (
                                     <div
@@ -1149,621 +1005,125 @@ export default function DisbursementStagePanel({ application }) {
                                         key={stage.id}
                                     >
 
-                                        {/* STAGE HEADER */}
-                                        <div className="stage-card-top">
+                                    {/* STAGE HEADER */}
+                                    <div className="stage-card-top">
 
-                                            <div className="stage-number">
-                                                Stage{" "}
-                                                {stage.stageNumber}
-                                            </div>
+                                        <div className="stage-number">
+                                            Stage{" "}
+                                            {stage.stageNumber}
+                                        </div>
 
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "8px"
-                                                }}
+                                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+
+                                            {stage.overdue && (
+                                                <span
+                                                    className="stage-status"
+                                                    style={{
+                                                        background: "#7f1d1d",
+                                                        color: "#fca5a5",
+                                                        border: "1px solid #991b1b",
+                                                    }}
+                                                    title="This stage has passed its due date and has not been released."
+                                                >
+                                                    ⚠ OVERDUE
+                                                </span>
+                                            )}
+
+                                            <span
+                                                className={`stage-status ${String(
+                                                    stage.status || ""
+                                                ).toLowerCase()}`}
                                             >
+                                                {stage.status ||
+                                                    "PENDING"}
+                                            </span>
 
+                                        </div>
+
+                                    </div>
+
+                                    {/* STAGE DETAILS */}
+                                    <div className="stage-card-details">
+
+                                        <div>
+                                            <span>
+                                                Amount
+                                            </span>
+
+                                            <strong>
+                                                {formatAmount(
+                                                    stage.amount
+                                                )}
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>
+                                                Milestone
+                                            </span>
+
+                                            <strong>
+                                                {stage.milestone ||
+                                                    "-"}
+                                            </strong>
+                                        </div>
+
+                                        <div>
+                                            <span>
+                                                Due Date
+                                            </span>
+
+                                            <strong>
+                                                {formatDate(
+                                                    stage.dueDate
+                                                )}
                                                 {stage.overdue && (
                                                     <span
-                                                        className="stage-status"
                                                         style={{
-                                                            background: "#7f1d1d",
+                                                            marginLeft: "6px",
+                                                            fontSize: "0.75rem",
                                                             color: "#fca5a5",
-                                                            border: "1px solid #991b1b"
+                                                            fontWeight: "600",
                                                         }}
-                                                        title="This stage has passed its due date and has not been released."
+                                                        title="Non-compliant: payment overdue"
                                                     >
-                                                        ⚠ OVERDUE
+                                                        (Non-compliant)
                                                     </span>
                                                 )}
-
-                                                <span
-                                                    className={`stage-status ${String(
-                                                        stage.status || ""
-                                                    ).toLowerCase()}`}
-                                                >
-                                                    {stage.status ||
-                                                        "PENDING"}
-                                                </span>
-
-                                            </div>
-
+                                            </strong>
                                         </div>
 
-                                        {/* STAGE DETAILS */}
-                                        <div className="stage-card-details">
+                                        <div>
+                                            <span>
+                                                Released At
+                                            </span>
 
-                                            <div>
-                                                <span>
-                                                    Amount
-                                                </span>
-
-                                                <strong>
-                                                    {formatAmount(
-                                                        stage.amount
-                                                    )}
-                                                </strong>
-                                            </div>
-
-                                            <div>
-                                                <span>
-                                                    Milestone
-                                                </span>
-
-                                                <strong>
-                                                    {stage.milestone ||
-                                                        "-"}
-                                                </strong>
-                                            </div>
-
-                                            <div>
-                                                <span>
-                                                    Due Date
-                                                </span>
-
-                                                <strong>
-                                                    {formatDate(
-                                                        stage.dueDate
-                                                    )}
-
-                                                    {stage.overdue && (
-                                                        <span
-                                                            style={{
-                                                                marginLeft: "6px",
-                                                                fontSize: "0.75rem",
-                                                                color: "#fca5a5",
-                                                                fontWeight: "600"
-                                                            }}
-                                                            title="This stage is overdue."
-                                                        >
-                                                            (Overdue)
-                                                        </span>
-                                                    )}
-
-                                                </strong>
-                                            </div>
-
-                                            <div>
-                                                <span>
-                                                    Released At
-                                                </span>
-
-                                                <strong>
-                                                    {formatDate(
-                                                        stage.releasedAt
-                                                    )}
-                                                </strong>
-                                            </div>
-
-                                        </div>
-
-                                        {/* STAGE-SPECIFIC EVIDENCE */}
-                                        {(() => {
-                                            const evidence = getStageEvidenceInstructions(stage.stageNumber);
-
-                                            return (
-                                                <div
-                                                    style={{
-                                                        marginTop: "18px",
-                                                        padding: "14px",
-                                                        borderRadius: "10px",
-                                                        border: "1px solid #93c5fd",
-                                                        background: "#eff6ff",
-                                                        color: "#1e293b"
-                                                    }}
-                                                >
-                                                    <strong style={{ color: "#1e3a8a" }}>
-                                                        📋 {evidence.title}
-                                                    </strong>
-
-                                                    <p
-                                                        style={{
-                                                            margin: "6px 0 10px",
-                                                            opacity: 0.9
-                                                        }}
-                                                    >
-                                                        {evidence.description}
-                                                    </p>
-
-                                                    <ul
-                                                        style={{
-                                                            margin: 0,
-                                                            paddingLeft: "20px"
-                                                        }}
-                                                    >
-                                                        {evidence.items.map((item, index) => (
-                                                            <li key={index} style={{ marginBottom: "5px" }}>
-                                                                {item}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            );
-                                        })()}
-
-                                        {/* BENEFICIARY-UPLOADED STAGE DOCUMENTS */}
-                                        {Number(stage.stageNumber) >= 2 && (
-                                            <div
-                                                style={{
-                                                    marginTop: "18px",
-                                                    padding: "16px",
-                                                    borderRadius: "10px",
-                                                    border: "1px solid #cbd5e1",
-                                                    background: "#ffffff",
-                                                    color: "#1e293b"
-                                                }}
-                                            >
-
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent: "space-between",
-                                                        alignItems: "center",
-                                                        gap: "10px",
-                                                        flexWrap: "wrap",
-                                                        marginBottom: "12px"
-                                                    }}
-                                                >
-                                                    <div>
-                                                        <strong
-                                                            style={{
-                                                                color: "#0f172a",
-                                                                fontSize: "15px"
-                                                            }}
-                                                        >
-                                                            📎 Beneficiary Uploaded Documents
-                                                        </strong>
-
-                                                        <p
-                                                            style={{
-                                                                margin: "5px 0 0",
-                                                                color: "#64748b",
-                                                                fontSize: "13px"
-                                                            }}
-                                                        >
-                                                            Review the actual evidence submitted for Stage {stage.stageNumber} before completing the compliance review.
-                                                        </p>
-                                                    </div>
-
-                                                    {documentsLoading && (
-                                                        <span
-                                                            style={{
-                                                                fontSize: "12px",
-                                                                color: "#64748b"
-                                                            }}
-                                                        >
-                                                            Loading documents...
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {!beneficiaryId ? (
-                                                    <div
-                                                        style={{
-                                                            padding: "10px",
-                                                            borderRadius: "7px",
-                                                            background: "#fef2f2",
-                                                            color: "#991b1b",
-                                                            fontSize: "13px"
-                                                        }}
-                                                    >
-                                                        Beneficiary ID is not available for document retrieval.
-                                                    </div>
-                                                ) : (
-                                                    <div
-                                                        style={{
-                                                            display: "grid",
-                                                            gap: "9px"
-                                                        }}
-                                                    >
-                                                        {getStageDocumentRequirements(stage.stageNumber).map((requirement) => {
-                                                            const document = getStageDocument(
-                                                                stage.stageNumber,
-                                                                requirement.type
-                                                            );
-
-                                                            return (
-                                                                <div
-                                                                    key={requirement.type}
-                                                                    style={{
-                                                                        display: "flex",
-                                                                        justifyContent: "space-between",
-                                                                        alignItems: "center",
-                                                                        gap: "12px",
-                                                                        padding: "11px 12px",
-                                                                        borderRadius: "8px",
-                                                                        border: document
-                                                                            ? "1px solid #bbf7d0"
-                                                                            : "1px solid #e2e8f0",
-                                                                        background: document
-                                                                            ? "#f0fdf4"
-                                                                            : "#f8fafc",
-                                                                        flexWrap: "wrap"
-                                                                    }}
-                                                                >
-                                                                    <div>
-                                                                        <strong
-                                                                            style={{
-                                                                                display: "block",
-                                                                                fontSize: "13px"
-                                                                            }}
-                                                                        >
-                                                                            {document ? "✓" : "○"} {requirement.title}
-                                                                            {!requirement.required && (
-                                                                                <span
-                                                                                    style={{
-                                                                                        marginLeft: "6px",
-                                                                                        fontSize: "11px",
-                                                                                        color: "#64748b",
-                                                                                        fontWeight: "normal"
-                                                                                    }}
-                                                                                >
-                                                                                    (Optional)
-                                                                                </span>
-                                                                            )}
-                                                                        </strong>
-
-                                                                        {document ? (
-                                                                            <span
-                                                                                style={{
-                                                                                    display: "block",
-                                                                                    marginTop: "3px",
-                                                                                    color: "#475569",
-                                                                                    fontSize: "12px"
-                                                                                }}
-                                                                            >
-                                                                                {document.originalFileName || document.fileName}
-                                                                            </span>
-                                                                        ) : (
-                                                                            <span
-                                                                                style={{
-                                                                                    display: "block",
-                                                                                    marginTop: "3px",
-                                                                                    color: requirement.required
-                                                                                        ? "#b45309"
-                                                                                        : "#64748b",
-                                                                                    fontSize: "12px"
-                                                                                }}
-                                                                            >
-                                                                                {requirement.required
-                                                                                    ? "Not uploaded"
-                                                                                    : "Not uploaded — optional"}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    {document && (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() =>
-                                                                                handleDocumentDownload(
-                                                                                    document.id
-                                                                                )
-                                                                            }
-                                                                            style={{
-                                                                                padding: "7px 12px",
-                                                                                border: "1px solid #2563eb",
-                                                                                borderRadius: "6px",
-                                                                                background: "#ffffff",
-                                                                                color: "#2563eb",
-                                                                                fontWeight: "600",
-                                                                                cursor: "pointer"
-                                                                            }}
-                                                                        >
-                                                                            View / Download
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
+                                            <strong>
+                                                {formatDate(
+                                                    stage.releasedAt
                                                 )}
-
-                                                <div
-                                                    style={{
-                                                        marginTop: "12px",
-                                                        fontSize: "12px",
-                                                        color: "#64748b"
-                                                    }}
-                                                >
-                                                    Stage {stage.stageNumber} documents are linked specifically to Application #{applicationId}.
-                                                </div>
-
-                                            </div>
-                                        )}
-
-
-                                        {/* COMPLIANCE STATUS */}
-                                        <div
-                                            style={{
-                                                marginTop: "18px",
-                                                padding: "14px",
-                                                borderRadius: "10px",
-                                                border: "1px solid rgba(148, 163, 184, 0.25)",
-                                                background: "#f1f5f9",
-                                                color: "#1e293b"
-                                            }}
-                                        >
-
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    justifyContent: "space-between",
-                                                    alignItems: "center",
-                                                    gap: "12px",
-                                                    marginBottom: "10px"
-                                                }}
-                                            >
-
-                                                <div>
-                                                    <span className="compliance-label">
-                                                        Compliance Review
-                                                    </span>
-
-                                                    <strong
-                                                        className={`compliance-status ${complianceInfo.type}`}
-                                                        style={{
-                                                            display: "block",
-                                                            marginTop: "4px",
-                                                            color:
-                                                                complianceInfo.type === "completed"
-                                                                    ? "#15803d"
-                                                                    : complianceInfo.type === "non-compliant"
-                                                                        ? "#b91c1c"
-                                                                        : "#b45309"
-                                                        }}
-                                                    >
-                                                        {complianceInfo.label}
-                                                    </strong>
-                                                </div>
-
-                                                {stage.complianceVerifiedAt && (
-                                                    <small>
-                                                        Reviewed on{" "}
-                                                        {formatDate(
-                                                            stage.complianceVerifiedAt
-                                                        )}
-                                                    </small>
-                                                )}
-
-                                            </div>
-
-                                            <small
-                                                className={`compliance-message ${complianceInfo.type}`}
-                                                style={{
-                                                    display: "block",
-                                                    marginBottom: "14px"
-                                                }}
-                                            >
-                                                {complianceInfo.message}
-                                            </small>
-
-                                            {/* COMPLIANCE FORM */}
-                                            {stage.status !== "RELEASED" && (
-
-                                                <div
-                                                    style={{
-                                                        display: "grid",
-                                                        gap: "10px"
-                                                    }}
-                                                >
-
-                                                    <div>
-
-                                                        <label
-                                                            style={{
-                                                                display: "block",
-                                                                marginBottom: "5px",
-                                                                fontWeight: "600"
-                                                            }}
-                                                        >
-                                                            Compliance Status
-                                                        </label>
-
-                                                        <select
-                                                            value={
-                                                                complianceForm.status
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateComplianceForm(
-                                                                    stage.id,
-                                                                    "status",
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            disabled={saving}
-                                                            className="compliance-select"
-                                                            style={{
-                                                                width: "100%"
-                                                            }}
-                                                        >
-
-                                                            <option value="PENDING">
-                                                                Compliance Pending
-                                                            </option>
-
-                                                            <option value="COMPLETED">
-                                                                Completed
-                                                            </option>
-
-                                                            <option value="NON_COMPLIANT">
-                                                                Non-Compliant
-                                                            </option>
-
-                                                        </select>
-
-                                                    </div>
-
-                                                    <div>
-
-                                                        <label
-                                                            style={{
-                                                                display: "block",
-                                                                marginBottom: "5px",
-                                                                fontWeight: "600"
-                                                            }}
-                                                        >
-                                                            Compliance Remarks
-                                                        </label>
-
-                                                        <textarea
-                                                            value={
-                                                                complianceForm.remarks
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateComplianceForm(
-                                                                    stage.id,
-                                                                    "remarks",
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            disabled={saving}
-                                                            placeholder="Enter documents reviewed, conditions checked, observations, or reason for non-compliance..."
-                                                            rows={3}
-                                                            style={{
-                                                                width: "100%",
-                                                                boxSizing: "border-box",
-                                                                resize: "vertical",
-                                                                padding: "10px",
-                                                                borderRadius: "8px",
-                                                                border: "1px solid rgba(148, 163, 184, 0.35)",
-                                                                background: "#ffffff",
-                                                                color: "#1e293b"
-                                                            }}
-                                                        />
-
-                                                    </div>
-
-                                                    <div>
-
-                                                        <label
-                                                            style={{
-                                                                display: "block",
-                                                                marginBottom: "5px",
-                                                                fontWeight: "600"
-                                                            }}
-                                                        >
-                                                            Verified By
-                                                        </label>
-
-                                                        <input
-                                                            type="text"
-                                                            value={
-                                                                complianceForm.verifiedBy
-                                                            }
-                                                            onChange={(e) =>
-                                                                updateComplianceForm(
-                                                                    stage.id,
-                                                                    "verifiedBy",
-                                                                    e.target.value
-                                                                )
-                                                            }
-                                                            disabled={saving}
-                                                            placeholder="Enter Finance Officer name"
-                                                            style={{
-                                                                width: "100%",
-                                                                boxSizing: "border-box",
-                                                                padding: "10px",
-                                                                borderRadius: "8px",
-                                                                border: "1px solid rgba(148, 163, 184, 0.35)",
-                                                                background: "#ffffff",
-                                                                color: "#1e293b"
-                                                            }}
-                                                        />
-
-                                                    </div>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() =>
-                                                            handleComplianceUpdate(
-                                                                stage.id
-                                                            )
-                                                        }
-                                                        disabled={saving}
-                                                        style={{
-                                                            marginTop: "4px",
-                                                            padding: "10px 14px",
-                                                            borderRadius: "8px",
-                                                            border: "none",
-                                                            cursor: saving
-                                                                ? "not-allowed"
-                                                                : "pointer",
-                                                            fontWeight: "600"
-                                                        }}
-                                                    >
-                                                        {saving
-                                                            ? "Saving..."
-                                                            : "Save Compliance Review"}
-                                                    </button>
-
-                                                </div>
-
-                                            )}
-
-                                            {/* SAVED COMPLIANCE DETAILS */}
-                                            {stage.complianceRemarks && (
-                                                <div
-                                                    style={{
-                                                        marginTop: "14px",
-                                                        paddingTop: "12px",
-                                                        borderTop: "1px solid rgba(148, 163, 184, 0.2)"
-                                                    }}
-                                                >
-
-                                                    <strong>
-                                                        Review Remarks
-                                                    </strong>
-
-                                                    <p
-                                                        style={{
-                                                            margin: "5px 0"
-                                                        }}
-                                                    >
-                                                        {stage.complianceRemarks}
-                                                    </p>
-
-                                                    {stage.complianceVerifiedBy && (
-                                                        <small>
-                                                            Verified by:{" "}
-                                                            {
-                                                                stage.complianceVerifiedBy
-                                                            }
-                                                        </small>
-                                                    )}
-
-                                                </div>
-                                            )}
-
+                                            </strong>
                                         </div>
 
-                                        {/* STAGE ACTIONS */}
-                                        <div className="stage-card-actions">
+                                    </div>
 
-                                            {/* VERIFY */}
-                                            {stage.status === "PENDING" && (
+                                    <div>
+                                        <span className="compliance-label">Compliance</span>
+
+                                        <strong className={`compliance-status ${complianceInfo.type}`}>
+                                            {complianceInfo.label}
+                                        </strong>
+
+                                        <small className={`compliance-message ${complianceInfo.type}`}>
+                                            {complianceInfo.message}
+                                        </small>
+                                    </div>
+
+                                    {/* STAGE ACTIONS */}
+                                    <div className="stage-card-actions">
+
+                                        {stage.status ===
+                                            "PENDING" && (
                                                 <button
                                                     type="button"
                                                     className="stage-verify-button"
@@ -1773,23 +1133,15 @@ export default function DisbursementStagePanel({ application }) {
                                                         )
                                                     }
                                                     disabled={
-                                                        saving ||
-                                                        !complianceCompleted
-                                                    }
-                                                    title={
-                                                        !complianceCompleted
-                                                            ? "Complete compliance review before verifying this stage."
-                                                            : "Verify this stage"
+                                                        saving
                                                     }
                                                 >
-                                                    {complianceCompleted
-                                                        ? "Verify Stage"
-                                                        : "Complete Compliance First"}
+                                                    Verify Stage
                                                 </button>
                                             )}
 
-                                            {/* RELEASE */}
-                                            {stage.status === "VERIFIED" && (
+                                        {stage.status ===
+                                            "VERIFIED" && (
                                                 <button
                                                     type="button"
                                                     className="stage-release-button"
@@ -1798,20 +1150,51 @@ export default function DisbursementStagePanel({ application }) {
                                                             stage.id
                                                         )
                                                     }
-                                                    disabled={saving}
+                                                    disabled={
+                                                        saving
+                                                    }
                                                 >
                                                     Release Payment
                                                 </button>
                                             )}
 
-                                            {/* RELEASED */}
-                                            {stage.status === "RELEASED" && (
-                                                <span className="stage-released-label">
-                                                    ✓ Payment Released
-                                                </span>
+                                        {stage.status ===
+                                            "RELEASED" && (
+                                                <>
+                                                    <span className="stage-released-label">
+                                                        ✓ Payment Released
+                                                    </span>
+
+                                                    <select
+                                                        value={
+                                                            stage.complianceStatus ||
+                                                            "PENDING"
+                                                        }
+                                                        onChange={(e) =>
+                                                            handleComplianceUpdate(
+                                                                stage.id,
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        disabled={saving}
+                                                        className="compliance-select"
+                                                    >
+                                                        <option value="PENDING">
+                                                            Compliance Pending
+                                                        </option>
+
+                                                        <option value="COMPLETED">
+                                                            Completed
+                                                        </option>
+
+                                                        <option value="NON_COMPLIANT">
+                                                            Non-Compliant
+                                                        </option>
+                                                    </select>
+                                                </>
                                             )}
 
-                                        </div>
+                                    </div>
 
                                     </div>
                                 );

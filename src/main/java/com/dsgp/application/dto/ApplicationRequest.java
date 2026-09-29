@@ -1,6 +1,7 @@
 package com.dsgp.application.dto;
 
 import jakarta.validation.constraints.NotNull;
+import java.math.BigDecimal;
 import lombok.Data;
 
 /**
@@ -20,4 +21,7 @@ public class ApplicationRequest {
 
     @NotNull(message = "schemeId is required")
     private Long schemeId;
+
+    @NotNull(message = "requestedAmount is required")
+    private BigDecimal requestedAmount;
 }

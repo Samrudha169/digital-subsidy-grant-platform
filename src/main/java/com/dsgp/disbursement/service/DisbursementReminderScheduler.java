@@ -2,6 +2,7 @@ package com.dsgp.disbursement.service;
 
 import com.dsgp.disbursement.entity.DisbursementStage;
 import com.dsgp.disbursement.entity.DisbursementStageStatus;
+import com.dsgp.disbursement.entity.ComplianceStatus;
 import com.dsgp.disbursement.repository.DisbursementStageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,9 +13,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * Runs once daily and logs a compliance reminder for every
- * disbursement stage whose due date falls within the next 3 days
- * and has not yet been released.
+ * Runs daily to:
+ *
+ * 1. Log compliance reminders for stages approaching their due date.
+ * 2. Automatically mark overdue unreleased stages as NON_COMPLIANT.
  *
  * Email/SMS notifications are NOT sent yet — log output only.
  */
@@ -48,22 +50,72 @@ public class DisbursementReminderScheduler {
                 );
 
         if (approachingStages.isEmpty()) {
-            log.info("[DisbursementReminder] No stages approaching due date " +
-                     "within the next {} days.", REMINDER_WINDOW_DAYS);
+            log.info(
+                    "[DisbursementReminder] No stages approaching due date " +
+                            "within the next {} days.",
+                    REMINDER_WINDOW_DAYS
+            );
             return;
         }
 
-        log.warn("[DisbursementReminder] {} stage(s) are due within {} days:",
-                approachingStages.size(), REMINDER_WINDOW_DAYS);
+        log.warn(
+                "[DisbursementReminder] {} stage(s) are due within {} days:",
+                approachingStages.size(),
+                REMINDER_WINDOW_DAYS
+        );
 
         for (DisbursementStage stage : approachingStages) {
             log.warn(
-                "[DisbursementReminder] COMPLIANCE REMINDER — " +
-                "Stage ID: {}, Milestone: '{}', Due Date: {}, Status: {}",
-                stage.getId(),
-                stage.getMilestone(),
-                stage.getDueDate(),
-                stage.getStatus()
+                    "[DisbursementReminder] COMPLIANCE REMINDER — " +
+                            "Stage ID: {}, Milestone: '{}', Due Date: {}, Status: {}",
+                    stage.getId(),
+                    stage.getMilestone(),
+                    stage.getDueDate(),
+                    stage.getStatus()
+            );
+        }
+    }
+
+    /**
+     * Marks overdue, unreleased stages as NON_COMPLIANT.
+     *
+     * A stage is considered overdue when its due date
+     * is strictly before today.
+     */
+    @Scheduled(cron = "0 5 8 * * *")
+    public void flagOverdueStagesAsNonCompliant() {
+
+        LocalDate today = LocalDate.now();
+
+        List<DisbursementStage> overdueStages =
+                disbursementStageRepository
+                        .findByStatusNotAndComplianceStatusNotAndDueDateBefore(
+                                DisbursementStageStatus.RELEASED,
+                                ComplianceStatus.NON_COMPLIANT,
+                                today
+                        );
+
+        if (overdueStages.isEmpty()) {
+            log.info(
+                    "[DisbursementCompliance] No overdue stages found."
+            );
+            return;
+        }
+
+        for (DisbursementStage stage : overdueStages) {
+
+            stage.setComplianceStatus(
+                    ComplianceStatus.NON_COMPLIANT
+            );
+
+            disbursementStageRepository.save(stage);
+
+            log.warn(
+                    "[DisbursementCompliance] NON-COMPLIANT — " +
+                            "Stage ID: {}, Milestone: '{}', Due Date: {}",
+                    stage.getId(),
+                    stage.getMilestone(),
+                    stage.getDueDate()
             );
         }
     }

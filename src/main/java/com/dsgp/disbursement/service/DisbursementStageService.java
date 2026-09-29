@@ -1,14 +1,12 @@
 package com.dsgp.disbursement.service;
 
-import com.dsgp.disbursement.entity.ComplianceStatus;
 import com.dsgp.disbursement.entity.DisbursementPlan;
 import com.dsgp.disbursement.entity.DisbursementStage;
 import com.dsgp.disbursement.entity.DisbursementStageStatus;
 import com.dsgp.disbursement.entity.DisbursementStatus;
 import com.dsgp.disbursement.repository.DisbursementPlanRepository;
 import com.dsgp.disbursement.repository.DisbursementStageRepository;
-import com.dsgp.notification.entity.NotificationType;
-import com.dsgp.notification.service.NotificationService;
+import com.dsgp.disbursement.entity.ComplianceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +22,6 @@ public class DisbursementStageService {
 
     private final DisbursementPlanRepository disbursementPlanRepository;
     private final DisbursementStageRepository disbursementStageRepository;
-    private final NotificationService notificationService;
 
     @Transactional
     public DisbursementStage createStage(
@@ -109,98 +106,29 @@ public class DisbursementStageService {
                     "Stage has already been released.");
         }
 
-        if (stage.getComplianceStatus() != ComplianceStatus.COMPLETED) {
-            throw new IllegalStateException(
-                    "Stage compliance must be COMPLETED before the stage can be verified.");
-        }
-
         stage.setStatus(DisbursementStageStatus.VERIFIED);
 
-        DisbursementStage savedStage =
-                disbursementStageRepository.save(stage);
-
-        sendNotification(
-                stage,
-                NotificationType.DISBURSEMENT_UPDATE,
-                "Disbursement Stage Verified",
-                "Stage " + stage.getStageNumber()
-                        + " of your application has been verified. "
-                        + "The payment is ready for release."
-        );
-
-        return savedStage;
+        return disbursementStageRepository.save(stage);
     }
 
     @Transactional
     public DisbursementStage updateComplianceStatus(
             Long stageId,
-            ComplianceStatus complianceStatus,
-            String complianceRemarks,
-            String complianceVerifiedBy) {
+            ComplianceStatus complianceStatus) {
 
-        DisbursementStage stage =
-                disbursementStageRepository.findById(stageId)
-                        .orElseThrow(() ->
-                                new IllegalArgumentException(
-                                        "Disbursement stage not found: " + stageId));
+        DisbursementStage stage = disbursementStageRepository.findById(stageId)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Disbursement stage not found: " + stageId));
 
         if (complianceStatus == null) {
             throw new IllegalArgumentException(
                     "Compliance status cannot be null.");
         }
 
-        if (complianceVerifiedBy == null ||
-                complianceVerifiedBy.isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Compliance verifier is required.");
-        }
-
-        if (complianceRemarks == null ||
-                complianceRemarks.isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "Compliance remarks are required.");
-        }
-
-        if (stage.getStatus() == DisbursementStageStatus.RELEASED) {
-            throw new IllegalStateException(
-                    "Compliance cannot be changed after the stage has been released.");
-        }
-
         stage.setComplianceStatus(complianceStatus);
-        stage.setComplianceRemarks(complianceRemarks);
-        stage.setComplianceVerifiedBy(complianceVerifiedBy);
-        stage.setComplianceVerifiedAt(LocalDateTime.now());
 
-        DisbursementStage savedStage =
-                disbursementStageRepository.save(stage);
-
-        if (complianceStatus == ComplianceStatus.COMPLETED) {
-
-            sendNotification(
-                    stage,
-                    NotificationType.DISBURSEMENT_UPDATE,
-                    "Compliance Completed",
-                    "Compliance verification for Stage "
-                            + stage.getStageNumber()
-                            + " has been completed. "
-                            + "The stage can now be verified."
-            );
-
-        } else if (complianceStatus == ComplianceStatus.NON_COMPLIANT) {
-
-            sendNotification(
-                    stage,
-                    NotificationType.DISBURSEMENT_UPDATE,
-                    "Action Required for Disbursement",
-                    "Stage " + stage.getStageNumber()
-                            + " has been marked non-compliant. "
-                            + "Remarks: " + complianceRemarks
-            );
-        }
-
-        return savedStage;
+        return disbursementStageRepository.save(stage);
     }
 
     @Transactional
@@ -244,20 +172,7 @@ public class DisbursementStageService {
 
         disbursementPlanRepository.save(plan);
 
-        DisbursementStage savedStage =
-                disbursementStageRepository.save(stage);
-
-        sendNotification(
-                stage,
-                NotificationType.DISBURSEMENT_UPDATE,
-                "Disbursement Released",
-                "₹" + stage.getAmount()
-                        + " has been released for Stage "
-                        + stage.getStageNumber()
-                        + " of your application."
-        );
-
-        return savedStage;
+        return disbursementStageRepository.save(stage);
     }
 
     @Transactional(readOnly = true)
@@ -273,42 +188,11 @@ public class DisbursementStageService {
     }
 
     /*
-     * Creates a beneficiary notification for a disbursement event.
-     */
-    private void sendNotification(
-            DisbursementStage stage,
-            NotificationType type,
-            String title,
-            String message) {
-
-        DisbursementPlan plan = stage.getDisbursementPlan();
-
-        Integer beneficiaryId =
-                plan.getApplication()
-                        .getBeneficiary()
-                        .getId();
-
-        Long applicationId =
-                plan.getApplication()
-                        .getId();
-
-        notificationService.createNotification(
-                beneficiaryId,
-                applicationId,
-                stage.getStageNumber(),
-                type,
-                title,
-                message
-        );
-    }
-
-    /*
      * A stage is overdue when its due date is set and falls
      * strictly before today. Released stages are excluded
      * because payment has already been made.
      */
     public boolean isOverdue(DisbursementStage stage) {
-
         if (stage.getDueDate() == null) {
             return false;
         }

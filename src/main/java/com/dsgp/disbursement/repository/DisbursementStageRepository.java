@@ -29,4 +29,13 @@ public interface DisbursementStageRepository
             LocalDate from,
             LocalDate to
     );
+    /*
+     * Used by the non-compliance scheduler: find non-RELEASED stages
+     * whose due date has already passed.
+     */
+    List<DisbursementStage> findByStatusNotAndComplianceStatusNotAndDueDateBefore(
+            DisbursementStageStatus excludedStatus,
+            com.dsgp.disbursement.entity.ComplianceStatus excludedComplianceStatus,
+            LocalDate date
+    );
 }

@@ -100,7 +100,10 @@ function Schemes() {
         /*
          * PM-KISAN
          */
-        if (schemeName === 'PM-KISAN') {
+        if (
+            schemeName === 'PM-KISAN' ||
+            schemeName === 'PM-KISAN Samman Nidhi'
+        )  {
             fullName =
                 'Pradhan Mantri Kisan Samman Nidhi';
 
@@ -118,7 +121,10 @@ function Schemes() {
         /*
          * NSP
          */
-        else if (schemeName === 'NSP') {
+        else if (
+            schemeName === 'NSP' ||
+            schemeName === 'National Scholarship Portal'
+        )  {
             fullName =
                 'National Scholarship Portal';
 
