@@ -4,6 +4,7 @@ import com.dsgp.beneficiary.exception.*;
 import com.dsgp.application.exception.ApplicationException;
 import com.dsgp.eligibility.exception.EligibilityCheckException;
 import com.dsgp.scheme.exception.SchemeNotFoundException;
+import jakarta.persistence.NonUniqueResultException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -49,6 +50,30 @@ public class GlobalExceptionHandler {
         log.warn("Duplicate Aadhaar registration attempt: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), null));
+    }
+
+    @ExceptionHandler(DuplicateEmailException.class)
+    public ResponseEntity<ApiErrorResponse> handleDuplicateEmail(
+            DuplicateEmailException ex, HttpServletRequest request) {
+        log.warn("Duplicate email registration attempt");
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(build(HttpStatus.CONFLICT, ex.getMessage(), request.getRequestURI(), null));
+    }
+
+    /**
+     * Handles the case where a legacy duplicate email row in the database causes
+     * a JPA NonUniqueResultException.  Returns 409 Conflict with a safe message
+     * instead of leaking an uncontrolled 500 Internal Server Error.
+     */
+    @ExceptionHandler(NonUniqueResultException.class)
+    public ResponseEntity<ApiErrorResponse> handleNonUniqueResult(
+            NonUniqueResultException ex, HttpServletRequest request) {
+        log.error("NonUniqueResultException at {}: {}", request.getRequestURI(), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(build(HttpStatus.CONFLICT,
+                        "Multiple accounts found for this email address. "
+                                + "Please contact support to resolve the duplicate records.",
+                        request.getRequestURI(), null));
     }
 
     @ExceptionHandler(DuplicateMobileException.class)

@@ -9,8 +9,11 @@ import com.dsgp.beneficiary.entity.Gender;
 import com.dsgp.beneficiary.entity.RegistrationStatus;
 import com.dsgp.beneficiary.exception.BeneficiaryNotFoundException;
 import com.dsgp.beneficiary.exception.DuplicateAadhaarException;
+import com.dsgp.beneficiary.exception.DuplicateEmailException;
 import com.dsgp.beneficiary.exception.DuplicateMobileException;
+import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
 import com.dsgp.beneficiary.repository.BeneficiaryRepository;
+import com.dsgp.authentication.service.EmailOtpService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -46,7 +49,19 @@ class BeneficiaryServiceImplTest {
     private BeneficiaryRepository repository;
 
     @Mock
+    private BeneficiaryDocumentRepository documentRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
+
+    /**
+     * Mocked to prevent NPE in {@code registerBeneficiary()} after the
+     * OTP feature was added.  Mockito's default behaviour (void method
+     * does nothing) is the correct test behaviour — unit tests for
+     * registration logic do not need to exercise email delivery.
+     */
+    @Mock
+    private EmailOtpService emailOtpService;
 
     @InjectMocks
     private BeneficiaryServiceImpl service;
@@ -122,6 +137,9 @@ class BeneficiaryServiceImplTest {
         @DisplayName("persists legacy 7-field request successfully")
         void register_legacyRequest_success() {
 
+            given(repository.existsByEmail("ravi@example.com"))
+                    .willReturn(false);
+
             given(repository.existsByGovId("AABCD1234E"))
                     .willReturn(false);
 
@@ -153,6 +171,9 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("persists extended eligibility fields when provided")
         void register_extendedRequest_persistsAllFields() {
+
+            given(repository.existsByEmail("sita@example.com"))
+                    .willReturn(false);
 
             given(repository.existsByGovId("BBACD9876F"))
                     .willReturn(false);
@@ -233,8 +254,31 @@ class BeneficiaryServiceImplTest {
         }
 
         @Test
+        @DisplayName("[2] throws DuplicateEmailException when email already exists")
+        void register_duplicateEmail_throws() {
+
+            given(repository.existsByEmail("ravi@example.com"))
+                    .willReturn(true);
+
+            assertThatThrownBy(
+                    () -> service.registerBeneficiary(legacyRequest)
+            )
+                    .isInstanceOf(DuplicateEmailException.class);
+
+            then(repository)
+                    .should(never())
+                    .save(any());
+
+            then(passwordEncoder)
+                    .shouldHaveNoInteractions();
+        }
+
+        @Test
         @DisplayName("throws DuplicateAadhaarException when govId already exists")
         void register_duplicateGovId_throws() {
+
+            given(repository.existsByEmail("ravi@example.com"))
+                    .willReturn(false);
 
             given(repository.existsByGovId("AABCD1234E"))
                     .willReturn(true);
@@ -255,6 +299,9 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("throws DuplicateMobileException when contact already exists")
         void register_duplicateContact_throws() {
+
+            given(repository.existsByEmail("ravi@example.com"))
+                    .willReturn(false);
 
             given(repository.existsByGovId("AABCD1234E"))
                     .willReturn(false);
@@ -278,6 +325,9 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("throws DuplicateAadhaarException when aadhaarNumber already exists")
         void register_duplicateAadhaar_throws() {
+
+            given(repository.existsByEmail("sita@example.com"))
+                    .willReturn(false);
 
             given(repository.existsByGovId("BBACD9876F"))
                     .willReturn(false);
@@ -304,6 +354,9 @@ class BeneficiaryServiceImplTest {
         @Test
         @DisplayName("throws DuplicateMobileException when mobileNumber already exists")
         void register_duplicateMobile_throws() {
+
+            given(repository.existsByEmail("sita@example.com"))
+                    .willReturn(false);
 
             given(repository.existsByGovId("BBACD9876F"))
                     .willReturn(false);

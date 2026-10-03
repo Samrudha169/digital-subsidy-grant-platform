@@ -90,6 +90,12 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Boot Mail — OTP email sending for beneficiary registration -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
         <!-- Apache POI — XLSX report generation -->
         <dependency>
             <groupId>org.apache.poi</groupId>

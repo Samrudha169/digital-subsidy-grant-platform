@@ -66,4 +66,8 @@ public class BeneficiaryResponse {
     private Category category;
     private RegistrationStatus registrationStatus;
     private boolean identityVerified;
+
+    // ── Email verification status (Milestone 1 — OTP feature) ──────────────
+    /** True once the beneficiary has confirmed their email via OTP. */
+    private boolean emailVerified;
 }

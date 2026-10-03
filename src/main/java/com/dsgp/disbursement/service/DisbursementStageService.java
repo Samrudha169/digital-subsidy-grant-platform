@@ -1,12 +1,12 @@
 package com.dsgp.disbursement.service;
 
+import com.dsgp.disbursement.entity.ComplianceStatus;
 import com.dsgp.disbursement.entity.DisbursementPlan;
 import com.dsgp.disbursement.entity.DisbursementStage;
 import com.dsgp.disbursement.entity.DisbursementStageStatus;
 import com.dsgp.disbursement.entity.DisbursementStatus;
 import com.dsgp.disbursement.repository.DisbursementPlanRepository;
 import com.dsgp.disbursement.repository.DisbursementStageRepository;
-import com.dsgp.disbursement.entity.ComplianceStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,10 +31,11 @@ public class DisbursementStageService {
             String milestone,
             LocalDate dueDate) {
 
-        DisbursementPlan plan = disbursementPlanRepository.findById(planId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Disbursement plan not found: " + planId));
+        DisbursementPlan plan =
+                disbursementPlanRepository.findById(planId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Disbursement plan not found: " + planId));
 
         if (plan.getDisbursementType().name().equals("SINGLE")) {
             throw new IllegalStateException(
@@ -46,7 +47,9 @@ public class DisbursementStageService {
                     "Stage number must be greater than zero.");
         }
 
-        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+        if (amount == null ||
+                amount.compareTo(BigDecimal.ZERO) <= 0) {
+
             throw new IllegalArgumentException(
                     "Stage amount must be greater than zero.");
         }
@@ -57,7 +60,9 @@ public class DisbursementStageService {
         }
 
         if (disbursementStageRepository
-                .findByDisbursementPlanIdAndStageNumber(planId, stageNumber)
+                .findByDisbursementPlanIdAndStageNumber(
+                        planId,
+                        stageNumber)
                 .isPresent()) {
 
             throw new IllegalStateException(
@@ -69,11 +74,13 @@ public class DisbursementStageService {
                 disbursementStageRepository
                         .findByDisbursementPlanIdOrderByStageNumberAsc(planId);
 
-        BigDecimal existingTotal = existingStages.stream()
-                .map(DisbursementStage::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal existingTotal =
+                existingStages.stream()
+                        .map(DisbursementStage::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal newTotal = existingTotal.add(amount);
+        BigDecimal newTotal =
+                existingTotal.add(amount);
 
         if (newTotal.compareTo(plan.getTotalAmount()) > 0) {
             throw new IllegalArgumentException(
@@ -106,6 +113,11 @@ public class DisbursementStageService {
                     "Stage has already been released.");
         }
 
+        if (stage.getComplianceStatus() != ComplianceStatus.COMPLETED) {
+            throw new IllegalStateException(
+                    "Compliance must be COMPLETED before verifying the stage.");
+        }
+
         stage.setStatus(DisbursementStageStatus.VERIFIED);
 
         return disbursementStageRepository.save(stage);
@@ -114,19 +126,35 @@ public class DisbursementStageService {
     @Transactional
     public DisbursementStage updateComplianceStatus(
             Long stageId,
-            ComplianceStatus complianceStatus) {
+            ComplianceStatus complianceStatus,
+            String remarks,
+            String verifiedBy) {
 
-        DisbursementStage stage = disbursementStageRepository.findById(stageId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException(
-                                "Disbursement stage not found: " + stageId));
+        DisbursementStage stage =
+                disbursementStageRepository.findById(stageId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Disbursement stage not found: " + stageId));
 
         if (complianceStatus == null) {
             throw new IllegalArgumentException(
                     "Compliance status cannot be null.");
         }
 
+        if (remarks == null || remarks.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Compliance remarks cannot be empty.");
+        }
+
+        if (verifiedBy == null || verifiedBy.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Verified by cannot be empty.");
+        }
+
         stage.setComplianceStatus(complianceStatus);
+        stage.setComplianceRemarks(remarks.trim());
+        stage.setComplianceVerifiedBy(verifiedBy.trim());
+        stage.setComplianceVerifiedAt(LocalDateTime.now());
 
         return disbursementStageRepository.save(stage);
     }
@@ -145,10 +173,19 @@ public class DisbursementStageService {
                     "Stage must be VERIFIED before amount can be released.");
         }
 
-        DisbursementPlan plan = stage.getDisbursementPlan();
+        if (stage.getComplianceStatus() == ComplianceStatus.NON_COMPLIANT
+                || isOverdue(stage)) {
+
+            throw new IllegalStateException(
+                    "Cannot release payment for a non-compliant or overdue stage.");
+        }
+
+        DisbursementPlan plan =
+                stage.getDisbursementPlan();
 
         BigDecimal newReleased =
-                plan.getReleasedAmount().add(stage.getAmount());
+                plan.getReleasedAmount()
+                        .add(stage.getAmount());
 
         if (newReleased.compareTo(plan.getTotalAmount()) > 0) {
             throw new IllegalStateException(
@@ -156,19 +193,25 @@ public class DisbursementStageService {
         }
 
         BigDecimal remaining =
-                plan.getTotalAmount().subtract(newReleased);
+                plan.getTotalAmount()
+                        .subtract(newReleased);
 
         plan.setReleasedAmount(newReleased);
         plan.setRemainingAmount(remaining);
 
         if (remaining.compareTo(BigDecimal.ZERO) == 0) {
-            plan.setStatus(DisbursementStatus.FULLY_RELEASED);
+            plan.setStatus(
+                    DisbursementStatus.FULLY_RELEASED);
         } else {
-            plan.setStatus(DisbursementStatus.PARTIALLY_RELEASED);
+            plan.setStatus(
+                    DisbursementStatus.PARTIALLY_RELEASED);
         }
 
-        stage.setStatus(DisbursementStageStatus.RELEASED);
-        stage.setReleasedAt(LocalDateTime.now());
+        stage.setStatus(
+                DisbursementStageStatus.RELEASED);
+
+        stage.setReleasedAt(
+                LocalDateTime.now());
 
         disbursementPlanRepository.save(plan);
 
@@ -187,20 +230,19 @@ public class DisbursementStageService {
                 .findByDisbursementPlanIdOrderByStageNumberAsc(planId);
     }
 
-    /*
-     * A stage is overdue when its due date is set and falls
-     * strictly before today. Released stages are excluded
-     * because payment has already been made.
-     */
     public boolean isOverdue(DisbursementStage stage) {
+
         if (stage.getDueDate() == null) {
             return false;
         }
 
-        if (stage.getStatus() == DisbursementStageStatus.RELEASED) {
+        if (stage.getStatus() ==
+                DisbursementStageStatus.RELEASED) {
+
             return false;
         }
 
-        return stage.getDueDate().isBefore(LocalDate.now());
+        return stage.getDueDate()
+                .isBefore(LocalDate.now());
     }
 }

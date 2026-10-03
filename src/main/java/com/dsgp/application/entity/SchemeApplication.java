@@ -78,6 +78,9 @@ public class SchemeApplication {
      */
     @Column(name = "sanctioned_amount", precision = 12, scale = 2)
     private BigDecimal sanctionedAmount;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
     /**
      * Amount requested by the beneficiary when submitting the application.
      */

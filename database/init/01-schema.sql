@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS beneficiary (
     full_name           VARCHAR(100) NOT NULL,
     gov_id              VARCHAR(20)  NOT NULL,
     contact             VARCHAR(10)  NOT NULL,
-    email               VARCHAR(150) NOT NULL,
+    email               VARCHAR(150) NOT NULL UNIQUE,
     password            VARCHAR(255) NOT NULL,
     age                 INT          NOT NULL,
     address             VARCHAR(255) NOT NULL,
@@ -45,7 +45,11 @@ CREATE TABLE IF NOT EXISTS beneficiary (
     -- Categorisation and lifecycle
     category            VARCHAR(10),
     registration_status VARCHAR(15)  NOT NULL DEFAULT 'PENDING',
-    identity_verified   TINYINT(1)   NOT NULL DEFAULT 0
+    identity_verified   TINYINT(1)   NOT NULL DEFAULT 0,
+    -- Email OTP verification (added for beneficiary registration flow)
+    email_verified      TINYINT(1)   NOT NULL DEFAULT 0,
+    otp_code            VARCHAR(6),
+    otp_expires_at      DATETIME
 );
 
 

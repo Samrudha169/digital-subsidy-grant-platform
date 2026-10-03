@@ -249,4 +249,59 @@ export const getApplicationDocuments = async (applicationId) => {
  * @returns {string} absolute URL
  */
 export const downloadDocumentUrl = (beneficiaryId, documentId) =>
-    `${API_BASE_URL}/beneficiaries/${beneficiaryId}/documents/${documentId}/download`;
+    `${API_BASE_URL}/beneficiaries/${beneficiaryId}/documents/${documentId}/download`;
+
+
+// ============================================================
+// EMAIL OTP VERIFICATION  (beneficiary registration flow)
+// ============================================================
+
+/**
+ * Submits the 6-digit OTP entered by the user to verify their email.
+ * Calls POST /auth/verify-email.
+ *
+ * @param {string} email  - the email address used during registration
+ * @param {string} otp    - the 6-digit code entered by the user
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export const verifyRegistrationOtp = async (email, otp) => {
+    const response = await fetch(
+        `${API_BASE_URL}/auth/verify-email`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp })
+        }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    // Return the body regardless of HTTP status so the caller
+    // can display the exact server message (e.g. "OTP expired").
+    return data;
+};
+
+
+/**
+ * Requests a new OTP to be sent to the given email address.
+ * Calls POST /auth/resend-email-otp.
+ * Subject to a server-side cooldown (default 60 seconds).
+ *
+ * @param {string} email - the email address used during registration
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export const resendRegistrationOtp = async (email) => {
+    const response = await fetch(
+        `${API_BASE_URL}/auth/resend-email-otp`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    return data;
+};
+

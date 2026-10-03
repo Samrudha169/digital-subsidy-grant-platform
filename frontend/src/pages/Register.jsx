@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { verifyRegistrationOtp, resendRegistrationOtp } from '../services/api';
 import './Register.css';
 
 /* ── API base ─────────────────────────────────────────────── */
@@ -207,6 +208,16 @@ function Register() {
     const [loading, setLoading] = useState(false);
     const [clientErrors, setClientErrors] = useState([]);
     const [serverError, setServerError] = useState('');
+
+    /* ── OTP verification step state ────────────────────────── */
+    const [otpStep, setOtpStep] = useState(false);          // true = show OTP panel
+    const [otpEmail, setOtpEmail] = useState('');           // email used at registration
+    const [otpCode, setOtpCode] = useState('');             // user input
+    const [otpLoading, setOtpLoading] = useState(false);   // verify in-flight
+    const [otpMessage, setOtpMessage] = useState('');       // success or error from verify
+    const [otpSuccess, setOtpSuccess] = useState(false);   // true when verified
+    const [otpResending, setOtpResending] = useState(false);
+    const [otpResendMessage, setOtpResendMessage] = useState('');
 
     const [locationLoading, setLocationLoading] = useState({
         states: false,
@@ -564,11 +575,13 @@ function Register() {
                 return;
             }
 
-            alert(
-                'Registration successful! Please login with your email and password.'
+            // Registration succeeded — show OTP verification step
+            setOtpEmail(formData.email.trim());
+            setOtpStep(true);
+            setOtpMessage(
+                'A 6-digit verification code has been sent to your email. ' +
+                'Please enter it below to activate your account.'
             );
-
-            navigate('/login');
 
         } catch (error) {
 
@@ -581,6 +594,76 @@ function Register() {
         } finally {
 
             setLoading(false);
+        }
+    };
+
+
+    /* ══════════════════════════════════════════════════════════
+       OTP VERIFY HANDLER
+    ══════════════════════════════════════════════════════════ */
+    const handleOtpVerify = async (e) => {
+        e.preventDefault();
+
+        if (!/^\d{6}$/.test(otpCode.trim())) {
+            setOtpMessage('Please enter a valid 6-digit code.');
+            setOtpSuccess(false);
+            return;
+        }
+
+        setOtpLoading(true);
+        setOtpMessage('');
+        setOtpResendMessage('');
+
+        try {
+            const result = await verifyRegistrationOtp(otpEmail, otpCode.trim());
+
+            if (result.success) {
+                setOtpSuccess(true);
+                setOtpMessage(result.message || 'Email verified successfully!');
+                // Redirect to login after a short delay
+                setTimeout(() => navigate('/login'), 2000);
+            } else {
+                setOtpSuccess(false);
+                setOtpMessage(
+                    result.message ||
+                    'Invalid or expired code. Please try again or request a new code.'
+                );
+            }
+        } catch {
+            setOtpSuccess(false);
+            setOtpMessage('Could not reach the server. Please check your connection.');
+        } finally {
+            setOtpLoading(false);
+        }
+    };
+
+
+    /* ══════════════════════════════════════════════════════════
+       OTP RESEND HANDLER
+    ══════════════════════════════════════════════════════════ */
+    const handleOtpResend = async () => {
+        setOtpResending(true);
+        setOtpResendMessage('');
+        setOtpMessage('');
+
+        try {
+            const result = await resendRegistrationOtp(otpEmail);
+
+            if (result.success) {
+                setOtpResendMessage(
+                    result.message || 'A new verification code has been sent to your email.'
+                );
+                setOtpCode('');
+            } else {
+                setOtpResendMessage(
+                    result.message ||
+                    'Could not resend at this time. Please wait and try again.'
+                );
+            }
+        } catch {
+            setOtpResendMessage('Could not reach the server. Please check your connection.');
+        } finally {
+            setOtpResending(false);
         }
     };
 
@@ -620,6 +703,144 @@ function Register() {
             <main className="register-main">
 
                 <div className="register-card">
+
+                    {/* ══ OTP VERIFICATION STEP ══════════════════════════════ */}
+                    {otpStep ? (
+
+                        <div style={{ padding: '2rem 0' }}>
+
+                            <div className="register-card-header">
+                                <h2 style={{ fontSize: '1.4rem' }}>
+                                    ✉️ Verify Your Email
+                                </h2>
+                                <p>
+                                    We sent a 6-digit code to{' '}
+                                    <strong>{otpEmail}</strong>.
+                                    Enter it below to activate your account.
+                                </p>
+                            </div>
+
+                            {/* OTP status message */}
+                            {otpMessage && (
+                                <div
+                                    role="alert"
+                                    style={{
+                                        margin: '1rem 0',
+                                        padding: '0.85rem 1rem',
+                                        borderRadius: '8px',
+                                        fontSize: '0.9rem',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '0.6rem',
+                                        background: otpSuccess
+                                            ? '#d1fae5'
+                                            : '#fee2e2',
+                                        color: otpSuccess
+                                            ? '#065f46'
+                                            : '#991b1b',
+                                        border: `1px solid ${otpSuccess ? '#6ee7b7' : '#fca5a5'}`,
+                                    }}
+                                >
+                                    <span>{otpSuccess ? '✅' : '❌'}</span>
+                                    <span>{otpMessage}</span>
+                                </div>
+                            )}
+
+                            {/* Resend message */}
+                            {otpResendMessage && (
+                                <div
+                                    role="status"
+                                    style={{
+                                        margin: '0.5rem 0 1rem',
+                                        padding: '0.75rem 1rem',
+                                        borderRadius: '8px',
+                                        fontSize: '0.875rem',
+                                        background: '#eff6ff',
+                                        color: '#1e40af',
+                                        border: '1px solid #bfdbfe',
+                                    }}
+                                >
+                                    ℹ️ {otpResendMessage}
+                                </div>
+                            )}
+
+                            {/* OTP form — only shown until verified */}
+                            {!otpSuccess && (
+                                <form
+                                    onSubmit={handleOtpVerify}
+                                    noValidate
+                                    style={{ marginTop: '1.5rem' }}
+                                >
+                                    <div className="register-form-group">
+                                        <label htmlFor="otp-code">
+                                            Verification Code
+                                        </label>
+                                        <input
+                                            id="otp-code"
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={6}
+                                            autoComplete="one-time-code"
+                                            placeholder="Enter 6-digit code"
+                                            value={otpCode}
+                                            onChange={e =>
+                                                setOtpCode(
+                                                    e.target.value.replace(/\D/g, '').slice(0, 6)
+                                                )
+                                            }
+                                            style={{
+                                                letterSpacing: '0.35em',
+                                                fontSize: '1.3rem',
+                                                textAlign: 'center',
+                                            }}
+                                            required
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="register-button"
+                                        disabled={otpLoading || otpCode.length !== 6}
+                                        style={{ marginTop: '1rem' }}
+                                    >
+                                        {otpLoading ? 'Verifying…' : 'Verify Email'}
+                                    </button>
+
+                                    <div
+                                        style={{
+                                            marginTop: '1.25rem',
+                                            textAlign: 'center',
+                                            fontSize: '0.875rem',
+                                            color: '#6b7280',
+                                        }}
+                                    >
+                                        Didn&apos;t receive the code?{' '}
+                                        <button
+                                            type="button"
+                                            onClick={handleOtpResend}
+                                            disabled={otpResending}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#1d4ed8',
+                                                fontWeight: 600,
+                                                cursor: otpResending ? 'not-allowed' : 'pointer',
+                                                padding: 0,
+                                                fontSize: 'inherit',
+                                                textDecoration: 'underline',
+                                            }}
+                                        >
+                                            {otpResending ? 'Sending…' : 'Resend code'}
+                                        </button>
+                                    </div>
+                                </form>
+                            )}
+
+                        </div>
+
+                    ) : (
+                    /* ══ REGISTRATION FORM (original, unchanged) ═══════════ */
+                    <>
 
                     <div className="register-card-header">
 
@@ -1374,6 +1595,10 @@ function Register() {
                         </Link>
 
                     </div>
+
+                    </>
+                    )}
+
 
                 </div>
 

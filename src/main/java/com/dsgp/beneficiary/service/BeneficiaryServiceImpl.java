@@ -1,5 +1,6 @@
 package com.dsgp.beneficiary.service;
 
+import com.dsgp.authentication.service.EmailOtpService;
 import com.dsgp.beneficiary.dto.BeneficiaryRegistrationRequest;
 import com.dsgp.beneficiary.dto.BeneficiaryResponse;
 import com.dsgp.beneficiary.dto.BeneficiaryUpdateRequest;
@@ -11,6 +12,7 @@ import com.dsgp.beneficiary.entity.RegistrationStatus;
 import com.dsgp.beneficiary.exception.BeneficiaryNotFoundException;
 import com.dsgp.beneficiary.exception.DocumentUploadException;
 import com.dsgp.beneficiary.exception.DuplicateAadhaarException;
+import com.dsgp.beneficiary.exception.DuplicateEmailException;
 import com.dsgp.beneficiary.exception.DuplicateMobileException;
 import com.dsgp.beneficiary.exception.InvalidDocumentTypeException;
 import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
@@ -18,10 +20,13 @@ import com.dsgp.beneficiary.repository.BeneficiaryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +45,7 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
     private final BeneficiaryRepository beneficiaryRepository;
     private final BeneficiaryDocumentRepository documentRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailOtpService emailOtpService;
 
     @Value("${app.storage.upload-dir:./uploads}")
     private String uploadDir;
@@ -51,6 +57,15 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
     @Override
     public BeneficiaryResponse registerBeneficiary(
             BeneficiaryRegistrationRequest request) {
+
+        // Email — must be unique; checked before any other duplicate to give the
+        // clearest error message and to prevent the downstream NonUniqueResultException
+        // that would occur when sendOtp() tries to look up the saved beneficiary.
+        if (request.getEmail() != null
+                && beneficiaryRepository.existsByEmail(request.getEmail())) {
+
+            throw new DuplicateEmailException(request.getEmail());
+        }
 
         // Legacy Government ID
         if (request.getGovId() != null
@@ -127,6 +142,7 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
 
                 .registrationStatus(RegistrationStatus.PENDING)
                 .identityVerified(false)
+                .emailVerified(false)
 
                 .build();
 
@@ -137,6 +153,44 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 "Beneficiary registered successfully with ID: {}",
                 saved.getId()
         );
+
+        // Send OTP only after the beneficiary transaction commits.
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                emailOtpService.sendOtp(saved.getEmail());
+                            } catch (MailException e) {
+                                // TEMPORARY: log full cause chain to expose SMTP response code
+                                log.error(
+                                        "Failed to send OTP email for beneficiary ID {} — " +
+                                                "registration succeeded but email not delivered: {}",
+                                        saved.getId(),
+                                        e.getMessage()
+                                );
+                                Throwable cause = e.getCause();
+                                int depth = 0;
+                                while (cause != null && depth < 5) {
+                                    log.error("[SMTP-DIAG] cause[{}]: {} — {}",
+                                            depth, cause.getClass().getName(), cause.getMessage());
+                                    cause = cause.getCause();
+                                    depth++;
+                                }
+                            } catch (IllegalArgumentException e) {
+                                // Should not normally occur after a successful registration commit,
+                                // but guard against transient race conditions (e.g. very fast delete).
+                                log.error(
+                                        "Could not issue OTP for beneficiary ID {} after commit: {}",
+                                        saved.getId(),
+                                        e.getMessage()
+                                );
+                            }
+                        }
+                    }
+            );
+        }
 
         return mapToResponse(saved);
     }
@@ -959,6 +1013,7 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
                 .category(b.getCategory())
                 .registrationStatus(b.getRegistrationStatus())
                 .identityVerified(b.isIdentityVerified())
+                .emailVerified(b.isEmailVerified())
                 .build();
     }
 

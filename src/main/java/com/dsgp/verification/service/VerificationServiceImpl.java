@@ -865,6 +865,11 @@ public class VerificationServiceImpl implements VerificationService {
                 verificationCriterionRepository.save(
                         criterion
                 );
+        if (request.getStatus() == VerificationCriterionStatus.FAILED) {
+            application.setApplicationStatus(STATUS_REJECTED);
+            application.setRejectedAt(LocalDateTime.now());
+            applicationRepository.save(application);
+        }
 
         recordAction(
                 application,

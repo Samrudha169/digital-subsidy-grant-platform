@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -72,6 +72,7 @@ public class ApplicationServiceImpl implements ApplicationService {
 
         Integer beneficiaryId = request.getBeneficiaryId();
         Long    schemeId      = request.getSchemeId();
+        BigDecimal requestedAmount = request.getRequestedAmount();
 
         log.debug("Application submission requested: beneficiaryId={}, schemeId={}",
                 beneficiaryId, schemeId);
@@ -85,6 +86,20 @@ public class ApplicationServiceImpl implements ApplicationService {
         // ── Rule 2: Scheme must exist ─────────────────────────────────────────
         Scheme scheme = schemeRepository.findById(schemeId)
                 .orElseThrow(() -> new SchemeNotFoundException(schemeId));
+        if (requestedAmount == null) {
+            throw new ApplicationException("Requested amount is required.");
+        }
+
+        if (requestedAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ApplicationException("Requested amount must be greater than zero.");
+        }
+
+        if (requestedAmount.compareTo(scheme.getGrantAmount()) > 0) {
+            throw new ApplicationException(
+                    "Requested amount cannot exceed the maximum grant amount of ₹"
+                            + scheme.getGrantAmount()
+                            + " for scheme '" + scheme.getSchemeName() + "'.");
+        }
 
         // ── Rule 3 & 4: Eligibility must have been checked and must be ELIGIBLE ─
         EligibilityResult eligibilityResult = eligibilityResultRepository
@@ -120,8 +135,8 @@ public class ApplicationServiceImpl implements ApplicationService {
             }
 
             // Previous application was REJECTED — apply cooling period.
-            if (rejectionCoolingPeriodDays > 0 && existing.getApplicationDate() != null) {
-                LocalDateTime rejectedAt   = existing.getApplicationDate();
+            if (rejectionCoolingPeriodDays > 0 && existing.getRejectedAt() != null) {
+                LocalDateTime rejectedAt = existing.getRejectedAt();
                 LocalDateTime reapplyAfter = rejectedAt.plusDays(rejectionCoolingPeriodDays);
 
                 if (LocalDateTime.now().isBefore(reapplyAfter)) {
@@ -146,6 +161,7 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .beneficiary(beneficiary)
                 .scheme(scheme)
                 .applicationStatus("PENDING")
+                .requestedAmount(requestedAmount)
                 .build();
         // applicationDate is set by @PrePersist on SchemeApplication
 

@@ -109,6 +109,7 @@ class ApplicationServiceImplTest {
         ApplicationRequest req = new ApplicationRequest();
         req.setBeneficiaryId(BENEFICIARY_ID);
         req.setSchemeId(SCHEME_ID);
+        req.setRequestedAmount(new BigDecimal("5000.00"));
         return req;
     }
 
@@ -123,7 +124,7 @@ class ApplicationServiceImplTest {
             java.lang.reflect.Field id = SchemeApplication.class.getDeclaredField("id");
             id.setAccessible(true);
             id.set(app, 998L);
-            java.lang.reflect.Field date = SchemeApplication.class.getDeclaredField("applicationDate");
+            java.lang.reflect.Field date = SchemeApplication.class.getDeclaredField("rejectedAt");
             date.setAccessible(true);
             date.set(app, rejectedAt);
         } catch (Exception ignored) {}
@@ -350,8 +351,12 @@ class ApplicationServiceImplTest {
 
             // Rejected just 5 days ago — still inside the 30-day window.
             LocalDateTime rejectedAt = LocalDateTime.now().minusDays(5);
+            SchemeApplication rejected = rejectedApplication(rejectedAt);
+
+            assertThat(rejected.getRejectedAt()).isEqualTo(rejectedAt);
+
             given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
-                    .willReturn(Optional.of(rejectedApplication(rejectedAt)));
+                    .willReturn(Optional.of(rejected));
 
             assertThatThrownBy(() -> applicationService.submitApplication(request()))
                     .isInstanceOf(ApplicationException.class)

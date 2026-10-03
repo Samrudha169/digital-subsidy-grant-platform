@@ -144,30 +144,7 @@ function Login({ onLogin }) {
     return (
         <div className="login-page">
 
-            {/* Header */}
-            <header className="login-header">
-                <div className="login-header-container">
 
-                    <Link
-                        to="/"
-                        className="login-brand"
-                    >
-                        <h1>DSGP</h1>
-
-                        <p>
-                            Digital Subsidy & Grant Platform
-                        </p>
-                    </Link>
-
-                    <Link
-                        to="/"
-                        className="login-home-link"
-                    >
-                        Back to Home
-                    </Link>
-
-                </div>
-            </header>
 
 
             {/* Login Section */}

@@ -25,6 +25,16 @@ public interface BeneficiaryRepository extends JpaRepository<Beneficiary, Intege
 
     Optional<Beneficiary> findByAadhaarNumber(String aadhaarNumber);
 
-    // Authentication
+    // Authentication — exact match (throws NonUniqueResultException if duplicates exist)
     Optional<Beneficiary> findByEmail(String email);
+
+    // Email uniqueness guard — added for OTP / registration duplicate-email check
+    boolean existsByEmail(String email);
+
+    /**
+     * Returns the first beneficiary row matching the given email address.
+     * Used wherever the caller must not crash if legacy duplicate rows exist.
+     * Prefer this over {@link #findByEmail} in login / OTP lookup paths.
+     */
+    Optional<Beneficiary> findFirstByEmail(String email);
 }

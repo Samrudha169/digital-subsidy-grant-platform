@@ -34,7 +34,7 @@ public class AuthServiceImpl implements AuthService {
     public LoginResponse login(LoginRequest request) {
 
         Beneficiary beneficiary = beneficiaryRepository
-                .findByEmail(request.getEmail())
+                .findFirstByEmail(request.getEmail())
                 .orElse(null);
 
         if (beneficiary == null) {
@@ -53,6 +53,25 @@ public class AuthServiceImpl implements AuthService {
             return new LoginResponse(
                     false,
                     "Invalid email or password",
+                    null,
+                    null
+            );
+        }
+
+        // ── Email-verification guard for newly registered accounts ────────────
+        //
+        // Accounts registered before this feature was introduced will have
+        //   emailVerified = false, otpCode = null  → allow login (legacy)
+        //
+        // Accounts registered after this feature was introduced and not yet
+        // verified will have:
+        //   emailVerified = false, otpCode != null → block login
+        //
+        if (!beneficiary.isEmailVerified() && beneficiary.getOtpCode() != null) {
+            return new LoginResponse(
+                    false,
+                    "Please verify your email before logging in. "
+                            + "Check your inbox for the verification code.",
                     null,
                     null
             );

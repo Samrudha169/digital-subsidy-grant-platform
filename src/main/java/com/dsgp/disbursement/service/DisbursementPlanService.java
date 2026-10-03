@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 @Service
@@ -52,7 +53,8 @@ public class DisbursementPlanService {
         }
 
         BigDecimal sanctionedAmount =
-                application.getSanctionedAmount();
+                application.getSanctionedAmount()
+                        .setScale(2, RoundingMode.HALF_UP);
 
         DisbursementPlan plan = DisbursementPlan.builder()
                 .application(application)
@@ -69,42 +71,64 @@ public class DisbursementPlanService {
                 disbursementPlanRepository.save(plan);
 
         /*
-         * Automatically create all stages
+         * Automatically create three equal stages
          * for a STAGED disbursement plan.
          */
         if (type == DisbursementType.STAGED) {
 
-            // Stage 1 - 40%
+            /*
+             * Divide the sanctioned amount equally into
+             * three stages.
+             *
+             * The first two stages are rounded to 2 decimal
+             * places. Stage 3 receives the exact remaining
+             * amount so that the total always equals the
+             * sanctioned amount.
+             */
+            BigDecimal stageAmount =
+                    sanctionedAmount
+                            .divide(
+                                    new BigDecimal("3"),
+                                    2,
+                                    RoundingMode.HALF_UP
+                            );
+
+            BigDecimal stageOneAmount = stageAmount;
+
+            BigDecimal stageTwoAmount = stageAmount;
+
+            BigDecimal stageThreeAmount =
+                    sanctionedAmount
+                            .subtract(stageOneAmount)
+                            .subtract(stageTwoAmount);
+
+            LocalDate today = LocalDate.now();
+
+            // Stage 1 - Equal third
             disbursementStageService.createStage(
                     savedPlan.getId(),
                     1,
-                    sanctionedAmount.multiply(
-                            new BigDecimal("0.40")
-                    ),
+                    stageOneAmount,
                     "Initial verification and setup",
-                    LocalDate.now().plusDays(30)
+                    today.plusDays(30)
             );
 
-            // Stage 2 - 35%
+            // Stage 2 - Equal third
             disbursementStageService.createStage(
                     savedPlan.getId(),
                     2,
-                    sanctionedAmount.multiply(
-                            new BigDecimal("0.35")
-                    ),
+                    stageTwoAmount,
                     "Purchase of approved equipment",
-                    LocalDate.now().plusDays(60)
+                    today.plusDays(60)
             );
 
-            // Stage 3 - 25%
+            // Stage 3 - Remaining amount after rounding
             disbursementStageService.createStage(
                     savedPlan.getId(),
                     3,
-                    sanctionedAmount.multiply(
-                            new BigDecimal("0.25")
-                    ),
+                    stageThreeAmount,
                     "Final completion and verification of previous fund utilization",
-                    LocalDate.now().plusDays(90)
+                    today.plusDays(90)
             );
         }
 

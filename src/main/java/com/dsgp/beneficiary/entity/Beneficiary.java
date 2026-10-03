@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * JPA entity representing a registered beneficiary.
@@ -36,7 +37,7 @@ public class Beneficiary {
     @Column(name = "contact", nullable = false, length = 10)
     private String contact;
 
-    @Column(name = "email", nullable = false, length = 150)
+    @Column(name = "email", nullable = false, length = 150, unique = true)
     private String email;
 
     /**
@@ -127,4 +128,34 @@ public class Beneficiary {
     @Column(name = "identity_verified", nullable = false)
     @Builder.Default
     private boolean identityVerified = false;
+
+    // ── Email OTP verification (Milestone 1 — email verification) ────────────
+
+    /**
+     * True once the beneficiary has successfully verified their email address
+     * via the 6-digit OTP sent at registration.
+     *
+     * <p>Accounts registered before this feature was introduced will have
+     * {@code emailVerified = false} AND {@code otpCode = null}.  The login
+     * guard distinguishes them from newly-registered-but-unverified accounts
+     * by checking whether an OTP was ever issued ({@code otpCode != null}).
+     */
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    /**
+     * Stores the active 6-digit OTP (plain digits — short-lived).
+     * Cleared to {@code null} after successful verification.
+     * Never exposed in API responses.
+     */
+    @Column(name = "otp_code", length = 6)
+    private String otpCode;
+
+    /**
+     * Timestamp at which the current OTP expires.
+     * Cleared to {@code null} after successful verification.
+     */
+    @Column(name = "otp_expires_at")
+    private LocalDateTime otpExpiresAt;
 }
