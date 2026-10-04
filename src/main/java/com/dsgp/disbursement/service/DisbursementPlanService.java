@@ -26,7 +26,8 @@ public class DisbursementPlanService {
 
         if (application == null) {
             throw new IllegalArgumentException(
-                    "Application cannot be null.");
+                    "Application cannot be null."
+            );
         }
 
         if (!"APPROVED".equals(application.getApplicationStatus())) {
@@ -71,40 +72,40 @@ public class DisbursementPlanService {
                 disbursementPlanRepository.save(plan);
 
         /*
-         * Automatically create three equal stages
+         * Automatically create three stages
          * for a STAGED disbursement plan.
+         *
+         * Stage 1 = 40%
+         * Stage 2 = 35%
+         * Stage 3 = 25%
+         *
+         * The final stage receives the remaining amount
+         * after rounding so that all three stages always
+         * add up exactly to the sanctioned amount.
          */
         if (type == DisbursementType.STAGED) {
 
-            /*
-             * Divide the sanctioned amount equally into
-             * three stages.
-             *
-             * The first two stages are rounded to 2 decimal
-             * places. Stage 3 receives the exact remaining
-             * amount so that the total always equals the
-             * sanctioned amount.
-             */
-            BigDecimal stageAmount =
+            BigDecimal stageOneAmount =
                     sanctionedAmount
-                            .divide(
-                                    new BigDecimal("3"),
-                                    2,
-                                    RoundingMode.HALF_UP
-                            );
+                            .multiply(new BigDecimal("0.40"))
+                            .setScale(2, RoundingMode.HALF_UP);
 
-            BigDecimal stageOneAmount = stageAmount;
-
-            BigDecimal stageTwoAmount = stageAmount;
+            BigDecimal stageTwoAmount =
+                    sanctionedAmount
+                            .multiply(new BigDecimal("0.35"))
+                            .setScale(2, RoundingMode.HALF_UP);
 
             BigDecimal stageThreeAmount =
                     sanctionedAmount
                             .subtract(stageOneAmount)
-                            .subtract(stageTwoAmount);
+                            .subtract(stageTwoAmount)
+                            .setScale(2, RoundingMode.HALF_UP);
 
             LocalDate today = LocalDate.now();
 
-            // Stage 1 - Equal third
+            /*
+             * Stage 1 - 40%
+             */
             disbursementStageService.createStage(
                     savedPlan.getId(),
                     1,
@@ -113,7 +114,9 @@ public class DisbursementPlanService {
                     today.plusDays(30)
             );
 
-            // Stage 2 - Equal third
+            /*
+             * Stage 2 - 35%
+             */
             disbursementStageService.createStage(
                     savedPlan.getId(),
                     2,
@@ -122,7 +125,9 @@ public class DisbursementPlanService {
                     today.plusDays(60)
             );
 
-            // Stage 3 - Remaining amount after rounding
+            /*
+             * Stage 3 - 25%
+             */
             disbursementStageService.createStage(
                     savedPlan.getId(),
                     3,

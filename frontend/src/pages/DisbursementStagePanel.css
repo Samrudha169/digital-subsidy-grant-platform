@@ -661,3 +661,237 @@
     font-size: 16px;
     font-weight: 700;
 }
+
+
+/* ============================================================
+   FINANCE OFFICER COMPLIANCE VERIFICATION - MODERN UI
+   ============================================================ */
+
+.stage-card-actions {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid #e5e7eb;
+}
+
+
+/* Main compliance form card */
+.stage-card-actions > div {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+
+/* Compliance status section */
+.stage-card-actions label {
+    color: #334155 !important;
+    font-size: 0.86rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.1px;
+}
+
+
+/* Compliance dropdown */
+.stage-card-actions select.compliance-select {
+    width: 100% !important;
+    min-height: 42px;
+    padding: 9px 38px 9px 12px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 0.92rem;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+
+.stage-card-actions select.compliance-select:hover {
+    border-color: #94a3b8 !important;
+}
+
+
+.stage-card-actions select.compliance-select:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+
+/* Remarks textarea */
+.stage-card-actions textarea {
+    width: 100% !important;
+    min-height: 90px;
+    padding: 11px 13px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 0.92rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    box-sizing: border-box !important;
+    transition: all 0.2s ease;
+}
+
+
+.stage-card-actions textarea::placeholder {
+    color: #94a3b8;
+}
+
+
+.stage-card-actions textarea:hover {
+    border-color: #94a3b8 !important;
+}
+
+
+.stage-card-actions textarea:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+
+/* Finance Officer input */
+.stage-card-actions input[type="text"] {
+    width: 100% !important;
+    min-height: 42px;
+    padding: 10px 13px !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 8px !important;
+    background: #ffffff;
+    color: #1e293b;
+    font-size: 0.92rem;
+    outline: none;
+    box-sizing: border-box !important;
+    transition: all 0.2s ease;
+}
+
+
+.stage-card-actions input[type="text"]::placeholder {
+    color: #94a3b8;
+}
+
+
+.stage-card-actions input[type="text"]:hover {
+    border-color: #94a3b8 !important;
+}
+
+
+.stage-card-actions input[type="text"]:focus {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+}
+
+
+/* Save Compliance button */
+.stage-card-actions .stage-verify-button {
+    min-height: 42px;
+    padding: 9px 18px !important;
+    border: none !important;
+    border-radius: 8px !important;
+    background: #2563eb;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+
+.stage-card-actions .stage-verify-button:hover:not(:disabled) {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.22);
+}
+
+
+.stage-card-actions .stage-verify-button:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+
+.stage-card-actions .stage-verify-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+
+/* ------------------------------------------------------------
+   Make "Verify Stage" button look separate from Save Compliance
+   ------------------------------------------------------------ */
+
+.stage-card-actions > div > .stage-verify-button {
+    width: 100%;
+    margin-top: 2px;
+}
+
+
+/* ------------------------------------------------------------
+   Released payment label
+   ------------------------------------------------------------ */
+
+.stage-released-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 14px;
+    border-radius: 8px;
+    background: #ecfdf5;
+    border: 1px solid #bbf7d0;
+    color: #15803d;
+    font-size: 0.88rem;
+    font-weight: 600;
+}
+
+
+/* ------------------------------------------------------------
+   Saved compliance information
+   ------------------------------------------------------------ */
+
+.stage-card > div[style*="Compliance Verification"] {
+    background: #f8fafc !important;
+    border: 1px solid #dbe3ef !important;
+    border-left: 4px solid #2563eb !important;
+    border-radius: 10px !important;
+}
+
+
+/* ------------------------------------------------------------
+   Beneficiary submitted documents
+   ------------------------------------------------------------ */
+
+.stage-card div[style*="Beneficiary Submitted Documents"] {
+    box-shadow: 0 2px 7px rgba(15, 23, 42, 0.03);
+}
+
+
+/* Document buttons */
+.stage-card button {
+    transition: all 0.18s ease;
+}
+
+
+.stage-card button:hover {
+    transform: translateY(-1px);
+}
+
+
+/* ------------------------------------------------------------
+   Responsive design
+   ------------------------------------------------------------ */
+
+@media (max-width: 700px) {
+
+    .stage-card-actions > div {
+        padding: 15px;
+    }
+
+    .stage-card-actions textarea {
+        min-height: 80px;
+    }
+
+}
