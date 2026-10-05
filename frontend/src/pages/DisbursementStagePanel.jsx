@@ -5,6 +5,14 @@ const API_BASE = "/api/v1/api/disbursements";
 const DOCUMENT_API_BASE = "/api/v1";
 
 
+/*
+ * Logged-in government officer ID.
+ * OfficerLogin stores this value in localStorage after successful login.
+ */
+const getOfficerId = () =>
+    localStorage.getItem("officerId");
+
+
 const getComplianceInfo = (stage) => {
     const status = stage.complianceStatus || "PENDING";
 
@@ -498,8 +506,18 @@ export default function DisbursementStagePanel({ application }) {
 
         try {
 
+            const planParams = new URLSearchParams({
+                type: "STAGED"
+            });
+
+            const officerId = getOfficerId();
+
+            if (officerId) {
+                planParams.set("officerId", officerId);
+            }
+
             const response = await fetch(
-                `${API_BASE}/application/${applicationId}/plan?type=STAGED`,
+                `${API_BASE}/application/${applicationId}/plan?${planParams.toString()}`,
                 {
                     method: "POST"
                 }
@@ -557,8 +575,13 @@ export default function DisbursementStagePanel({ application }) {
 
         try {
 
+            const officerId = getOfficerId();
+            const officerQuery = officerId
+                ? `?officerId=${encodeURIComponent(officerId)}`
+                : "";
+
             const response = await fetch(
-                `${API_BASE}/stages/${stageId}/verify`,
+                `${API_BASE}/stages/${stageId}/verify${officerQuery}`,
                 {
                     method: "PUT"
                 }
@@ -620,8 +643,13 @@ export default function DisbursementStagePanel({ application }) {
 
         try {
 
+            const officerId = getOfficerId();
+            const officerQuery = officerId
+                ? `?officerId=${encodeURIComponent(officerId)}`
+                : "";
+
             const response = await fetch(
-                `${API_BASE}/stages/${stageId}/release`,
+                `${API_BASE}/stages/${stageId}/release${officerQuery}`,
                 {
                     method: "PUT"
                 }
@@ -723,6 +751,12 @@ export default function DisbursementStagePanel({ application }) {
                 remarks: remarks.trim(),
                 verifiedBy: verifiedBy.trim()
             });
+
+            const officerId = getOfficerId();
+
+            if (officerId) {
+                params.set("officerId", officerId);
+            }
 
 
             const response = await fetch(

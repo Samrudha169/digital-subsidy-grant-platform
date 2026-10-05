@@ -2,9 +2,10 @@ package com.dsgp.application.controller;
 
 import com.dsgp.application.dto.ApplicationRequest;
 import com.dsgp.application.dto.ApplicationResponse;
+import com.dsgp.application.entity.SchemeApplication;
 import com.dsgp.application.service.ApplicationService;
 import com.dsgp.application.service.SchemeApplicationService;
-import com.dsgp.application.entity.SchemeApplication;
+import com.dsgp.audit.service.AuditLogService;
 import com.dsgp.beneficiary.dto.DocumentResponse;
 import com.dsgp.beneficiary.service.BeneficiaryService;
 import com.dsgp.eligibility.entity.EligibilityResult;
@@ -20,17 +21,15 @@ import java.util.List;
 /**
  * REST controller for scheme application submission and retrieval.
  *
- * <p>Base path: {@code /applications} (full path: {@code /api/v1/applications}).
+ * Base path: /applications
  *
- * <p>Endpoints:
- * <ul>
- *   <li>{@code POST /applications}                         — submit a new application (201 Created)</li>
- *   <li>{@code GET  /applications/{id}}                    — get application by ID (200 OK)</li>
- *   <li>{@code GET  /applications/{id}/documents}          — documents submitted for an application</li>
- *   <li>{@code GET  /applications/beneficiary/{id}}        — all applications for a beneficiary</li>
- *   <li>{@code GET  /applications?status={status}}         — applications by workflow status</li>
- *   <li>{@code GET  /applications/all}                     — all applications (officer/admin)</li>
- * </ul>
+ * Endpoints:
+ * POST /applications
+ * GET  /applications/{id}
+ * GET  /applications/{id}/documents
+ * GET  /applications/beneficiary/{id}
+ * GET  /applications?status={status}
+ * GET  /applications/all
  */
 @RestController
 @RequestMapping("/applications")
@@ -42,14 +41,45 @@ public class ApplicationController {
     private final EligibilityResultRepository eligibilityResultRepository;
     private final BeneficiaryService beneficiaryService;
 
+    /*
+     * AuditLogService is optional here because existing controller tests
+     * use @WebMvcTest and do not create an AuditLogService bean.
+     *
+     * In the actual application, Spring will provide the AuditLogService bean.
+     */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private AuditLogService auditLogService;
+
     // ── POST /applications ──────────────────────────────────────────────────────
 
     @PostMapping
     public ResponseEntity<ApplicationResponse> submitApplication(
-            @Valid @RequestBody ApplicationRequest request) {
+            @Valid @RequestBody ApplicationRequest request,
+            @RequestParam(required = false) Long officerId) {
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(applicationService.submitApplication(request));
+        ApplicationResponse response =
+                applicationService.submitApplication(request);
+
+        /*
+         * Audit logging is performed only when an officerId is supplied.
+         *
+         * This keeps the existing application submission API working while
+         * allowing officer actions to be logged when officerId is available.
+         */
+        if (officerId != null && auditLogService != null) {
+
+            auditLogService.createAuditLog(
+                    officerId,
+                    "APPLICATION_SUBMITTED",
+                    "APPLICATION",
+                    response.getApplicationId(),
+                    "New scheme application submitted"
+            );
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     // ── GET /applications/{applicationId} ───────────────────────────────────────
@@ -83,7 +113,6 @@ public class ApplicationController {
         return ResponseEntity.ok(response);
     }
 
-
     // ── GET /applications/beneficiary/{beneficiaryId} ─────────────────────────
 
     /**
@@ -95,7 +124,8 @@ public class ApplicationController {
             @PathVariable Integer beneficiaryId) {
 
         return ResponseEntity.ok(
-                applicationService.getApplicationsByBeneficiary(beneficiaryId));
+                applicationService.getApplicationsByBeneficiary(beneficiaryId)
+        );
     }
 
     // ── GET /applications?status=... ─────────────────────────────────────────
@@ -109,32 +139,41 @@ public class ApplicationController {
             @RequestParam(required = false) String status) {
 
         if (status != null && !status.isBlank()) {
+
             return ResponseEntity.ok(
-                    applicationService.getApplicationsByStatus(status.toUpperCase()));
+                    applicationService.getApplicationsByStatus(
+                            status.toUpperCase()
+                    )
+            );
         }
-        return ResponseEntity.ok(applicationService.getAllApplications());
+
+        return ResponseEntity.ok(
+                applicationService.getAllApplications()
+        );
     }
 
     // ── GET /applications/all ───────────────────────────────────────────────
 
     /**
-     * Returns all applications. Used by administrator dashboard.
+     * Returns all applications.
+     * Used by administrator dashboard.
      */
     @GetMapping("/all")
     public ResponseEntity<List<ApplicationResponse>> getAllApplications() {
-        return ResponseEntity.ok(applicationService.getAllApplications());
+
+        return ResponseEntity.ok(
+                applicationService.getAllApplications()
+        );
     }
 
-    // ── GET /applications/{applicationId}/documents ──────────────────
+    // ── GET /applications/{applicationId}/documents ──────────────────────────
 
     /**
-     * Returns all documents submitted for the beneficiary who owns this application.
-     * Used by officer dashboards to review supporting documents during verification.
+     * Returns all documents submitted for the beneficiary
+     * who owns this application.
      *
-     * <p>Resolves: applicationId → beneficiaryId → documents list.
-     *
-     * @param applicationId the scheme application primary key
-     * @return list of document metadata for the application's beneficiary
+     * Resolves:
+     * applicationId → beneficiaryId → documents list
      */
     @GetMapping("/{applicationId}/documents")
     public ResponseEntity<List<DocumentResponse>> getApplicationDocuments(
@@ -143,8 +182,11 @@ public class ApplicationController {
         SchemeApplication application =
                 schemeApplicationService.getApplicationById(applicationId);
 
-        Integer beneficiaryId = application.getBeneficiary().getId();
+        Integer beneficiaryId =
+                application.getBeneficiary().getId();
 
-        return ResponseEntity.ok(beneficiaryService.getDocuments(beneficiaryId));
+        return ResponseEntity.ok(
+                beneficiaryService.getDocuments(beneficiaryId)
+        );
     }
 }

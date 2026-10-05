@@ -3332,6 +3332,21 @@ function OfficerDashboard() {
 
                     </div>
 
+                    {(officerRole === 'ADMIN' ||
+                        officerRole === ROLES.DISTRICT_OFFICER ||
+                        officerRole === ROLES.FINANCE_APPROVER) && (
+                        <button
+                            type="button"
+                            className="od-logout"
+                            onClick={() =>
+                                navigate('/audit-trail')
+                            }
+                            title="View system audit trail"
+                        >
+                            Audit Trail
+                        </button>
+                    )}
+
                     <button
                         type="button"
                         className="od-logout"

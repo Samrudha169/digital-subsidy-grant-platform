@@ -24,6 +24,7 @@ import OfficerLogin from './pages/OfficerLogin';
 import OfficerDashboard from './pages/OfficerDashboard';
 import MyApplications from './pages/MyApplications';
 import Notifications from './pages/Notifications';
+import AuditTrail from "./pages/AuditTrail";
 
 function App() {
 
@@ -227,6 +228,11 @@ function App() {
                     <Route
                         path="/notifications"
                         element={<Notifications />}
+                    />
+
+                    <Route
+                        path="/audit-trail"
+                        element={<AuditTrail />}
                     />
 
                 </Routes>

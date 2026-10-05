@@ -1,6 +1,7 @@
 package com.dsgp.disbursement.controller;
 
 import com.dsgp.application.entity.SchemeApplication;
+import com.dsgp.audit.service.AuditLogService;
 import com.dsgp.beneficiary.repository.SchemeApplicationRepository;
 import com.dsgp.disbursement.dto.DisbursementStageRequest;
 import com.dsgp.disbursement.entity.ComplianceStatus;
@@ -26,6 +27,7 @@ public class DisbursementController {
     private final DisbursementPlanRepository disbursementPlanRepository;
     private final DisbursementPlanService disbursementPlanService;
     private final SchemeApplicationRepository schemeApplicationRepository;
+    private final AuditLogService auditLogService;
 
     /*
      * Get disbursement plan using application ID
@@ -46,7 +48,8 @@ public class DisbursementController {
     @PostMapping("/application/{applicationId}/plan")
     public ResponseEntity<DisbursementPlan> createPlan(
             @PathVariable Long applicationId,
-            @RequestParam DisbursementType type) {
+            @RequestParam DisbursementType type,
+            @RequestParam(required = false) Long officerId) {
 
         SchemeApplication application =
                 schemeApplicationRepository.findById(applicationId)
@@ -54,12 +57,29 @@ public class DisbursementController {
                                 new IllegalArgumentException(
                                         "Application not found: " + applicationId));
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(disbursementPlanService.createPlan(
+        DisbursementPlan plan =
+                disbursementPlanService.createPlan(
                         application,
                         type
-                ));
+                );
+
+        /*
+         * Create audit log when officerId is available.
+         */
+        if (officerId != null && auditLogService != null) {
+
+            auditLogService.createAuditLog(
+                    officerId,
+                    "DISBURSEMENT_PLAN_CREATED",
+                    "DISBURSEMENT_PLAN",
+                    plan.getId(),
+                    "Disbursement plan created"
+            );
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(plan);
     }
 
     /*
@@ -68,17 +88,35 @@ public class DisbursementController {
     @PostMapping("/{planId}/stages")
     public ResponseEntity<DisbursementStage> createStage(
             @PathVariable Long planId,
-            @RequestBody DisbursementStageRequest request) {
+            @RequestBody DisbursementStageRequest request,
+            @RequestParam(required = false) Long officerId) {
 
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(disbursementStageService.createStage(
+        DisbursementStage stage =
+                disbursementStageService.createStage(
                         planId,
                         request.getStageNumber(),
                         request.getAmount(),
                         request.getMilestone(),
                         request.getDueDate()
-                ));
+                );
+
+        /*
+         * Create audit log when officerId is available.
+         */
+        if (officerId != null && auditLogService != null) {
+
+            auditLogService.createAuditLog(
+                    officerId,
+                    "DISBURSEMENT_STAGE_CREATED",
+                    "DISBURSEMENT_STAGE",
+                    stage.getId(),
+                    "Disbursement stage created"
+            );
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(stage);
     }
 
     /*
@@ -94,17 +132,33 @@ public class DisbursementController {
     }
 
     /*
-     * Verify a disbursement stage
+     * Verify a disbursement stage.
      *
      * Compliance must be COMPLETED before this succeeds.
      */
     @PutMapping("/stages/{stageId}/verify")
     public ResponseEntity<DisbursementStage> verifyStage(
-            @PathVariable Long stageId) {
+            @PathVariable Long stageId,
+            @RequestParam(required = false) Long officerId) {
 
-        return ResponseEntity.ok(
-                disbursementStageService.verifyStage(stageId)
-        );
+        DisbursementStage stage =
+                disbursementStageService.verifyStage(stageId);
+
+        /*
+         * Create audit log when officerId is available.
+         */
+        if (officerId != null && auditLogService != null) {
+
+            auditLogService.createAuditLog(
+                    officerId,
+                    "DISBURSEMENT_STAGE_VERIFIED",
+                    "DISBURSEMENT_STAGE",
+                    stage.getId(),
+                    "Disbursement stage verified"
+            );
+        }
+
+        return ResponseEntity.ok(stage);
     }
 
     /*
@@ -112,15 +166,31 @@ public class DisbursementController {
      */
     @PutMapping("/stages/{stageId}/release")
     public ResponseEntity<DisbursementStage> releaseStage(
-            @PathVariable Long stageId) {
+            @PathVariable Long stageId,
+            @RequestParam(required = false) Long officerId) {
 
-        return ResponseEntity.ok(
-                disbursementStageService.releaseStage(stageId)
-        );
+        DisbursementStage stage =
+                disbursementStageService.releaseStage(stageId);
+
+        /*
+         * Create audit log when officerId is available.
+         */
+        if (officerId != null && auditLogService != null) {
+
+            auditLogService.createAuditLog(
+                    officerId,
+                    "DISBURSEMENT_STAGE_RELEASED",
+                    "DISBURSEMENT_STAGE",
+                    stage.getId(),
+                    "Disbursement stage released"
+            );
+        }
+
+        return ResponseEntity.ok(stage);
     }
 
     /*
-     * Update compliance status for a disbursement stage
+     * Update compliance status for a disbursement stage.
      *
      * Required:
      * status      = PENDING / COMPLETED / NON_COMPLIANT
@@ -132,15 +202,31 @@ public class DisbursementController {
             @PathVariable Long stageId,
             @RequestParam ComplianceStatus status,
             @RequestParam String remarks,
-            @RequestParam String verifiedBy) {
+            @RequestParam String verifiedBy,
+            @RequestParam(required = false) Long officerId) {
 
-        return ResponseEntity.ok(
+        DisbursementStage stage =
                 disbursementStageService.updateComplianceStatus(
                         stageId,
                         status,
                         remarks,
                         verifiedBy
-                )
-        );
+                );
+
+        /*
+         * Create audit log when officerId is available.
+         */
+        if (officerId != null && auditLogService != null) {
+
+            auditLogService.createAuditLog(
+                    officerId,
+                    "COMPLIANCE_STATUS_UPDATED",
+                    "DISBURSEMENT_STAGE",
+                    stage.getId(),
+                    "Compliance status updated to " + status
+            );
+        }
+
+        return ResponseEntity.ok(stage);
     }
 }
