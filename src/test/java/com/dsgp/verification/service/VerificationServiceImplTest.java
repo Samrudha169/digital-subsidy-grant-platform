@@ -17,8 +17,10 @@ import com.dsgp.verification.entity.VerificationCriterion;
 import com.dsgp.verification.entity.VerificationCriterionStatus;
 import com.dsgp.verification.entity.VerificationStage;
 import com.dsgp.verification.exception.InvalidVerificationTransitionException;
+import com.dsgp.verification.dto.VerificationCriterionUpdateRequest;
 import com.dsgp.verification.repository.VerificationCriterionRepository;
 import com.dsgp.verification.repository.VerificationRecordRepository;
+import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,7 +40,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -71,6 +72,9 @@ class VerificationServiceImplTest {
 
     @Mock
     private VerificationCriterionRepository verificationCriterionRepository;
+
+    @Mock
+    private BeneficiaryDocumentRepository documentRepository;
 
     @InjectMocks
     private VerificationServiceImpl service;
@@ -2064,6 +2068,100 @@ class VerificationServiceImplTest {
             ).isEqualTo(
                     VerificationStage.FIELD
             );
+        }
+    }
+
+    // ========================================================================
+    // UPDATE CRITERION – FAILED → REJECTED
+    // ========================================================================
+
+    @Nested
+    @DisplayName("Update Criterion")
+    class UpdateCriterion {
+
+        /**
+         * Regression test for the FAILED → REJECTED bug.
+         *
+         * Root cause: VerificationRecord.actionTaken was mapped with
+         * {@code length = 10}, but the enum value {@code CRITERION_VERIFIED}
+         * is 18 characters.  MySQL strict mode raised a data-too-long error,
+         * rolling back the transaction and leaving the application UNDER_REVIEW.
+         *
+         * Fix: column length raised to 30 in VerificationRecord.
+         */
+        @Test
+        @DisplayName("FAILED criterion sets application status to REJECTED and records rejectedAt")
+        void failedCriterionRejectsApplication() {
+
+            SchemeApplication application = application("UNDER_REVIEW");
+
+            VerificationCriterion crit = criterion(
+                    application,
+                    VerificationStage.FIELD,
+                    1,
+                    VerificationCriterionStatus.PENDING
+            );
+
+            given(applicationRepository.findById(APP_ID))
+                    .willReturn(Optional.of(application));
+
+            given(verificationCriterionRepository.findById(1L))
+                    .willReturn(Optional.of(crit));
+
+            mockOfficer("field.officer", OfficerRole.FIELD_OFFICER);
+            mockSave();
+
+            VerificationCriterionUpdateRequest req =
+                    new VerificationCriterionUpdateRequest();
+            req.setPerformedBy("field.officer");
+            req.setStatus(VerificationCriterionStatus.FAILED);
+            req.setRemarks("Document is forged.");
+
+            service.updateCriterion(APP_ID, 1L, req);
+
+            assertThat(application.getApplicationStatus())
+                    .isEqualTo("REJECTED");
+
+            assertThat(application.getRejectedAt())
+                    .isNotNull()
+                    .isBeforeOrEqualTo(LocalDateTime.now());
+
+            verify(applicationRepository).save(application);
+        }
+
+        @Test
+        @DisplayName("FAILED criterion without remarks throws")
+        void failedCriterionWithoutRemarksThrows() {
+
+            SchemeApplication application = application("UNDER_REVIEW");
+
+            VerificationCriterion crit = criterion(
+                    application,
+                    VerificationStage.FIELD,
+                    2,
+                    VerificationCriterionStatus.PENDING
+            );
+
+            given(applicationRepository.findById(APP_ID))
+                    .willReturn(Optional.of(application));
+
+            given(verificationCriterionRepository.findById(2L))
+                    .willReturn(Optional.of(crit));
+
+            mockOfficer("field.officer", OfficerRole.FIELD_OFFICER);
+
+            VerificationCriterionUpdateRequest req =
+                    new VerificationCriterionUpdateRequest();
+            req.setPerformedBy("field.officer");
+            req.setStatus(VerificationCriterionStatus.FAILED);
+            req.setRemarks(null);
+
+            assertThatThrownBy(() -> service.updateCriterion(APP_ID, 2L, req))
+                    .isInstanceOf(InvalidVerificationTransitionException.class)
+                    .hasMessageContaining("Remarks are required");
+
+            assertThat(application.getApplicationStatus())
+                    .isEqualTo("UNDER_REVIEW");
         }
     }
 }

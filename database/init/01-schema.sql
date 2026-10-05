@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS verification_records (
     id                      BIGINT AUTO_INCREMENT PRIMARY KEY,
     scheme_application_id   BIGINT       NOT NULL,
     stage                   VARCHAR(10)  NOT NULL,   -- FIELD | DISTRICT | FINANCE
-    action_taken            VARCHAR(10)  NOT NULL,   -- APPROVE | REJECT | ESCALATE
+    action_taken            VARCHAR(30)  NOT NULL,   -- APPROVE | REJECT | ESCALATE | CRITERION_VERIFIED | REQUEST_CORRECTION
     performed_by            VARCHAR(100) NOT NULL,
     performed_at            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     remarks                 TEXT,

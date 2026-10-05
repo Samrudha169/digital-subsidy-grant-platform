@@ -68,7 +68,7 @@ public class VerificationRecord {
      * One of APPROVE, REJECT, ESCALATE (ESCALATE is FIELD stage only).
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "action_taken", nullable = false, length = 10)
+    @Column(name = "action_taken", nullable = false, length = 30)
     private VerificationAction actionTaken;
 
     /**
