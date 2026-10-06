@@ -149,14 +149,28 @@ public class ApplicationServiceImpl implements ApplicationService {
                             + "' was rejected. You may reapply after " + reapplyDateStr + ".");
                 }
 
-                // Cooling period has expired — allow the re-application.
                 log.info(
-                        "Cooling period expired for beneficiaryId={}, schemeId={}: allowing reapplication.",
+                        "Cooling period expired for beneficiaryId={}, schemeId={}: reusing existing application row.",
                         beneficiaryId, schemeId);
             }
+
+            // ── Reuse the existing REJECTED row ──────────────────────────────
+            // Inserting a brand-new row would violate UNIQUE(beneficiary_id, scheme_id).
+            // Instead, reset the existing row back to PENDING in-place.
+            // The row's id and original applicationDate are preserved for audit purposes.
+            existing.setApplicationStatus("PENDING");
+            existing.setRequestedAmount(requestedAmount);
+            existing.setRejectedAt(null);
+            existing.setSanctionedAmount(null);
+            SchemeApplication saved = applicationRepository.save(existing);
+
+            log.info("Application resubmitted: id={}, beneficiaryId={}, schemeId={}, status={}",
+                    saved.getId(), beneficiaryId, schemeId, saved.getApplicationStatus());
+
+            return mapToResponse(saved, eligibilityResult.getTotalScore());
         }
 
-        // ── Rule 6: Persist with PENDING status ───────────────────────────────
+        // ── Rule 6: Persist with PENDING status (first-time application) ──────
         SchemeApplication application = SchemeApplication.builder()
                 .beneficiary(beneficiary)
                 .scheme(scheme)

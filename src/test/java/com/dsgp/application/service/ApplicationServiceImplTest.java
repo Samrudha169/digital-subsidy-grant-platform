@@ -16,6 +16,7 @@ import com.dsgp.eligibility.repository.EligibilityResultRepository;
 import com.dsgp.scheme.exception.SchemeNotFoundException;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -380,7 +381,7 @@ class ApplicationServiceImplTest {
         }
 
         @Test
-        @DisplayName("REJECTED after 30 days → submission is allowed")
+        @DisplayName("REJECTED after 30 days → submission is allowed and does not throw")
         void rejectedAfterCoolingPeriodExpired_allowsSubmission() {
             mockEligiblePreconditions();
 
@@ -396,6 +397,55 @@ class ApplicationServiceImplTest {
                     .doesNotThrowAnyException();
 
             then(applicationRepository).should(times(1)).save(any(SchemeApplication.class));
+        }
+
+        @Test
+        @DisplayName("REJECTED after 30 days → reuses the existing row (no new INSERT that would violate UNIQUE constraint)")
+        void rejectedAfterCoolingPeriodExpired_reusesExistingRow() {
+            mockEligiblePreconditions();
+
+            // Rejected 31 days ago — the existing row has id=998.
+            LocalDateTime rejectedAt = LocalDateTime.now().minusDays(31);
+            SchemeApplication rejected = rejectedApplication(rejectedAt); // id=998
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(rejected));
+            given(applicationRepository.save(any(SchemeApplication.class)))
+                    .willReturn(savedApplication());
+
+            applicationService.submitApplication(request());
+
+            // The entity passed to save() must be the EXISTING row (id=998),
+            // not a freshly constructed entity — proving UPDATE not INSERT.
+            ArgumentCaptor<SchemeApplication> captor =
+                    ArgumentCaptor.forClass(SchemeApplication.class);
+            then(applicationRepository).should(times(1)).save(captor.capture());
+            SchemeApplication passedToSave = captor.getValue();
+            assertThat(passedToSave.getId())
+                    .as("must reuse existing row id, not insert a new row")
+                    .isEqualTo(998L);
+            assertThat(passedToSave.getApplicationStatus())
+                    .as("status must be reset to PENDING")
+                    .isEqualTo("PENDING");
+            assertThat(passedToSave.getRejectedAt())
+                    .as("rejectedAt must be cleared on resubmission")
+                    .isNull();
+        }
+
+        @Test
+        @DisplayName("REJECTED within 30 days → save() is never called")
+        void rejectedWithinCoolingPeriod_neverSaves() {
+            mockEligiblePreconditions();
+
+            // Rejected only 5 days ago — still inside the 30-day window.
+            LocalDateTime rejectedAt = LocalDateTime.now().minusDays(5);
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(rejectedApplication(rejectedAt)));
+
+            assertThatThrownBy(() -> applicationService.submitApplication(request()))
+                    .isInstanceOf(ApplicationException.class)
+                    .hasMessageContaining("reapply after");
+
+            then(applicationRepository).should(never()).save(any());
         }
 
         @Test

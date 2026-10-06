@@ -78,11 +78,14 @@ CREATE TABLE IF NOT EXISTS schemes (
 -- Connects a beneficiary with a selected government scheme
 -- =============================================================================
 CREATE TABLE IF NOT EXISTS scheme_applications (
-                                                   id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
-                                                   beneficiary_id      INT NOT NULL,
-                                                   scheme_id           BIGINT NOT NULL,
-                                                   application_status  VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    id                  BIGINT AUTO_INCREMENT PRIMARY KEY,
+    beneficiary_id      INT NOT NULL,
+    scheme_id           BIGINT NOT NULL,
+    application_status  VARCHAR(20) NOT NULL DEFAULT 'PENDING',
     application_date    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    requested_amount    DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+    sanctioned_amount   DECIMAL(12,2) NULL,
+    rejected_at         DATETIME NULL,
 
     CONSTRAINT fk_application_beneficiary
     FOREIGN KEY (beneficiary_id)
@@ -94,7 +97,7 @@ CREATE TABLE IF NOT EXISTS scheme_applications (
 
     CONSTRAINT uk_beneficiary_scheme
     UNIQUE (beneficiary_id, scheme_id)
-    );
+);
 
 
 -- =============================================================================
