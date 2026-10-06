@@ -25,7 +25,6 @@ import com.dsgp.verification.repository.VerificationCriterionRepository;
 import com.dsgp.verification.repository.VerificationRecordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,8 +51,10 @@ public class VerificationServiceImpl implements VerificationService {
 
     private static final String STATUS_PENDING = "PENDING";
     private static final String STATUS_UNDER_REVIEW = "UNDER_REVIEW";
-    private static final String STATUS_FIELD_APPROVED = "FIELD_APPROVED";
-    private static final String STATUS_ESCALATED = "ESCALATED";
+    private static final String STATUS_FIELD_APPROVED  = "FIELD_APPROVED";
+    private static final String STATUS_ESCALATED        = "ESCALATED";
+    /** Assigned to high-score (> 80) applications that skip Field Officer. */
+    private static final String STATUS_DISTRICT_REVIEW  = "DISTRICT_REVIEW";
     private static final String STATUS_DISTRICT_APPROVED = "DISTRICT_APPROVED";
     private static final String STATUS_APPROVED = "APPROVED";
     private static final String STATUS_REJECTED = "REJECTED";
@@ -71,26 +72,21 @@ public class VerificationServiceImpl implements VerificationService {
     private final VerificationCriterionRepository verificationCriterionRepository;
     private final BeneficiaryDocumentRepository documentRepository;
     private final DisbursementPlanService disbursementPlanService;
-
     // ========================================================================
-    // ROUTING THRESHOLDS  (configurable via application.properties)
+    // APPLICATION ROUTING
     // ========================================================================
 
     /**
-     * Minimum eligibility score required for direct-to-Finance routing.
-     * Applications with a score below this threshold are always escalated
-     * to the District Officer, regardless of grant amount.
+     * Score-based routing applied in {@code startVerification}:
+     * <ul>
+     *   <li>score &gt; 80 → DISTRICT_REVIEW (Field Officer skipped entirely)</li>
+     *   <li>score &le; 80 → UNDER_REVIEW   (standard Field → District → Finance path)</li>
+     * </ul>
      */
-    @Value("${dsgp.verification.routing.minimum-direct-finance-score:60}")
-    private int minimumDirectFinanceScore;
+    private static final int HIGH_SCORE_THRESHOLD = 80;
 
-    /**
-     * Maximum grant amount (inclusive) that qualifies for direct-to-Finance
-     * routing. Applications whose scheme grant amount exceeds this value —
-     * or where the grant amount is null — are escalated to the District Officer.
-     */
-    @Value("${dsgp.verification.routing.maximum-direct-finance-grant-amount:10000}")
-    private int maximumDirectFinanceGrantAmount;
+
+
 
     // ========================================================================
     // START VERIFICATION
@@ -119,11 +115,7 @@ public class VerificationServiceImpl implements VerificationService {
                         request.getPerformedBy()
                 );
 
-        requireRole(
-                officer,
-                OfficerRole.FIELD_OFFICER,
-                "Only a Field Officer can start verification."
-        );
+        // Role check is deferred to the score-based routing branches below.
 
         // ------------------------------------------------------------
         // Eligibility guard
@@ -153,18 +145,59 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
 
-        // ------------------------------------------------------------
-        // Move application to Field Officer review
-        // ------------------------------------------------------------
+        int score = eligibility.getTotalScore();
 
-        updateStatus(
-                application,
-                STATUS_UNDER_REVIEW
+        if (score > HIGH_SCORE_THRESHOLD) {
+
+            // --------------------------------------------------------
+            // High-score path (score > 80):
+            // Skip Field Officer — assign directly to District Officer.
+            // The submitting officer need not be a FIELD_OFFICER.
+            // --------------------------------------------------------
+
+            updateStatus(application, STATUS_DISTRICT_REVIEW);
+
+            createDistrictCriteria(application);
+
+            recordAction(
+                    application,
+                    VerificationStage.DISTRICT,
+                    VerificationAction.START,
+                    request.getPerformedBy(),
+                    coalesce(
+                            request.getRemarks(),
+                            "High eligibility score (" + score + "/100). " +
+                                    "Field Officer stage skipped. " +
+                                    "Assigned directly to District Officer."
+                    )
+            );
+
+            log.info(
+                    "Verification started (high-score, District direct): " +
+                            "applicationId={}, score={}, by={}",
+                    applicationId,
+                    score,
+                    request.getPerformedBy()
+            );
+
+            return buildResponse(application);
+        }
+
+        // ----------------------------------------------------------------
+        // Standard path (score <= 80):
+        // Full Field Officer → District Officer → Finance Officer flow.
+        // The caller must be a FIELD_OFFICER.
+        // ----------------------------------------------------------------
+
+        requireRole(
+                officer,
+                OfficerRole.FIELD_OFFICER,
+                "Only a Field Officer can start verification " +
+                        "for applications with a score of " +
+                        HIGH_SCORE_THRESHOLD + " or below."
         );
 
-        // ------------------------------------------------------------
-        // Create Field Officer criteria
-        // ------------------------------------------------------------
+        updateStatus(application, STATUS_UNDER_REVIEW);
 
         createFieldCriteria(application);
 
@@ -245,8 +278,10 @@ public class VerificationServiceImpl implements VerificationService {
         );
 
         // ------------------------------------------------------------
-        // Routing: score + grant amount decide the next status.
-        // ------------------------------------------------------------
+// Routing: all applications go through District Officer
+// after Field Officer approval, regardless of eligibility score.
+// Flow: Field Officer -> District Officer -> Finance Officer.
+// ------------------------------------------------------------
 
         EligibilityResult eligibility =
                 eligibilityResultRepository
@@ -263,20 +298,14 @@ public class VerificationServiceImpl implements VerificationService {
                         );
 
         String nextStatus = routeAfterFieldApproval(
-                eligibility.getTotalScore(),
-                application.getScheme().getGrantAmount()
+                eligibility.getTotalScore()
         );
 
         updateStatus(application, nextStatus);
 
-        String defaultRemarks = STATUS_FIELD_APPROVED.equals(nextStatus)
-                ? "All Field criteria verified. Routed directly to Finance "
-                + "(score=" + eligibility.getTotalScore()
-                + ", grant=" + application.getScheme().getGrantAmount() + ")."
-                : "All Field criteria verified. Escalated to District Officer "
-                + "(score=" + eligibility.getTotalScore()
-                + ", grant=" + application.getScheme().getGrantAmount() + ").";
-
+        String defaultRemarks = "All Field criteria verified. "
+                + "Escalated to District Officer before Finance "
+                + "(score=" + eligibility.getTotalScore() + ").";
         recordAction(
                 application,
                 VerificationStage.FIELD,
@@ -559,10 +588,8 @@ public class VerificationServiceImpl implements VerificationService {
                         );
 
         String nextStatus = routeAfterFieldApproval(
-                eligibility.getTotalScore(),
-                application.getScheme().getGrantAmount()
+                eligibility.getTotalScore()
         );
-
         updateStatus(application, nextStatus);
 
         recordAction(
@@ -582,63 +609,27 @@ public class VerificationServiceImpl implements VerificationService {
     // ========================================================================
 
     /**
-     * Decides the post-field-approval status using the configurable thresholds:
-     * <ul>
-     *   <li>Score &ge; {@code minimumDirectFinanceScore} <b>AND</b>
-     *       grant &le; {@code maximumDirectFinanceGrantAmount}
-     *       &rarr; {@code FIELD_APPROVED} (direct to Finance)</li>
-     *   <li>Otherwise (low score, high grant, or null grant)
-     *       &rarr; {@code ESCALATED} (District Officer queue)</li>
-     * </ul>
+     * Routes every application from Field Officer to District Officer.
      *
-     * <p>These thresholds are project configuration values loaded from
-     * {@code application.properties}. They are not government policy.</p>
+     * <p>The eligibility score is used for eligibility evaluation,
+     * but it does not control officer routing.</p>
      *
-     * @param totalScore   eligibility score from the persisted EligibilityResult
-     * @param grantAmount  scheme grant amount; {@code null} is treated as
-     *                     "above threshold" and forces escalation
-     * @return {@code "FIELD_APPROVED"} or {@code "ESCALATED"}
+     * <p>Every application follows:
+     * Field Officer -> District Officer -> Finance Officer.</p>
+     *
+     * @param totalScore eligibility score, retained for logging
+     * @return {@code "ESCALATED"}
      */
-    private String routeAfterFieldApproval(
-            int totalScore,
-            BigDecimal grantAmount) {
-
-        if (grantAmount == null) {
-            log.debug(
-                    "Routing: grant amount is null → ESCALATED "
-                            + "(score={})",
-                    totalScore
-            );
-            return STATUS_ESCALATED;
-        }
-
-        boolean scoreOk =
-                totalScore >= minimumDirectFinanceScore;
-        boolean grantOk =
-                grantAmount.compareTo(
-                        BigDecimal.valueOf(maximumDirectFinanceGrantAmount)
-                ) <= 0;
-
-        if (scoreOk && grantOk) {
-            log.debug(
-                    "Routing: score={} >= {}, grant={} <= {} → FIELD_APPROVED",
-                    totalScore,
-                    minimumDirectFinanceScore,
-                    grantAmount,
-                    maximumDirectFinanceGrantAmount
-            );
-            return STATUS_FIELD_APPROVED;
-        }
-
+    private String routeAfterFieldApproval(int totalScore) {
         log.debug(
-                "Routing: score={} (min={}), grant={} (max={}) → ESCALATED",
-                totalScore,
-                minimumDirectFinanceScore,
-                grantAmount,
-                maximumDirectFinanceGrantAmount
+                "Routing: score={} → ESCALATED (District Officer)",
+                totalScore
         );
+
         return STATUS_ESCALATED;
     }
+
+
 
     // ========================================================================
     // GET CRITERIA
@@ -660,17 +651,17 @@ public class VerificationServiceImpl implements VerificationService {
                                 stage
                         );
 
-        // ------------------------------------------------------------
-        // Create District criteria automatically after Field escalation
-        // ------------------------------------------------------------
-        //
-        // When the Field Officer approves and the routing decision sends
-        // the application to the District Officer, the status is ESCALATED
-        // (not FIELD_APPROVED, which is the direct-to-Finance route).
+        // Create District criteria automatically when the application is in
+        // the District Officer queue — either via the standard path (ESCALATED)
+        // or the high-score direct path (DISTRICT_REVIEW).
+
+        String currentStatus = application.getApplicationStatus();
+        boolean inDistrictQueue =
+                STATUS_ESCALATED.equals(currentStatus)
+                        || STATUS_DISTRICT_REVIEW.equals(currentStatus);
 
         if (stage == VerificationStage.DISTRICT
-                && STATUS_ESCALATED.equals(
-                application.getApplicationStatus())
+                && inDistrictQueue
                 && (criteria == null || criteria.isEmpty())) {
 
             createDistrictCriteria(application);
@@ -683,19 +674,13 @@ public class VerificationServiceImpl implements VerificationService {
                             );
         }
 
-        // ------------------------------------------------------------
-        // Create Finance criteria automatically when ready for Finance
-        // ------------------------------------------------------------
-        //
-        // Two routes reach Finance:
-        //   - FIELD_APPROVED  : direct route (high score, low grant amount)
-        //   - DISTRICT_APPROVED : escalated route (via District Officer)
+        // Create Finance criteria automatically when ready for Finance.
+//
+// All applications reach Finance through the District Officer:
+// Field Officer -> District Officer -> Finance Officer.
 
         boolean readyForFinance =
-                STATUS_FIELD_APPROVED.equals(
-                        application.getApplicationStatus())
-                        || STATUS_DISTRICT_APPROVED.equals(
-                        application.getApplicationStatus());
+                STATUS_DISTRICT_APPROVED.equals(application.getApplicationStatus());
 
         if (stage == VerificationStage.FINANCE
                 && readyForFinance
@@ -903,14 +888,17 @@ public class VerificationServiceImpl implements VerificationService {
                 requireApplication(applicationId);
 
         /*
-         * District Officer works only after Field Officer approval.
+         * District Officer works after either:
+         *   ESCALATED      — standard path (score <= 80, via Field Officer)
+         *   DISTRICT_REVIEW — high-score path (score > 80, Field skipped)
          */
-        requireStatus(
+        requireStatusOneOf(
                 application,
-                STATUS_ESCALATED,
-                "District approval requires status ESCALATED. " +
+                "District approval requires status ESCALATED or DISTRICT_REVIEW. " +
                         "Current status: " +
-                        application.getApplicationStatus()
+                        application.getApplicationStatus(),
+                STATUS_ESCALATED,
+                STATUS_DISTRICT_REVIEW
         );
 
         Officer officer =
@@ -983,12 +971,13 @@ public class VerificationServiceImpl implements VerificationService {
         SchemeApplication application =
                 requireApplication(applicationId);
 
-        requireStatus(
+        requireStatusOneOf(
                 application,
-                STATUS_ESCALATED,
-                "District rejection requires status ESCALATED. " +
+                "District rejection requires status ESCALATED or DISTRICT_REVIEW. " +
                         "Current status: " +
-                        application.getApplicationStatus()
+                        application.getApplicationStatus(),
+                STATUS_ESCALATED,
+                STATUS_DISTRICT_REVIEW
         );
 
         Officer officer =
@@ -1044,17 +1033,15 @@ public class VerificationServiceImpl implements VerificationService {
                 requireApplication(applicationId);
 
         /*
-         * Finance receives applications via two routes:
-         *   - FIELD_APPROVED  : direct route (high score, low grant amount)
-         *   - DISTRICT_APPROVED : escalated route (via District Officer)
+         * Finance receives applications only after District Officer approval.
+         * Flow: Field Officer -> District Officer -> Finance Officer.
          */
-        requireStatusOneOf(
+        requireStatus(
                 application,
-                "Finance approval requires status FIELD_APPROVED or " +
-                        "DISTRICT_APPROVED. Current status: " +
-                        application.getApplicationStatus(),
-                STATUS_FIELD_APPROVED,
-                STATUS_DISTRICT_APPROVED
+                STATUS_DISTRICT_APPROVED,
+                "Finance approval requires status DISTRICT_APPROVED. " +
+                        "Current status: " +
+                        application.getApplicationStatus()
         );
 
         Officer officer =
@@ -1105,7 +1092,7 @@ public class VerificationServiceImpl implements VerificationService {
         if (maxAllowed != null && enteredAmount.compareTo(maxAllowed) > 0) {
             throw new InvalidVerificationTransitionException(
                     "sanctionedAmount (" + enteredAmount
-                    + ") must not exceed the scheme's grant amount (" + maxAllowed + ")."
+                            + ") must not exceed the scheme's grant amount (" + maxAllowed + ")."
             );
         }
 
@@ -1156,13 +1143,12 @@ public class VerificationServiceImpl implements VerificationService {
         SchemeApplication application =
                 requireApplication(applicationId);
 
-        requireStatusOneOf(
+        requireStatus(
                 application,
-                "Finance rejection requires status FIELD_APPROVED or " +
-                        "DISTRICT_APPROVED. Current status: " +
-                        application.getApplicationStatus(),
-                STATUS_FIELD_APPROVED,
-                STATUS_DISTRICT_APPROVED
+                STATUS_DISTRICT_APPROVED,
+                "Finance rejection requires status DISTRICT_APPROVED. " +
+                        "Current status: " +
+                        application.getApplicationStatus()
         );
 
         Officer officer =
@@ -1884,3 +1870,4 @@ public class VerificationServiceImpl implements VerificationService {
                 : fallback;
     }
 }
+

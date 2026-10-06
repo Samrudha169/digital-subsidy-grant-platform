@@ -91,21 +91,8 @@ class VerificationServiceImplTest {
     // SETUP
     // ========================================================================
 
-    @BeforeEach
-    void injectRoutingThresholds() {
-        // @Value fields are not injected by Mockito. Set them explicitly so
-        // that the routing logic uses the same defaults as application.properties.
-        ReflectionTestUtils.setField(
-                service,
-                "minimumDirectFinanceScore",
-                60
-        );
-        ReflectionTestUtils.setField(
-                service,
-                "maximumDirectFinanceGrantAmount",
-                10000
-        );
-    }
+    // No @BeforeEach field injection needed: routing threshold is a compile-time
+    // constant (HIGH_SCORE_THRESHOLD = 80) in VerificationServiceImpl.
 
     // ========================================================================
     // FIXTURES
@@ -403,8 +390,10 @@ class VerificationServiceImplTest {
     class StartVerification {
 
         @Test
-        void eligiblePendingApplicationMovesToUnderReview() {
+        @DisplayName("score <= 80: Field Officer starts verification -> UNDER_REVIEW")
+        void lowScorePendingApplicationMovesToUnderReview() {
 
+            // score=40, which is <= 80 threshold -> standard Field path
             SchemeApplication application =
                     application("PENDING");
 
@@ -414,17 +403,22 @@ class VerificationServiceImplTest {
                     Optional.of(application)
             );
 
+            EligibilityResult lowScore = EligibilityResult.builder()
+                    .beneficiaryId(BENEFICIARY_ID)
+                    .schemeId(SCHEME_ID)
+                    .schemeName("PM-KISAN")
+                    .totalScore(40)
+                    .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
+
             given(
                     eligibilityResultRepository
                             .findByBeneficiaryIdAndSchemeId(
                                     BENEFICIARY_ID,
                                     SCHEME_ID
                             )
-            ).willReturn(
-                    Optional.of(
-                            eligibleResult()
-                    )
-            );
+            ).willReturn(Optional.of(lowScore));
 
             mockOfficer(
                     "field.officer",
@@ -458,6 +452,152 @@ class VerificationServiceImplTest {
             verify(
                     applicationRepository
             ).save(application);
+        }
+
+        @Test
+        @DisplayName("score > 80: startVerification routes directly to DISTRICT_REVIEW (no Field Officer)")
+        void highScorePendingApplicationMovesToDistrictReview() {
+
+            // score=100, which is > 80 threshold -> skip Field Officer
+            SchemeApplication application =
+                    application("PENDING");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())   // score = 100
+            );
+
+            // ANY officer role is acceptable for high-score path
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.startVerification(
+                            APP_ID,
+                            request(
+                                    "district.officer",
+                                    null
+                            )
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "DISTRICT_REVIEW"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "DISTRICT_REVIEW"
+            );
+
+            verify(
+                    applicationRepository
+            ).save(application);
+        }
+
+        @Test
+        @DisplayName("score > 80: non-FieldOfficer caller is accepted (role not required)")
+        void highScoreStartVerificationAcceptsAnyOfficerRole() {
+
+            SchemeApplication application =
+                    application("PENDING");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(
+                    Optional.of(eligibleResult())  // score = 100
+            );
+
+            // Finance officer submitting — must NOT be rejected for wrong role
+            mockOfficer(
+                    "finance.officer",
+                    OfficerRole.FINANCE_APPROVER
+            );
+
+            mockSave();
+            mockHistory();
+
+            assertThatCode(
+                    () -> service.startVerification(
+                            APP_ID,
+                            request("finance.officer", null)
+                    )
+            ).doesNotThrowAnyException();
+
+            assertThat(application.getApplicationStatus())
+                    .isEqualTo("DISTRICT_REVIEW");
+        }
+
+        @Test
+        @DisplayName("score <= 80: non-FieldOfficer caller is rejected")
+        void lowScoreStartVerificationRejectsNonFieldOfficer() {
+
+            SchemeApplication application =
+                    application("PENDING");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            EligibilityResult lowScore = EligibilityResult.builder()
+                    .beneficiaryId(BENEFICIARY_ID)
+                    .schemeId(SCHEME_ID)
+                    .schemeName("PM-KISAN")
+                    .totalScore(40)
+                    .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
+
+            given(
+                    eligibilityResultRepository
+                            .findByBeneficiaryIdAndSchemeId(
+                                    BENEFICIARY_ID,
+                                    SCHEME_ID
+                            )
+            ).willReturn(Optional.of(lowScore));
+
+            // District Officer trying to start a low-score application -> rejected
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            assertThatThrownBy(
+                    () -> service.startVerification(
+                            APP_ID,
+                            request("district.officer", null)
+                    )
+            ).isInstanceOf(InvalidVerificationTransitionException.class);
         }
 
         @Test
@@ -573,14 +713,12 @@ class VerificationServiceImplTest {
     class FieldOfficer {
 
         @Test
-        void fieldApprovalWithAllCriteriaMovesToFieldApproved() {
+        @DisplayName("Field approval with all criteria verified -> ESCALATED (District queue)")
+        void fieldApprovalWithAllCriteriaMovesToEscalated() {
 
-            // score=100, grant=5000 (below 10000 threshold) → FIELD_APPROVED
+            // score=40 (<= 80) -> standard path; after Field approve -> ESCALATED
             SchemeApplication application =
-                    application(
-                            "UNDER_REVIEW",
-                            new java.math.BigDecimal("5000")
-                    );
+                    application("UNDER_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -588,15 +726,22 @@ class VerificationServiceImplTest {
                     Optional.of(application)
             );
 
+            EligibilityResult lowScore = EligibilityResult.builder()
+                    .beneficiaryId(BENEFICIARY_ID)
+                    .schemeId(SCHEME_ID)
+                    .schemeName("PM-KISAN")
+                    .totalScore(40)
+                    .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
+
             given(
                     eligibilityResultRepository
                             .findByBeneficiaryIdAndSchemeId(
                                     BENEFICIARY_ID,
                                     SCHEME_ID
                             )
-            ).willReturn(
-                    Optional.of(eligibleResult())
-            );
+            ).willReturn(Optional.of(lowScore));
 
             mockOfficer(
                     "field.officer",
@@ -625,13 +770,13 @@ class VerificationServiceImplTest {
             assertThat(
                     application.getApplicationStatus()
             ).isEqualTo(
-                    "FIELD_APPROVED"
+                    "ESCALATED"
             );
 
             assertThat(
                     response.getApplicationStatus()
             ).isEqualTo(
-                    "FIELD_APPROVED"
+                    "ESCALATED"
             );
 
             verify(
@@ -759,14 +904,12 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        void completeFieldWithAllCriteriaMovesToFieldApproved() {
+        @DisplayName("completeFieldVerification with all criteria verified -> ESCALATED")
+        void completeFieldWithAllCriteriaMovesToEscalated() {
 
-            // score=100, grant=5000 (below 10000 threshold) → FIELD_APPROVED
+            // score=40 (<= 80) -> after field completion -> ESCALATED
             SchemeApplication application =
-                    application(
-                            "UNDER_REVIEW",
-                            new java.math.BigDecimal("5000")
-                    );
+                    application("UNDER_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -774,15 +917,22 @@ class VerificationServiceImplTest {
                     Optional.of(application)
             );
 
+            EligibilityResult lowScore = EligibilityResult.builder()
+                    .beneficiaryId(BENEFICIARY_ID)
+                    .schemeId(SCHEME_ID)
+                    .schemeName("PM-KISAN")
+                    .totalScore(40)
+                    .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
+
             given(
                     eligibilityResultRepository
                             .findByBeneficiaryIdAndSchemeId(
                                     BENEFICIARY_ID,
                                     SCHEME_ID
                             )
-            ).willReturn(
-                    Optional.of(eligibleResult())
-            );
+            ).willReturn(Optional.of(lowScore));
 
             mockOfficer(
                     "field.officer",
@@ -808,7 +958,7 @@ class VerificationServiceImplTest {
             assertThat(
                     application.getApplicationStatus()
             ).isEqualTo(
-                    "FIELD_APPROVED"
+                    "ESCALATED"
             );
 
             verify(
@@ -858,27 +1008,23 @@ class VerificationServiceImplTest {
     }
 
     // ========================================================================
-    // FIELD OFFICER — ROUTING
+    // FIELD OFFICER — ROUTING (score-based)
     // ========================================================================
 
     @Nested
     @DisplayName("Field Officer Routing")
     class FieldOfficerRouting {
 
-        // Default thresholds from application.properties:
-        //   minimumDirectFinanceScore         = 60
-        //   maximumDirectFinanceGrantAmount   = 10000
+        // Routing threshold: HIGH_SCORE_THRESHOLD = 80 (compile-time constant)
+        // score > 80 -> DISTRICT_REVIEW (Field skipped)
+        // score <= 80 -> after Field approve -> ESCALATED
 
         @Test
-        @DisplayName("high score + low grant amount routes to FIELD_APPROVED (direct Finance)")
-        void highScoreAndLowGrantRoutesToFieldApproved() {
+        @DisplayName("score <= 80: Field approve routes to ESCALATED (District queue)")
+        void lowScoreFieldApproveRoutesToEscalated() {
 
-            // score=100 (>=60), grant=6000 (<=10000) → FIELD_APPROVED
             SchemeApplication application =
-                    application(
-                            "UNDER_REVIEW",
-                            new java.math.BigDecimal("6000")
-                    );
+                    application("UNDER_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -886,59 +1032,14 @@ class VerificationServiceImplTest {
                     Optional.of(application)
             );
 
-            given(
-                    eligibilityResultRepository
-                            .findByBeneficiaryIdAndSchemeId(
-                                    BENEFICIARY_ID,
-                                    SCHEME_ID
-                            )
-            ).willReturn(
-                    Optional.of(eligibleResult())   // score = 100
-            );
-
-            mockOfficer(
-                    "field.officer",
-                    OfficerRole.FIELD_OFFICER
-            );
-
-            mockCriteria(
-                    application,
-                    VerificationStage.FIELD,
-                    4,
-                    4
-            );
-
-            mockSave();
-            mockHistory();
-
-            service.approveAtField(
-                    APP_ID,
-                    request("field.officer", null)
-            );
-
-            assertThat(
-                    application.getApplicationStatus()
-            ).isEqualTo(
-                    "FIELD_APPROVED"
-            );
-        }
-
-        @Test
-        @DisplayName("high score + grant above threshold routes to ESCALATED")
-        void highScoreAndHighGrantRoutesToEscalated() {
-
-            // score=100 (>=60), grant=50000 (>10000) → ESCALATED
-            SchemeApplication application =
-                    application(
-                            "UNDER_REVIEW",
-                            new java.math.BigDecimal("50000")
-                    );
-
-            given(
-                    applicationRepository.findById(APP_ID)
-            ).willReturn(
-                    Optional.of(application)
-            );
+            EligibilityResult lowScore = EligibilityResult.builder()
+                    .beneficiaryId(BENEFICIARY_ID)
+                    .schemeId(SCHEME_ID)
+                    .schemeName("PM-KISAN")
+                    .totalScore(40)   // <= 80
+                    .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
 
             given(
                     eligibilityResultRepository
@@ -946,9 +1047,7 @@ class VerificationServiceImplTest {
                                     BENEFICIARY_ID,
                                     SCHEME_ID
                             )
-            ).willReturn(
-                    Optional.of(eligibleResult())   // score = 100
-            );
+            ).willReturn(Optional.of(lowScore));
 
             mockOfficer(
                     "field.officer",
@@ -978,15 +1077,11 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        @DisplayName("score below direct-finance threshold routes to ESCALATED regardless of grant")
-        void lowScoreRoutesToEscalatedRegardlessOfGrant() {
+        @DisplayName("boundary score = 80: Field approve routes to ESCALATED")
+        void boundaryScoreFieldApproveRoutesToEscalated() {
 
-            // score=40 (<60), grant=500 (<=10000) → ESCALATED (score fails)
             SchemeApplication application =
-                    application(
-                            "UNDER_REVIEW",
-                            new java.math.BigDecimal("500")
-                    );
+                    application("UNDER_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -994,15 +1089,14 @@ class VerificationServiceImplTest {
                     Optional.of(application)
             );
 
-            EligibilityResult lowScore =
-                    EligibilityResult.builder()
-                            .beneficiaryId(BENEFICIARY_ID)
-                            .schemeId(SCHEME_ID)
-                            .schemeName("PM-KISAN")
-                            .totalScore(40)
-                            .eligibilityStatus(EligibilityStatus.ELIGIBLE)
-                            .evaluatedAt(java.time.LocalDateTime.now())
-                            .build();
+            EligibilityResult boundaryScore = EligibilityResult.builder()
+                    .beneficiaryId(BENEFICIARY_ID)
+                    .schemeId(SCHEME_ID)
+                    .schemeName("PM-KISAN")
+                    .totalScore(80)  // exactly 80 -> NOT > 80 -> ESCALATED path
+                    .eligibilityStatus(EligibilityStatus.ELIGIBLE)
+                    .evaluatedAt(LocalDateTime.now())
+                    .build();
 
             given(
                     eligibilityResultRepository
@@ -1010,63 +1104,7 @@ class VerificationServiceImplTest {
                                     BENEFICIARY_ID,
                                     SCHEME_ID
                             )
-            ).willReturn(
-                    Optional.of(lowScore)
-            );
-
-            mockOfficer(
-                    "field.officer",
-                    OfficerRole.FIELD_OFFICER
-            );
-
-            mockCriteria(
-                    application,
-                    VerificationStage.FIELD,
-                    4,
-                    4
-            );
-
-            mockSave();
-            mockHistory();
-
-            service.approveAtField(
-                    APP_ID,
-                    request("field.officer", null)
-            );
-
-            assertThat(
-                    application.getApplicationStatus()
-            ).isEqualTo(
-                    "ESCALATED"
-            );
-        }
-
-        @Test
-        @DisplayName("null grant amount routes to ESCALATED")
-        void nullGrantAmountRoutesToEscalated() {
-
-            // score=100 (>=60), grant=null → ESCALATED (null treated as above threshold)
-            SchemeApplication application =
-                    application(
-                            "UNDER_REVIEW",
-                            null   // null grant amount
-                    );
-
-            given(
-                    applicationRepository.findById(APP_ID)
-            ).willReturn(
-                    Optional.of(application)
-            );
-
-            given(
-                    eligibilityResultRepository
-                            .findByBeneficiaryIdAndSchemeId(
-                                    BENEFICIARY_ID,
-                                    SCHEME_ID
-                            )
-            ).willReturn(
-                    Optional.of(eligibleResult())   // score = 100
-            );
+            ).willReturn(Optional.of(boundaryScore));
 
             mockOfficer(
                     "field.officer",
@@ -1304,6 +1342,95 @@ class VerificationServiceImplTest {
                             InvalidVerificationTransitionException.class
                     );
         }
+
+        @Test
+        @DisplayName("DISTRICT_REVIEW (high-score path) -> District approve -> DISTRICT_APPROVED")
+        void districtApproveFromDistrictReviewMovesToDistrictApproved() {
+
+            // High-score applications skip Field Officer and arrive at District
+            // with status DISTRICT_REVIEW.
+            SchemeApplication application =
+                    application("DISTRICT_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            mockCriteria(
+                    application,
+                    VerificationStage.DISTRICT,
+                    4,
+                    4
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.approveAtDistrict(
+                            APP_ID,
+                            request("district.officer", null)
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "DISTRICT_APPROVED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "DISTRICT_APPROVED"
+            );
+        }
+
+        @Test
+        @DisplayName("DISTRICT_REVIEW (high-score path) -> District reject -> REJECTED")
+        void districtRejectFromDistrictReviewMovesToRejected() {
+
+            SchemeApplication application =
+                    application("DISTRICT_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            mockOfficer(
+                    "district.officer",
+                    OfficerRole.DISTRICT_OFFICER
+            );
+
+            mockSave();
+            mockHistory();
+
+            VerificationStatusResponse response =
+                    service.rejectAtDistrict(
+                            APP_ID,
+                            request("district.officer", "Does not meet district criteria.")
+                    );
+
+            assertThat(
+                    application.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
+
+            assertThat(
+                    response.getApplicationStatus()
+            ).isEqualTo(
+                    "REJECTED"
+            );
+        }
     }
 
     // ========================================================================
@@ -1364,16 +1491,62 @@ class VerificationServiceImplTest {
         }
 
         /**
-         * FIELD_APPROVED is the direct-to-Finance route.
-         * getCriteria(DISTRICT) must NOT create District criteria for a
-         * FIELD_APPROVED application — it bypassed the District Officer.
+         * DISTRICT_REVIEW is the high-score direct path.
+         * getCriteria(DISTRICT) must auto-create District criteria for
+         * DISTRICT_REVIEW applications (same as ESCALATED).
          */
         @Test
-        @DisplayName("FIELD_APPROVED application does NOT get District criteria created")
-        void fieldApprovedApplicationDoesNotGetDistrictCriteriaCreated() {
+        @DisplayName("DISTRICT_REVIEW application gets District criteria created on first getCriteria call")
+        void districtReviewApplicationGetsDistrictCriteriaCreated() {
 
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("DISTRICT_REVIEW");
+
+            given(
+                    applicationRepository.findById(APP_ID)
+            ).willReturn(
+                    Optional.of(application)
+            );
+
+            given(
+                    verificationCriterionRepository
+                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
+                                    APP_ID,
+                                    VerificationStage.DISTRICT
+                            )
+            ).willReturn(List.of())
+             .willReturn(
+                    List.of(
+                            criterion(
+                                    application,
+                                    VerificationStage.DISTRICT,
+                                    1,
+                                    VerificationCriterionStatus.PENDING
+                            )
+                    )
+            );
+
+            List<VerificationCriterionResponse> result =
+                    service.getCriteria(
+                            APP_ID,
+                            VerificationStage.DISTRICT
+                    );
+
+            assertThat(result)
+                    .isNotNull()
+                    .isNotEmpty();
+        }
+
+        /**
+         * UNDER_REVIEW applications are still at the Field stage.
+         * getCriteria(DISTRICT) must NOT auto-create District criteria yet.
+         */
+        @Test
+        @DisplayName("UNDER_REVIEW application does NOT get District criteria auto-created")
+        void underReviewApplicationDoesNotGetDistrictCriteriaCreated() {
+
+            SchemeApplication application =
+                    application("UNDER_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -1398,53 +1571,6 @@ class VerificationServiceImplTest {
             assertThat(result)
                     .isNotNull()
                     .isEmpty();
-        }
-
-        /**
-         * After automatic routing sends a direct-Finance application to
-         * FIELD_APPROVED, getCriteria(FINANCE) must auto-create Finance
-         * criteria (was broken: it was only checking DISTRICT_APPROVED).
-         */
-        @Test
-        @DisplayName("FIELD_APPROVED application gets Finance criteria created on first getCriteria call")
-        void fieldApprovedApplicationGetsFinanceCriteriaCreated() {
-
-            SchemeApplication application =
-                    application("FIELD_APPROVED");
-
-            given(
-                    applicationRepository.findById(APP_ID)
-            ).willReturn(
-                    Optional.of(application)
-            );
-
-            given(
-                    verificationCriterionRepository
-                            .findBySchemeApplicationIdAndStageOrderByIdAsc(
-                                    APP_ID,
-                                    VerificationStage.FINANCE
-                            )
-            ).willReturn(List.of())
-             .willReturn(
-                    List.of(
-                            criterion(
-                                    application,
-                                    VerificationStage.FINANCE,
-                                    1,
-                                    VerificationCriterionStatus.PENDING
-                            )
-                    )
-            );
-
-            List<VerificationCriterionResponse> result =
-                    service.getCriteria(
-                            APP_ID,
-                            VerificationStage.FINANCE
-                    );
-
-            assertThat(result)
-                    .isNotNull()
-                    .isNotEmpty();
         }
 
         /**
@@ -1668,57 +1794,6 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        @DisplayName("FIELD_APPROVED + all Finance criteria VERIFIED -> APPROVED (direct route)")
-        void financeApproveFromFieldApprovedMovesToApproved() {
-
-            // Direct Finance route: high score + low grant skipped District.
-            SchemeApplication application =
-                    application("FIELD_APPROVED", new java.math.BigDecimal("6000"));
-
-            given(
-                    applicationRepository.findById(APP_ID)
-            ).willReturn(
-                    Optional.of(application)
-            );
-
-            mockOfficer(
-                    "finance.officer",
-                    OfficerRole.FINANCE_APPROVER
-            );
-
-            mockCriteria(
-                    application,
-                    VerificationStage.FINANCE,
-                    4,
-                    4
-            );
-
-            mockSave();
-            mockHistory();
-
-            VerificationStatusResponse response =
-                    service.approveAtFinance(
-                            APP_ID,
-                            financeRequest(
-                                    "finance.officer",
-                                    new java.math.BigDecimal("5000")
-                            )
-                    );
-
-            assertThat(
-                    application.getApplicationStatus()
-            ).isEqualTo(
-                    "APPROVED"
-            );
-
-            assertThat(
-                    response.getApplicationStatus()
-            ).isEqualTo(
-                    "APPROVED"
-            );
-        }
-
-        @Test
         @DisplayName("UNDER_REVIEW -> Finance approval rejected")
         void financeCannotApproveUnderReview() {
 
@@ -1752,7 +1827,7 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        @DisplayName("ESCALATED -> Finance approval rejected")
+        @DisplayName("ESCALATED -> Finance approval rejected (must go through District first)")
         void financeCannotApproveEscalated() {
 
             SchemeApplication application =
@@ -1785,11 +1860,13 @@ class VerificationServiceImplTest {
         }
 
         @Test
-        @DisplayName("FIELD_APPROVED without all Finance criteria -> rejected")
-        void financeCannotApproveFieldApprovedWithIncompleteCriteria() {
+        @DisplayName("DISTRICT_REVIEW -> Finance approval rejected (must go through District first)")
+        void financeCannotApproveDistrictReview() {
 
+            // High-score applications reach DISTRICT_REVIEW but still must pass
+            // through District Officer before Finance can act.
             SchemeApplication application =
-                    application("FIELD_APPROVED");
+                    application("DISTRICT_REVIEW");
 
             given(
                     applicationRepository.findById(APP_ID)
@@ -1800,13 +1877,6 @@ class VerificationServiceImplTest {
             mockOfficer(
                     "finance.officer",
                     OfficerRole.FINANCE_APPROVER
-            );
-
-            mockCriteria(
-                    application,
-                    VerificationStage.FINANCE,
-                    4,
-                    1
             );
 
             assertThatThrownBy(
@@ -1821,9 +1891,6 @@ class VerificationServiceImplTest {
             )
                     .isInstanceOf(
                             InvalidVerificationTransitionException.class
-                    )
-                    .hasMessageContaining(
-                            "cannot approve until all verification criteria are VERIFIED"
                     );
         }
 
