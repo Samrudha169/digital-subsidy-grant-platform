@@ -96,6 +96,16 @@
             <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
+        <!-- dotenv-java — loads local .env file into System properties before
+             Spring resolves ${…} placeholders; eliminates the need to configure
+             IntelliJ environment variables manually on every restart.
+             Version 2.3.2 targets Java 8+, compatible with all JDK versions. -->
+        <dependency>
+            <groupId>io.github.cdimascio</groupId>
+            <artifactId>dotenv-java</artifactId>
+            <version>2.3.2</version>
+        </dependency>
+
         <!-- Apache POI — XLSX report generation -->
         <dependency>
             <groupId>org.apache.poi</groupId>

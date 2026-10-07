@@ -39,11 +39,11 @@ public class EmailOtpServiceImpl implements EmailOtpService {
     private final BeneficiaryRepository beneficiaryRepository;
     private final JavaMailSender mailSender;
 
-    /** Sender address for OTP emails — read from {@code app.otp.from-address}. */
+    /** Sender address for OTP emails -- read from {@code app.otp.from-address}. */
     @Value("${app.otp.from-address:no-reply@dsgp.gov.in}")
     private String fromAddress;
 
-    /** OTP lifetime in minutes — read from {@code app.otp.expiry-minutes}. */
+    /** OTP lifetime in minutes -- read from {@code app.otp.expiry-minutes}. */
     @Value("${app.otp.expiry-minutes:10}")
     private int otpExpiryMinutes;
 
@@ -56,9 +56,9 @@ public class EmailOtpServiceImpl implements EmailOtpService {
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
     // PUBLIC API
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
 
     /**
      * {@inheritDoc}
@@ -82,7 +82,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
 
         beneficiaryRepository.save(beneficiary);
 
-        // Dispatch email — exception propagates to caller (logged there)
+        // Dispatch email -- exception propagates to caller (logged there)
         dispatchOtpEmail(email, otp, beneficiary.getFullName());
 
         log.info(
@@ -97,10 +97,10 @@ public class EmailOtpServiceImpl implements EmailOtpService {
      *
      * <p>Verification logic:
      * <ul>
-     *   <li>No OTP on record → already verified or OTP was never issued.</li>
-     *   <li>OTP expired → reject with expiry message.</li>
-     *   <li>OTP mismatch → reject with invalid-code message.</li>
-     *   <li>OTP matches and not expired → mark verified, clear OTP fields.</li>
+     *   <li>No OTP on record -- already verified or OTP was never issued.</li>
+     *   <li>OTP expired -- reject with expiry message.</li>
+     *   <li>OTP mismatch -- reject with invalid-code message.</li>
+     *   <li>OTP matches and not expired -- mark verified, clear OTP fields.</li>
      * </ul>
      */
     @Override
@@ -145,7 +145,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
             return new OtpVerifyResponse(false, "Invalid verification code. Please try again.");
         }
 
-        // ── Success ──────────────────────────────────────────────────────────
+        // -- Success --------------------------------------------------------------
         beneficiary.setEmailVerified(true);
         beneficiary.setOtpCode(null);
         beneficiary.setOtpExpiresAt(null);
@@ -185,7 +185,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
             return new OtpVerifyResponse(true, "Email is already verified.");
         }
 
-        // ── Cooldown check ────────────────────────────────────────────────────
+        // -- Cooldown check -------------------------------------------------------
         if (beneficiary.getOtpExpiresAt() != null) {
 
             LocalDateTime earliestResend = beneficiary
@@ -195,7 +195,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
 
             if (LocalDateTime.now().isBefore(earliestResend)) {
                 log.warn(
-                        "Resend OTP blocked — cooldown active for email {}",
+                        "Resend OTP blocked -- cooldown active for email {}",
                         maskEmail(email)
                 );
                 return new OtpVerifyResponse(
@@ -206,7 +206,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
             }
         }
 
-        // ── Issue and send fresh OTP ──────────────────────────────────────────
+        // -- Issue and send fresh OTP ---------------------------------------------
         String otp = generateOtp();
 
         beneficiary.setOtpCode(otp);
@@ -242,16 +242,16 @@ public class EmailOtpServiceImpl implements EmailOtpService {
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
     // PRIVATE HELPERS
-    // ─────────────────────────────────────────────────────────────────────────
+    // -------------------------------------------------------------------------
 
     /**
-     * Generates a cryptographically random 6-digit OTP (000000–999999).
-     * Uses {@link SecureRandom} — not {@code Math.random()}.
+     * Generates a cryptographically random 6-digit OTP (000000-999999).
+     * Uses {@link SecureRandom} -- not {@code Math.random()}.
      */
     private String generateOtp() {
-        int code = SECURE_RANDOM.nextInt(1_000_000);   // 0 – 999999
+        int code = SECURE_RANDOM.nextInt(1_000_000);   // 0 - 999999
         return String.format("%06d", code);             // zero-pad to 6 digits
     }
 
@@ -261,46 +261,23 @@ public class EmailOtpServiceImpl implements EmailOtpService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromAddress);
         message.setTo(toEmail);
-        message.setSubject("DSGP — Your Email Verification Code");
+        message.setSubject("DSGP - Your Email Verification Code");
         message.setText(buildEmailBody(fullName, otp));
 
-        // TEMPORARY DIAGNOSTIC — remove after SMTP issue is resolved
-        try {
-            mailSender.send(message);
-        } catch (Exception e) {
-            log.error("[SMTP-DIAG] mailSender.send() threw: {} — {}",
-                    e.getClass().getName(), e.getMessage());
-            Throwable t = e.getCause();
-            int d = 0;
-            while (t != null && d < 6) {
-                log.error("[SMTP-DIAG] cause[{}] {}: {}",
-                        d, t.getClass().getName(), t.getMessage());
-                t = t.getCause();
-                d++;
-            }
-            // Rethrow so the afterCommit handler still logs and isolates from registration
-            if (e instanceof org.springframework.mail.MailException me) throw me;
-            throw new org.springframework.mail.MailSendException("SMTP send failed", e);
-        }
+        mailSender.send(message);
     }
 
     /** Constructs the plain-text OTP email body. */
     private String buildEmailBody(String fullName, String otp) {
-        return """
-                Dear %s,
-
-                Thank you for registering on the Digital Subsidy & Grant Platform (DSGP).
-
-                Your email verification code is:
-
-                    %s
-
-                This code is valid for %d minutes.
-
-                If you did not register on DSGP, please ignore this email.
-
-                — DSGP Support Team
-                """.formatted(fullName, otp, otpExpiryMinutes);
+        return String.format(
+                "Dear %s,%n%n" +
+                "Thank you for registering on the Digital Subsidy & Grant Platform (DSGP).%n%n" +
+                "Your email verification code is:%n%n" +
+                "    %s%n%n" +
+                "This code is valid for %d minutes.%n%n" +
+                "If you did not register on DSGP, please ignore this email.%n%n" +
+                "-- DSGP Support Team",
+                fullName, otp, otpExpiryMinutes);
     }
 
     /** Finds the beneficiary by email or throws if not found. */
