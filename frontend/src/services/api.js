@@ -304,4 +304,56 @@ export const resendRegistrationOtp = async (email) => {
 
     return data;
 };
+
+
+// ============================================================
+// OFFICER OTP (officer login second factor)
+// ============================================================
+
+/**
+ * Submits the 6-digit OTP entered by an officer to complete step-2 login.
+ * Calls POST /auth/officer-verify-otp.
+ *
+ * @param {number} officerId - the officer's primary key (from step-1 response)
+ * @param {string} otp       - the 6-digit code entered by the officer
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export const verifyOfficerOtp = async (officerId, otp) => {
+    const response = await fetch(
+        `${API_BASE_URL}/auth/officer-verify-otp`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ officerId, otp })
+        }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    return data;
+};
+
+
+/**
+ * Requests a fresh OTP to be sent to the officer's registered email.
+ * Calls POST /auth/officer-resend-otp.
+ * The previous OTP is always invalidated before the new one is dispatched.
+ *
+ * @param {number} officerId - the officer's primary key
+ * @returns {Promise<{ success: boolean, message: string }>}
+ */
+export const resendOfficerOtp = async (officerId) => {
+    const response = await fetch(
+        `${API_BASE_URL}/auth/officer-resend-otp`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ officerId })
+        }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    return data;
+};
 

@@ -11,6 +11,8 @@ public interface OfficerRepository extends JpaRepository<Officer, Long> {
 
     Optional<Officer> findByUsername(String username);
 
+    Optional<Officer> findByEmail(String email);
+
     boolean existsByUsername(String username);
 
     boolean existsByUsernameAndIdNot(String username, Long id);

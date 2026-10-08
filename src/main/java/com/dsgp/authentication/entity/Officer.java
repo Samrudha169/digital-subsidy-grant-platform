@@ -2,6 +2,7 @@ package com.dsgp.authentication.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.time.LocalDateTime;
 
 /**
  * JPA entity representing a government officer account.
@@ -57,4 +58,21 @@ public class Officer {
     @Column(name = "active", nullable = false)
     @Builder.Default
     private boolean active = true;
+
+    // ── Email OTP fields (officer login second factor) ─────────────────────
+
+    /**
+     * 6-digit OTP issued during the officer login flow.
+     * Null when no login OTP is pending.
+     * Never returned in API responses.
+     */
+    @Column(name = "otp_code", length = 6)
+    private String otpCode;
+
+    /**
+     * Expiry timestamp for the pending OTP.
+     * Null when {@code otpCode} is null.
+     */
+    @Column(name = "otp_expires_at")
+    private LocalDateTime otpExpiresAt;
 }
