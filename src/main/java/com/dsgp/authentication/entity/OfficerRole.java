@@ -1,16 +1,20 @@
 package com.dsgp.authentication.entity;
 
 /**
- * Roles available to government officers on the DSGP platform.
+ * Roles available to users on the DSGP platform.
  *
- * <ul>
- *   <li>{@link #FIELD_OFFICER}    — Ground-level verification and document checking.</li>
- *   <li>{@link #DISTRICT_OFFICER} — District-level review of escalated applications.</li>
- *   <li>{@link #FINANCE_APPROVER} — Final financial approval before disbursement.</li>
- * </ul>
+ * FIELD_OFFICER     — Ground-level verification and document checking.
+ * DISTRICT_OFFICER  — District-level review of escalated applications.
+ * FINANCE_APPROVER  — Final financial approval before disbursement.
+ * ADMIN             — Administrative management of the DSGP platform.
  */
 public enum OfficerRole {
+
     FIELD_OFFICER,
+
     DISTRICT_OFFICER,
-    FINANCE_APPROVER
+
+    FINANCE_APPROVER,
+
+    ADMIN
 }

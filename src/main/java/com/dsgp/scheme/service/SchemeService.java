@@ -10,49 +10,44 @@ import java.util.List;
  *
  * <p>All operations use {@link SchemeRequest} / {@link SchemeResponse} DTOs
  * so that the raw {@link com.dsgp.beneficiary.entity.Scheme} entity is never
- * exposed outside the service boundary.
+ * exposed outside the service boundary.</p>
  */
 public interface SchemeService {
 
     /**
      * Creates a new scheme from the request DTO.
-     *
-     * @param request the scheme data
-     * @return the created scheme as a response DTO
      */
     SchemeResponse createScheme(SchemeRequest request);
 
     /**
      * Returns all active schemes.
-     *
-     * @return list of active scheme responses
      */
     List<SchemeResponse> getAllActiveSchemes();
 
     /**
-     * Returns the scheme with the given ID.
+     * Returns all schemes, including inactive schemes.
      *
-     * @param id the scheme primary key
-     * @return the scheme as a response DTO
-     * @throws com.dsgp.scheme.exception.SchemeNotFoundException if not found
+     * <p>Used by the Admin side for scheme management.</p>
+     */
+    List<SchemeResponse> getAllSchemes();
+
+    /**
+     * Returns the scheme with the given ID.
      */
     SchemeResponse getSchemeById(Long id);
 
     /**
      * Updates an existing scheme.
-     *
-     * @param id      the scheme primary key
-     * @param request the updated scheme data
-     * @return the updated scheme as a response DTO
-     * @throws com.dsgp.scheme.exception.SchemeNotFoundException if not found
      */
     SchemeResponse updateScheme(Long id, SchemeRequest request);
 
     /**
-     * Soft-deactivates a scheme (sets {@code active = false}).
-     *
-     * @param id the scheme primary key
-     * @throws com.dsgp.scheme.exception.SchemeNotFoundException if not found
+     * Soft-deactivates a scheme.
      */
     void deactivateScheme(Long id);
+
+    /**
+     * Reactivates a previously deactivated scheme.
+     */
+    SchemeResponse reactivateScheme(Long id);
 }
