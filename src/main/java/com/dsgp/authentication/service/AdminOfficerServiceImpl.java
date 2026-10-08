@@ -3,6 +3,7 @@ package com.dsgp.authentication.service;
 import com.dsgp.authentication.dto.AdminOfficerRequest;
 import com.dsgp.authentication.dto.AdminOfficerResponse;
 import com.dsgp.authentication.entity.Officer;
+import com.dsgp.authentication.entity.OfficerRole;
 import com.dsgp.authentication.repository.OfficerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -187,6 +188,24 @@ public class AdminOfficerServiceImpl implements AdminOfficerService {
         if (request.getRole() == null) {
             throw new IllegalArgumentException(
                     "Officer role is required."
+            );
+        }
+
+        /*
+         * Email is mandatory for OTP-based roles.
+         * FIELD_OFFICER, DISTRICT_OFFICER, and FINANCE_APPROVER
+         * authenticate via email OTP, so an email address must
+         * always be provided when creating or updating an officer
+         * with one of these roles.
+         *
+         * ADMIN uses a different login path and is excluded.
+         */
+        if (request.getRole() != OfficerRole.ADMIN &&
+                (request.getEmail() == null ||
+                        request.getEmail().isBlank())) {
+
+            throw new IllegalArgumentException(
+                    "Email is required for officer OTP login."
             );
         }
     }

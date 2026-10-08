@@ -342,6 +342,20 @@ function AdminDashboard() {
             return;
         }
 
+        const emailTrimmed = officerForm.email.trim();
+
+        if (!emailTrimmed) {
+            setError('A valid email address is required.');
+            return;
+        }
+
+        const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailPattern.test(emailTrimmed)) {
+            setError('A valid email address is required.');
+            return;
+        }
+
         try {
             setOfficerSaving(true);
 
@@ -2230,7 +2244,7 @@ function AdminDashboard() {
 
                             <div className="admin-field">
                                 <label>
-                                    Email
+                                    Email *
                                 </label>
 
                                 <input
@@ -2243,6 +2257,7 @@ function AdminDashboard() {
                                         handleOfficerChange
                                     }
                                     placeholder="Enter email address"
+                                    required
                                 />
                             </div>
 
@@ -2298,10 +2313,6 @@ function AdminDashboard() {
 
                                     <option value="FINANCE_APPROVER">
                                         Finance Approver
-                                    </option>
-
-                                    <option value="ADMIN">
-                                        Administrator
                                     </option>
                                 </select>
                             </div>
