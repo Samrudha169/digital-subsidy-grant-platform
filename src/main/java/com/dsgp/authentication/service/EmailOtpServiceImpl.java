@@ -243,6 +243,174 @@ public class EmailOtpServiceImpl implements EmailOtpService {
     }
 
     // -------------------------------------------------------------------------
+    // LOGIN OTP PUBLIC API
+    // -------------------------------------------------------------------------
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Generates and stores a fresh login OTP in the dedicated
+     * {@code login_otp_code} / {@code login_otp_expires_at} columns.
+     * Does not touch {@code otp_code} or {@code email_verified}.
+     */
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendLoginOtp(String email) {
+
+        Beneficiary beneficiary = findBeneficiaryOrThrow(email);
+
+        String otp = generateOtp();
+
+        beneficiary.setLoginOtpCode(otp);
+        beneficiary.setLoginOtpExpiresAt(
+                LocalDateTime.now().plusMinutes(otpExpiryMinutes)
+        );
+
+        beneficiaryRepository.save(beneficiary);
+
+        dispatchLoginOtpEmail(email, otp, beneficiary.getFullName());
+
+        log.info(
+                "Login OTP issued for beneficiary email {} (expires in {} minutes)",
+                maskEmail(email),
+                otpExpiryMinutes
+        );
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Validates the login OTP stored in {@code login_otp_code}.
+     * On success clears both login OTP columns.
+     * Does <em>not</em> modify {@code emailVerified}.
+     */
+    @Override
+    @Transactional
+    public OtpVerifyResponse verifyLoginOtp(String email, String otp) {
+
+        Beneficiary beneficiary = beneficiaryRepository
+                .findFirstByEmail(email)
+                .orElse(null);
+
+        if (beneficiary == null) {
+            return new OtpVerifyResponse(false, "No account found for this email address.");
+        }
+
+        if (beneficiary.getLoginOtpCode() == null) {
+            return new OtpVerifyResponse(
+                    false,
+                    "No login verification code found. Please try logging in again."
+            );
+        }
+
+        if (LocalDateTime.now().isAfter(beneficiary.getLoginOtpExpiresAt())) {
+            log.warn(
+                    "Expired login OTP submitted for email {}",
+                    maskEmail(email)
+            );
+            return new OtpVerifyResponse(
+                    false,
+                    "The login code has expired. Please log in again to receive a new one."
+            );
+        }
+
+        if (!beneficiary.getLoginOtpCode().equals(otp)) {
+            log.warn(
+                    "Incorrect login OTP submitted for email {}",
+                    maskEmail(email)
+            );
+            return new OtpVerifyResponse(false, "Invalid login code. Please try again.");
+        }
+
+        // -- Success: clear login OTP columns only, emailVerified is untouched --
+        beneficiary.setLoginOtpCode(null);
+        beneficiary.setLoginOtpExpiresAt(null);
+        beneficiaryRepository.save(beneficiary);
+
+        log.info(
+                "Login OTP verified for beneficiary email {}",
+                maskEmail(email)
+        );
+
+        return new OtpVerifyResponse(true, "Login verified successfully.");
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * <p>Resend is subject to the same cooldown window as the registration OTP.
+     * Blocked if no login OTP has been issued yet for this session.
+     */
+    @Override
+    @Transactional
+    public OtpVerifyResponse resendLoginOtp(String email) {
+
+        Beneficiary beneficiary = beneficiaryRepository
+                .findFirstByEmail(email)
+                .orElse(null);
+
+        if (beneficiary == null) {
+            return new OtpVerifyResponse(false, "No account found for this email address.");
+        }
+
+        // -- Cooldown check ---------------------------------------------------
+        if (beneficiary.getLoginOtpExpiresAt() != null) {
+
+            LocalDateTime earliestResend = beneficiary
+                    .getLoginOtpExpiresAt()
+                    .minusMinutes(otpExpiryMinutes)
+                    .plusSeconds(resendCooldownSeconds);
+
+            if (LocalDateTime.now().isBefore(earliestResend)) {
+                log.warn(
+                        "Resend login OTP blocked -- cooldown active for email {}",
+                        maskEmail(email)
+                );
+                return new OtpVerifyResponse(
+                        false,
+                        "Please wait " + resendCooldownSeconds
+                                + " seconds before requesting another code."
+                );
+            }
+        }
+
+        // -- Issue and send fresh login OTP -----------------------------------
+        String otp = generateOtp();
+
+        beneficiary.setLoginOtpCode(otp);
+        beneficiary.setLoginOtpExpiresAt(
+                LocalDateTime.now().plusMinutes(otpExpiryMinutes)
+        );
+
+        beneficiaryRepository.save(beneficiary);
+
+        try {
+            dispatchLoginOtpEmail(email, otp, beneficiary.getFullName());
+        } catch (MailException e) {
+            log.error(
+                    "Failed to resend login OTP email to {}: {}",
+                    maskEmail(email),
+                    e.getMessage()
+            );
+            return new OtpVerifyResponse(
+                    false,
+                    "Could not send the login code. Please try again shortly."
+            );
+        }
+
+        log.info(
+                "Login OTP resent for email {} (expires in {} minutes)",
+                maskEmail(email),
+                otpExpiryMinutes
+        );
+
+        return new OtpVerifyResponse(
+                true,
+                "A new login code has been sent to your email."
+        );
+    }
+
+    // -------------------------------------------------------------------------
     // PRIVATE HELPERS
     // -------------------------------------------------------------------------
 
@@ -255,7 +423,7 @@ public class EmailOtpServiceImpl implements EmailOtpService {
         return String.format("%06d", code);             // zero-pad to 6 digits
     }
 
-    /** Sends the OTP email using the configured {@link JavaMailSender}. */
+    /** Sends the registration OTP email using the configured {@link JavaMailSender}. */
     private void dispatchOtpEmail(String toEmail, String otp, String fullName) {
 
         SimpleMailMessage message = new SimpleMailMessage();
@@ -267,7 +435,19 @@ public class EmailOtpServiceImpl implements EmailOtpService {
         mailSender.send(message);
     }
 
-    /** Constructs the plain-text OTP email body. */
+    /** Sends the login OTP email — distinct subject so the user can tell them apart. */
+    private void dispatchLoginOtpEmail(String toEmail, String otp, String fullName) {
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(toEmail);
+        message.setSubject("DSGP - Your Login Verification Code");
+        message.setText(buildLoginOtpEmailBody(fullName, otp));
+
+        mailSender.send(message);
+    }
+
+    /** Constructs the plain-text registration OTP email body. */
     private String buildEmailBody(String fullName, String otp) {
         return String.format(
                 "Dear %s,%n%n" +
@@ -276,6 +456,20 @@ public class EmailOtpServiceImpl implements EmailOtpService {
                 "    %s%n%n" +
                 "This code is valid for %d minutes.%n%n" +
                 "If you did not register on DSGP, please ignore this email.%n%n" +
+                "-- DSGP Support Team",
+                fullName, otp, otpExpiryMinutes);
+    }
+
+    /** Constructs the plain-text login OTP email body. */
+    private String buildLoginOtpEmailBody(String fullName, String otp) {
+        return String.format(
+                "Dear %s,%n%n" +
+                "A login attempt was made on your DSGP account.%n%n" +
+                "Your one-time login code is:%n%n" +
+                "    %s%n%n" +
+                "This code is valid for %d minutes.%n%n" +
+                "If you did not attempt to log in, please ignore this email and " +
+                "consider changing your password.%n%n" +
                 "-- DSGP Support Team",
                 fullName, otp, otpExpiryMinutes);
     }

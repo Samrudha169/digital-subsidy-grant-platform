@@ -158,4 +158,24 @@ public class Beneficiary {
      */
     @Column(name = "otp_expires_at")
     private LocalDateTime otpExpiresAt;
+
+    // ── Login OTP (Milestone 2 — two-factor beneficiary login) ──────────────
+    //
+    // Separate from the registration OTP columns above so that the two flows
+    // never interfere with each other.
+
+    /**
+     * Active 6-digit OTP issued at login time (plain digits — short-lived).
+     * Cleared to {@code null} after the OTP is successfully verified.
+     * Never exposed in API responses.
+     */
+    @Column(name = "login_otp_code", length = 6)
+    private String loginOtpCode;
+
+    /**
+     * Timestamp at which the current login OTP expires.
+     * Cleared to {@code null} after successful verification.
+     */
+    @Column(name = "login_otp_expires_at")
+    private LocalDateTime loginOtpExpiresAt;
 }

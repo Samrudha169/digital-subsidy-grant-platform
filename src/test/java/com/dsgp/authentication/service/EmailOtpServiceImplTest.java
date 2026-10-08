@@ -460,4 +460,243 @@ class EmailOtpServiceImplTest {
             then(repository).should().existsByEmail("test@example.com");
         }
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // Login OTP — sendLoginOtp / verifyLoginOtp / resendLoginOtp
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("Login OTP")
+    class LoginOtp {
+
+        /** Verified beneficiary — the normal target for the login OTP flow. */
+        private Beneficiary verifiedBeneficiary() {
+            return Beneficiary.builder()
+                    .id(2)
+                    .fullName("Verified User")
+                    .email("verified@example.com")
+                    .password("$2a$10$hashed")
+                    .govId("GOVID9999")
+                    .contact("9000000000")
+                    .age(35)
+                    .address("456 Park Ave")
+                    .schemeName("NSP")
+                    .registrationStatus(RegistrationStatus.ACTIVE)
+                    .emailVerified(true)
+                    .build();
+        }
+
+        // ── sendLoginOtp ──────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("sendLoginOtp: generates a 6-digit code and stores it in login_otp_code")
+        void sendLoginOtp_persistsSixDigitCodeInLoginColumn() {
+            Beneficiary b = verifiedBeneficiary();
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+            given(repository.save(any())).willReturn(b);
+
+            service.sendLoginOtp("verified@example.com");
+
+            ArgumentCaptor<Beneficiary> captor = ArgumentCaptor.forClass(Beneficiary.class);
+            then(repository).should().save(captor.capture());
+
+            Beneficiary saved = captor.getValue();
+            assertThat(saved.getLoginOtpCode())
+                    .isNotNull()
+                    .matches("\\d{6}");
+            assertThat(saved.getLoginOtpExpiresAt())
+                    .isNotNull()
+                    .isAfter(LocalDateTime.now());
+        }
+
+        @Test
+        @DisplayName("sendLoginOtp: does NOT touch emailVerified or registration otp_code")
+        void sendLoginOtp_doesNotTouchEmailVerifiedOrRegistrationOtp() {
+            Beneficiary b = verifiedBeneficiary();
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+            given(repository.save(any())).willReturn(b);
+
+            service.sendLoginOtp("verified@example.com");
+
+            ArgumentCaptor<Beneficiary> captor = ArgumentCaptor.forClass(Beneficiary.class);
+            then(repository).should().save(captor.capture());
+
+            Beneficiary saved = captor.getValue();
+            // emailVerified must remain true — login OTP must not reset it
+            assertThat(saved.isEmailVerified()).isTrue();
+            // registration OTP column must be untouched (null)
+            assertThat(saved.getOtpCode()).isNull();
+        }
+
+        @Test
+        @DisplayName("sendLoginOtp: dispatches an email to the beneficiary")
+        void sendLoginOtp_sendsEmail() {
+            Beneficiary b = verifiedBeneficiary();
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+            given(repository.save(any())).willReturn(b);
+
+            service.sendLoginOtp("verified@example.com");
+
+            ArgumentCaptor<SimpleMailMessage> msgCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+            then(mailSender).should().send(msgCaptor.capture());
+
+            String subject = msgCaptor.getValue().getSubject();
+            assertThat(subject).contains("Login");
+        }
+
+        @Test
+        @DisplayName("sendLoginOtp: throws when beneficiary does not exist")
+        void sendLoginOtp_throwsWhenBeneficiaryNotFound() {
+            given(repository.findFirstByEmail("nobody@example.com")).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> service.sendLoginOtp("nobody@example.com"))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        // ── verifyLoginOtp ────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("verifyLoginOtp: returns success and clears login OTP columns on correct code")
+        void verifyLoginOtp_successClearsLoginOtpColumns() {
+            Beneficiary b = verifiedBeneficiary();
+            b.setLoginOtpCode("123456");
+            b.setLoginOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+            given(repository.save(any())).willReturn(b);
+
+            OtpVerifyResponse response = service.verifyLoginOtp("verified@example.com", "123456");
+
+            assertThat(response.isSuccess()).isTrue();
+
+            ArgumentCaptor<Beneficiary> captor = ArgumentCaptor.forClass(Beneficiary.class);
+            then(repository).should().save(captor.capture());
+
+            Beneficiary saved = captor.getValue();
+            assertThat(saved.getLoginOtpCode()).isNull();
+            assertThat(saved.getLoginOtpExpiresAt()).isNull();
+        }
+
+        @Test
+        @DisplayName("verifyLoginOtp: does NOT set emailVerified=true on success")
+        void verifyLoginOtp_doesNotSetEmailVerified() {
+            Beneficiary b = verifiedBeneficiary();
+            b.setEmailVerified(true);   // already verified at registration
+            b.setLoginOtpCode("654321");
+            b.setLoginOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+            given(repository.save(any())).willReturn(b);
+
+            service.verifyLoginOtp("verified@example.com", "654321");
+
+            ArgumentCaptor<Beneficiary> captor = ArgumentCaptor.forClass(Beneficiary.class);
+            then(repository).should().save(captor.capture());
+
+            // emailVerified must stay as-is — verifyLoginOtp must not change it
+            assertThat(captor.getValue().isEmailVerified()).isTrue();
+        }
+
+        @Test
+        @DisplayName("verifyLoginOtp: rejects wrong OTP code")
+        void verifyLoginOtp_rejectsWrongCode() {
+            Beneficiary b = verifiedBeneficiary();
+            b.setLoginOtpCode("111111");
+            b.setLoginOtpExpiresAt(LocalDateTime.now().plusMinutes(5));
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+
+            OtpVerifyResponse response = service.verifyLoginOtp("verified@example.com", "999999");
+
+            assertThat(response.isSuccess()).isFalse();
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("verifyLoginOtp: rejects expired OTP")
+        void verifyLoginOtp_rejectsExpiredCode() {
+            Beneficiary b = verifiedBeneficiary();
+            b.setLoginOtpCode("222222");
+            b.setLoginOtpExpiresAt(LocalDateTime.now().minusMinutes(1)); // already expired
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+
+            OtpVerifyResponse response = service.verifyLoginOtp("verified@example.com", "222222");
+
+            assertThat(response.isSuccess()).isFalse();
+            assertThat(response.getMessage()).containsIgnoringCase("expired");
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("verifyLoginOtp: rejects when no login OTP has been issued")
+        void verifyLoginOtp_rejectsWhenNoLoginOtpPresent() {
+            Beneficiary b = verifiedBeneficiary();
+            // loginOtpCode is null — no OTP issued for this login session
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+
+            OtpVerifyResponse response = service.verifyLoginOtp("verified@example.com", "000000");
+
+            assertThat(response.isSuccess()).isFalse();
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("verifyLoginOtp: returns failure for unknown email")
+        void verifyLoginOtp_failsForUnknownEmail() {
+            given(repository.findFirstByEmail("nobody@example.com")).willReturn(Optional.empty());
+
+            OtpVerifyResponse response = service.verifyLoginOtp("nobody@example.com", "123456");
+
+            assertThat(response.isSuccess()).isFalse();
+        }
+
+        // ── resendLoginOtp ────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("resendLoginOtp: issues a fresh OTP and resets expiry")
+        void resendLoginOtp_issuesFreshOtp() {
+            Beneficiary b = verifiedBeneficiary();
+            // Cooldown already elapsed: OTP was issued ~70s ago.
+            // With otpExpiryMinutes=10 and resendCooldownSeconds=60:
+            //   earliestResend = expiresAt - 10min + 60s
+            // Setting expiresAt = now + 8m50s  →  earliestResend = now - 10s  (in the past) → allowed.
+            b.setLoginOtpCode("old123");
+            b.setLoginOtpExpiresAt(LocalDateTime.now().plusMinutes(8).plusSeconds(50));
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+            given(repository.save(any())).willReturn(b);
+
+            OtpVerifyResponse response = service.resendLoginOtp("verified@example.com");
+
+            assertThat(response.isSuccess()).isTrue();
+
+            ArgumentCaptor<Beneficiary> captor = ArgumentCaptor.forClass(Beneficiary.class);
+            then(repository).should().save(captor.capture());
+
+            String newCode = captor.getValue().getLoginOtpCode();
+            assertThat(newCode).isNotNull().matches("\\d{6}");
+        }
+
+        @Test
+        @DisplayName("resendLoginOtp: enforces cooldown when OTP was issued recently")
+        void resendLoginOtp_blocksDuringCooldown() {
+            Beneficiary b = verifiedBeneficiary();
+            // OTP was issued just 10 seconds ago — cooldown not elapsed
+            b.setLoginOtpCode("recent1");
+            b.setLoginOtpExpiresAt(LocalDateTime.now().plusMinutes(10).minusSeconds(10));
+            given(repository.findFirstByEmail("verified@example.com")).willReturn(Optional.of(b));
+
+            OtpVerifyResponse response = service.resendLoginOtp("verified@example.com");
+
+            assertThat(response.isSuccess()).isFalse();
+            assertThat(response.getMessage()).containsIgnoringCase("wait");
+            then(repository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("resendLoginOtp: returns failure for unknown email")
+        void resendLoginOtp_failsForUnknownEmail() {
+            given(repository.findFirstByEmail("nobody@example.com")).willReturn(Optional.empty());
+
+            OtpVerifyResponse response = service.resendLoginOtp("nobody@example.com");
+
+            assertThat(response.isSuccess()).isFalse();
+        }
+    }
 }

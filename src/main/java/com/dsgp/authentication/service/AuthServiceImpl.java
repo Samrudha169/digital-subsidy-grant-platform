@@ -21,17 +21,20 @@ public class AuthServiceImpl implements AuthService {
     private final OfficerRepository officerRepository;
     private final PasswordEncoder passwordEncoder;
     private final OfficerOtpService officerOtpService;
+    private final EmailOtpService emailOtpService;
 
     public AuthServiceImpl(
             BeneficiaryRepository beneficiaryRepository,
             OfficerRepository officerRepository,
             PasswordEncoder passwordEncoder,
-            OfficerOtpService officerOtpService) {
+            OfficerOtpService officerOtpService,
+            EmailOtpService emailOtpService) {
 
         this.beneficiaryRepository = beneficiaryRepository;
         this.officerRepository     = officerRepository;
         this.passwordEncoder       = passwordEncoder;
         this.officerOtpService     = officerOtpService;
+        this.emailOtpService       = emailOtpService;
     }
 
     // ── Beneficiary login (unchanged) ─────────────────────────────────────────
@@ -48,6 +51,8 @@ public class AuthServiceImpl implements AuthService {
                     false,
                     "Invalid email or password",
                     null,
+                    null,
+                    false,
                     null
             );
         }
@@ -60,6 +65,8 @@ public class AuthServiceImpl implements AuthService {
                     false,
                     "Invalid email or password",
                     null,
+                    null,
+                    false,
                     null
             );
         }
@@ -79,15 +86,51 @@ public class AuthServiceImpl implements AuthService {
                     "Please verify your email before logging in. "
                             + "Check your inbox for the verification code.",
                     null,
+                    null,
+                    false,
+                    null
+            );
+        }
+
+        // ── Legacy accounts (emailVerified=false, otpCode=null) ───────────────
+        // Allowed through without OTP to preserve backward compatibility.
+        if (!beneficiary.isEmailVerified()) {
+            return new LoginResponse(
+                    true,
+                    "Login successful",
+                    beneficiary.getId(),
+                    beneficiary.getFullName(),
+                    false,
+                    null
+            );
+        }
+
+        // ── Verified accounts: issue a login OTP (two-step) ──────────────────
+        try {
+            emailOtpService.sendLoginOtp(beneficiary.getEmail());
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            log.warn(
+                    "Login OTP send failed for email {}: {}",
+                    maskEmail(request.getEmail()),
+                    e.getMessage()
+            );
+            return new LoginResponse(
+                    false,
+                    "Could not send the login verification code. Please try again.",
+                    null,
+                    null,
+                    false,
                     null
             );
         }
 
         return new LoginResponse(
                 true,
-                "Login successful",
-                beneficiary.getId(),
-                beneficiary.getFullName()
+                "Password verified. Please enter the code sent to your email.",
+                null,
+                null,
+                true,                       // otpRequired
+                beneficiary.getEmail()      // so the frontend knows where to send verify
         );
     }
 
@@ -180,5 +223,18 @@ public class AuthServiceImpl implements AuthService {
                 null, null, null, null, null,
                 false
         );
+    }
+
+    /** Returns a masked email address for safe log output (e.g. {@code us***@gmail.com}). */
+    private String maskEmail(String email) {
+        if (email == null || !email.contains("@")) {
+            return "***";
+        }
+        String[] parts = email.split("@", 2);
+        String local = parts[0];
+        String masked = local.length() <= 2
+                ? local.charAt(0) + "***"
+                : local.substring(0, 2) + "***";
+        return masked + "@" + parts[1];
     }
 }

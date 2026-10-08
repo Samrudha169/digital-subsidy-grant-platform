@@ -188,4 +188,57 @@ public class AuthController {
 
         return ResponseEntity.ok(response);
     }
+
+    // ── Beneficiary login OTP — Step 2: verify ────────────────────────────────
+
+    /**
+     * Verifies the 6-digit login OTP submitted by a beneficiary after a
+     * successful password check.
+     *
+     * <p>On success: the login OTP is cleared (single-use) and the response
+     * carries {@code success=true}.  The frontend should then store the session
+     * and navigate to the dashboard.
+     *
+     * <p>On failure: returns 400 with an error message.
+     *
+     * @param request {@code { email, otp }}
+     * @return 200 on verified; 400 with error message otherwise
+     */
+    @PostMapping("/verify-login-otp")
+    public ResponseEntity<OtpVerifyResponse> verifyLoginOtp(
+            @Valid @RequestBody OtpVerifyRequest request) {
+
+        OtpVerifyResponse response =
+                emailOtpService.verifyLoginOtp(request.getEmail(), request.getOtp());
+
+        if (!response.isSuccess()) {
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ── Beneficiary login OTP — resend ────────────────────────────────────────
+
+    /**
+     * Resends a fresh login OTP to the beneficiary's registered email address.
+     *
+     * <p>Subject to the configured cooldown period to prevent abuse.
+     *
+     * @param request {@code { email }}
+     * @return 200 with {@code success=true} if resent; 400 on cooldown or not found
+     */
+    @PostMapping("/resend-login-otp")
+    public ResponseEntity<OtpVerifyResponse> resendLoginOtp(
+            @Valid @RequestBody ResendOtpRequest request) {
+
+        OtpVerifyResponse response =
+                emailOtpService.resendLoginOtp(request.getEmail());
+
+        if (!response.isSuccess()) {
+            return ResponseEntity.badRequest().body(response);
+        }
+
+        return ResponseEntity.ok(response);
+    }
 }
