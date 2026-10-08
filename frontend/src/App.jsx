@@ -1,4 +1,4 @@
-import { Link, Routes, Route } from 'react-router-dom';
+import { Link, Routes, Route, useLocation } from 'react-router-dom';
 import { useState } from 'react';
 import './App.css';
 
@@ -22,15 +22,21 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import OfficerLogin from './pages/OfficerLogin';
 import OfficerDashboard from './pages/OfficerDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import MyApplications from './pages/MyApplications';
 import Notifications from './pages/Notifications';
 import AuditTrail from "./pages/AuditTrail";
 
+
 function App() {
+
+    const location = useLocation();
 
     const [isLoggedIn, setIsLoggedIn] = useState(
         localStorage.getItem('isLoggedIn') === 'true'
     );
+
+    const isAdminPage = location.pathname.startsWith('/admin');
 
     const navLinks = [
         { name: 'Home', path: '/' },
@@ -44,63 +50,65 @@ function App() {
     return (
         <div className="dsgp-app">
 
-            <header className="header">
-                <div className="site-header">
-                    <div className="header-inner">
-                        <div className="header-container">
+            {!isAdminPage && (
+                <header className="header">
+                    <div className="site-header">
+                        <div className="header-inner">
+                            <div className="header-container">
 
-                            <div className="brand">
-                                <Link
-                                    to="/"
-                                    style={{
-                                        textDecoration: 'none',
-                                        color: 'inherit'
-                                    }}
-                                >
-                                    <h1 className="brand-title">
-                                        DSGP
-                                    </h1>
+                                <div className="brand">
+                                    <Link
+                                        to="/"
+                                        style={{
+                                            textDecoration: 'none',
+                                            color: 'inherit'
+                                        }}
+                                    >
+                                        <h1 className="brand-title">
+                                            DSGP
+                                        </h1>
 
-                                    <p className="brand-subtitle">
-                                        Digital Subsidy & Grant Platform
-                                    </p>
-                                </Link>
+                                        <p className="brand-subtitle">
+                                            Digital Subsidy & Grant Platform
+                                        </p>
+                                    </Link>
+                                </div>
+
+                                <nav className="nav">
+
+                                    {navLinks.map((link, index) => (
+                                        <Link
+                                            key={index}
+                                            to={link.path}
+                                            className="nav-link"
+                                        >
+                                            {link.name}
+                                        </Link>
+                                    ))}
+
+                                    {isLoggedIn ? (
+                                        <Link
+                                            to="/dashboard"
+                                            className="nav-link nav-login"
+                                        >
+                                            Dashboard
+                                        </Link>
+                                    ) : (
+                                        <Link
+                                            to="/login"
+                                            className="nav-link nav-login"
+                                        >
+                                            Login / Register
+                                        </Link>
+                                    )}
+
+                                </nav>
+
                             </div>
-
-                            <nav className="nav">
-
-                                {navLinks.map((link, index) => (
-                                    <Link
-                                        key={index}
-                                        to={link.path}
-                                        className="nav-link"
-                                    >
-                                        {link.name}
-                                    </Link>
-                                ))}
-
-                                {isLoggedIn ? (
-                                    <Link
-                                        to="/dashboard"
-                                        className="nav-link nav-login"
-                                    >
-                                        Dashboard
-                                    </Link>
-                                ) : (
-                                    <Link
-                                        to="/login"
-                                        className="nav-link nav-login"
-                                    >
-                                        Login / Register
-                                    </Link>
-                                )}
-
-                            </nav>
-
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
+            )}
 
 
             <main>
@@ -219,6 +227,10 @@ function App() {
                         path="/officer/dashboard"
                         element={<OfficerDashboard />}
                     />
+
+                    <Route
+                        path="/admin/dashboard"
+                        element={<AdminDashboard />} />
 
                     <Route
                         path="/my-applications"

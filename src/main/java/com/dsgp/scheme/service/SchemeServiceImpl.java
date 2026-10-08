@@ -15,7 +15,7 @@ import java.util.List;
  * Implementation of {@link SchemeService}.
  *
  * <p>All public methods accept / return DTOs. The raw {@link Scheme} entity
- * is never returned to the controller layer.
+ * is never returned to the controller layer.</p>
  */
 @Service
 @RequiredArgsConstructor
@@ -28,7 +28,9 @@ public class SchemeServiceImpl implements SchemeService {
 
     @Override
     public SchemeResponse createScheme(SchemeRequest request) {
+
         Scheme scheme = toEntity(request);
+
         return toResponse(schemeRepository.save(scheme));
     }
 
@@ -37,7 +39,24 @@ public class SchemeServiceImpl implements SchemeService {
     @Override
     @Transactional(readOnly = true)
     public List<SchemeResponse> getAllActiveSchemes() {
+
         return schemeRepository.findByActiveTrue()
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    /**
+     * Returns all schemes, including inactive schemes.
+     *
+     * <p>This is used by the Admin dashboard so that an administrator
+     * can manage both active and deactivated schemes.</p>
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public List<SchemeResponse> getAllSchemes() {
+
+        return schemeRepository.findAll()
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -46,13 +65,17 @@ public class SchemeServiceImpl implements SchemeService {
     @Override
     @Transactional(readOnly = true)
     public SchemeResponse getSchemeById(Long id) {
+
         return toResponse(findOrThrow(id));
     }
 
     // ── Update ────────────────────────────────────────────────────────────────
 
     @Override
-    public SchemeResponse updateScheme(Long id, SchemeRequest request) {
+    public SchemeResponse updateScheme(
+            Long id,
+            SchemeRequest request) {
+
         Scheme existing = findOrThrow(id);
 
         existing.setSchemeName(request.getSchemeName());
@@ -63,6 +86,7 @@ public class SchemeServiceImpl implements SchemeService {
         existing.setMaxLandHolding(request.getMaxLandHolding());
         existing.setRequiredCategory(request.getRequiredCategory());
         existing.setGrantAmount(request.getGrantAmount());
+
         if (request.getActive() != null) {
             existing.setActive(request.getActive());
         }
@@ -70,24 +94,42 @@ public class SchemeServiceImpl implements SchemeService {
         return toResponse(schemeRepository.save(existing));
     }
 
-    // ── Deactivate (soft delete) ───────────────────────────────────────────────
+    // ── Deactivate / Soft Delete ──────────────────────────────────────────────
 
     @Override
     public void deactivateScheme(Long id) {
+
         Scheme existing = findOrThrow(id);
+
         existing.setActive(false);
+
         schemeRepository.save(existing);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+    // ── Reactivate ───────────────────────────────────────────────────────────
+
+    @Override
+    public SchemeResponse reactivateScheme(Long id) {
+
+        Scheme existing = findOrThrow(id);
+
+        existing.setActive(true);
+
+        return toResponse(schemeRepository.save(existing));
+    }
+
+    // ── Private Helpers ───────────────────────────────────────────────────────
 
     private Scheme findOrThrow(Long id) {
+
         return schemeRepository.findById(id)
                 .orElseThrow(() -> new SchemeNotFoundException(id));
     }
 
     private Scheme toEntity(SchemeRequest request) {
+
         Scheme s = new Scheme();
+
         s.setSchemeName(request.getSchemeName());
         s.setDescription(request.getDescription());
         s.setMinAge(request.getMinAge());
@@ -96,11 +138,18 @@ public class SchemeServiceImpl implements SchemeService {
         s.setMaxLandHolding(request.getMaxLandHolding());
         s.setRequiredCategory(request.getRequiredCategory());
         s.setGrantAmount(request.getGrantAmount());
-        s.setActive(request.getActive() != null ? request.getActive() : true);
+
+        s.setActive(
+                request.getActive() != null
+                        ? request.getActive()
+                        : true
+        );
+
         return s;
     }
 
     private SchemeResponse toResponse(Scheme s) {
+
         return SchemeResponse.builder()
                 .id(s.getId())
                 .schemeName(s.getSchemeName())

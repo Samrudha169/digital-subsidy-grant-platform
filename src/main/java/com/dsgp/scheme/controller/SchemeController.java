@@ -14,16 +14,8 @@ import java.util.List;
 /**
  * REST controller for government scheme management.
  *
- * <p>Base path: {@code /schemes} (full path: {@code /api/v1/schemes}).
- *
- * <p>Endpoints:
- * <ul>
- *   <li>{@code POST   /schemes}      — create a new scheme (201 Created)</li>
- *   <li>{@code GET    /schemes}      — list all active schemes (200 OK)</li>
- *   <li>{@code GET    /schemes/{id}} — get scheme by ID (200 OK)</li>
- *   <li>{@code PUT    /schemes/{id}} — update scheme (200 OK)</li>
- *   <li>{@code DELETE /schemes/{id}} — soft-deactivate scheme (204 No Content)</li>
- * </ul>
+ * <p>Base path: {@code /schemes}
+ * (full path: {@code /api/v1/schemes}).</p>
  */
 @RestController
 @RequestMapping("/schemes")
@@ -34,6 +26,9 @@ public class SchemeController {
 
     // ── POST /schemes ─────────────────────────────────────────────────────────
 
+    /**
+     * Create a new scheme.
+     */
     @PostMapping
     public ResponseEntity<SchemeResponse> createScheme(
             @Valid @RequestBody SchemeRequest request) {
@@ -44,33 +39,92 @@ public class SchemeController {
 
     // ── GET /schemes ──────────────────────────────────────────────────────────
 
+    /**
+     * Get all active schemes.
+     *
+     * <p>This endpoint remains unchanged so the existing
+     * beneficiary-facing scheme list continues to show
+     * only active schemes.</p>
+     */
     @GetMapping
     public ResponseEntity<List<SchemeResponse>> getAllSchemes() {
-        return ResponseEntity.ok(schemeService.getAllActiveSchemes());
+
+        return ResponseEntity.ok(
+                schemeService.getAllActiveSchemes()
+        );
     }
 
-    // ── GET /schemes/{id} ────────────────────────────────────────────────────
+    // ── GET /schemes/admin/all ────────────────────────────────────────────────
 
+    /**
+     * Get all schemes for Admin management.
+     *
+     * <p>Includes both active and inactive schemes.</p>
+     */
+    @GetMapping("/admin/all")
+    public ResponseEntity<List<SchemeResponse>> getAllSchemesForAdmin() {
+
+        return ResponseEntity.ok(
+                schemeService.getAllSchemes()
+        );
+    }
+
+    // ── GET /schemes/{id} ─────────────────────────────────────────────────────
+
+    /**
+     * Get scheme by ID.
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<SchemeResponse> getSchemeById(@PathVariable Long id) {
-        return ResponseEntity.ok(schemeService.getSchemeById(id));
+    public ResponseEntity<SchemeResponse> getSchemeById(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                schemeService.getSchemeById(id)
+        );
     }
 
-    // ── PUT /schemes/{id} ────────────────────────────────────────────────────
+    // ── PUT /schemes/{id} ─────────────────────────────────────────────────────
 
+    /**
+     * Update an existing scheme.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<SchemeResponse> updateScheme(
             @PathVariable Long id,
             @Valid @RequestBody SchemeRequest request) {
 
-        return ResponseEntity.ok(schemeService.updateScheme(id, request));
+        return ResponseEntity.ok(
+                schemeService.updateScheme(id, request)
+        );
     }
 
-    // ── DELETE /schemes/{id} ─────────────────────────────────────────────────
+    // ── DELETE /schemes/{id} ──────────────────────────────────────────────────
 
+    /**
+     * Soft-deactivate a scheme.
+     *
+     * <p>The scheme is not physically deleted from the database.</p>
+     */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deactivateScheme(@PathVariable Long id) {
+    public ResponseEntity<Void> deactivateScheme(
+            @PathVariable Long id) {
+
         schemeService.deactivateScheme(id);
+
         return ResponseEntity.noContent().build();
+    }
+
+    // ── PUT /schemes/{id}/reactivate ──────────────────────────────────────────
+
+    /**
+     * Reactivate a previously deactivated scheme.
+     */
+    @PutMapping("/{id}/reactivate")
+    public ResponseEntity<SchemeResponse> reactivateScheme(
+            @PathVariable Long id) {
+
+        return ResponseEntity.ok(
+                schemeService.reactivateScheme(id)
+        );
     }
 }
