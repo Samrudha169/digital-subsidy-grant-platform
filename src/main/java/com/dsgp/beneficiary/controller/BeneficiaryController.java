@@ -58,6 +58,35 @@ public class BeneficiaryController {
     }
 
     // ============================================================
+    // GET BENEFICIARY BY EMAIL  (used by login OTP finalise-session)
+    // ============================================================
+
+    /**
+     * Resolves a beneficiary by email after the login OTP has been verified.
+     *
+     * <p>The frontend calls this endpoint to obtain the real {@code beneficiaryId}
+     * and {@code fullName} before writing them to localStorage and navigating to
+     * the dashboard.  No session data should be stored until this call succeeds.
+     *
+     * <p>Email is passed as a <strong>query parameter</strong> (not a path segment)
+     * because email addresses contain {@code @} and {@code .} characters that
+     * Tomcat/Spring's {@code PathPatternParser} decodes and then re-matches against
+     * route patterns, causing suffix-stripping of the {@code .com} domain part and
+     * a "No static resource" 404 for any real-world address.
+     *
+     * @param email the beneficiary's registered email address (URL-encoded in query string)
+     * @return 200 with the beneficiary profile; 404 if not found
+     */
+    @GetMapping("/by-email")
+    public ResponseEntity<BeneficiaryResponse> getBeneficiaryByEmail(
+            @RequestParam String email) {
+
+        return ResponseEntity.ok(
+                beneficiaryService.getBeneficiaryByEmail(email)
+        );
+    }
+
+    // ============================================================
     // GET BENEFICIARY BY GOVERNMENT ID
     // ============================================================
 

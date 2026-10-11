@@ -161,30 +161,34 @@ function Login({ onLogin }) {
         }
     };
 
-    // After OTP is verified, resolve beneficiaryId + name by doing a
-    // lightweight profile call, then write localStorage.
+    // After OTP is verified, resolve beneficiaryId + fullName from the backend
+    // using the dedicated email-lookup endpoint, then write localStorage and
+    // navigate.  Throws if the lookup fails so the OTP step shows an error
+    // instead of granting a session with an empty beneficiaryId.
     const finaliseSession = async () => {
-        try {
-            // Attempt profile lookup so we get beneficiaryId + name
-            const profResp = await fetch(
-                `${API}/beneficiaries/profile?email=${encodeURIComponent(otpEmail)}`
-            );
+        const profResp = await fetch(
+            `${API}/beneficiaries/by-email?email=${encodeURIComponent(otpEmail)}`
+        );
 
-            if (profResp.ok) {
-                const prof = await profResp.json();
-                localStorage.setItem('beneficiaryId', prof.id ?? '');
-                localStorage.setItem('beneficiaryName', prof.fullName ?? '');
-            } else {
-                // Profile endpoint not yet available — store email as fallback
-                localStorage.setItem('beneficiaryId', '');
-                localStorage.setItem('beneficiaryName', otpEmail);
-            }
-        } catch {
-            localStorage.setItem('beneficiaryId', '');
-            localStorage.setItem('beneficiaryName', otpEmail);
+        if (!profResp.ok) {
+            // 404 or any other server error — do NOT grant a session
+            let msg = `Could not load your profile (HTTP ${profResp.status}). Please try again.`;
+            try {
+                const body = await profResp.json();
+                if (body.message) msg = body.message;
+            } catch { /* ignore parse error */ }
+            throw new Error(msg);
         }
 
-        localStorage.setItem('isLoggedIn', 'true');
+        const prof = await profResp.json();
+
+        if (!prof.id) {
+            throw new Error('Session initialisation failed: beneficiary ID missing in server response.');
+        }
+
+        localStorage.setItem('beneficiaryId',   String(prof.id));
+        localStorage.setItem('beneficiaryName', prof.fullName ?? '');
+        localStorage.setItem('isLoggedIn',      'true');
 
         if (formData.remember) {
             localStorage.setItem('rememberedEmail', otpEmail);

@@ -28,6 +28,20 @@ public interface BeneficiaryService {
             String govId
     );
 
+    /**
+     * Looks up a beneficiary by their registered email address.
+     * Used by the login flow to resolve beneficiaryId + fullName after OTP
+     * verification, before the session is stored in the browser.
+     *
+     * @param email the beneficiary's registered email address
+     * @return the full beneficiary response
+     * @throws com.dsgp.beneficiary.exception.BeneficiaryNotFoundException
+     *         if no beneficiary with the given email exists
+     */
+    BeneficiaryResponse getBeneficiaryByEmail(
+            String email
+    );
+
     List<BeneficiaryResponse> getAllBeneficiaries();
 
     BeneficiaryResponse updateBeneficiary(

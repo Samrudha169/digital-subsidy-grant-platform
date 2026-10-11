@@ -233,6 +233,35 @@ public class BeneficiaryServiceImpl implements BeneficiaryService {
     }
 
     // ============================================================
+    // GET BENEFICIARY BY EMAIL
+    // ============================================================
+
+    /**
+     * Resolves a beneficiary by their registered email address.
+     * Used exclusively by the two-step login flow to retrieve beneficiaryId and
+     * fullName after the login OTP has been successfully verified, so the
+     * frontend can initialise the session with a real ID before navigating to
+     * the dashboard.
+     *
+     * <p>Uses {@code findFirstByEmail} (not {@code findByEmail}) to tolerate any
+     * legacy duplicate email rows without throwing {@code NonUniqueResultException}.
+     */
+    @Override
+    @Transactional(readOnly = true)
+    public BeneficiaryResponse getBeneficiaryByEmail(String email) {
+
+        Beneficiary beneficiary =
+                beneficiaryRepository.findFirstByEmail(email)
+                        .orElseThrow(
+                                () -> new BeneficiaryNotFoundException(
+                                        "Beneficiary not found with email: " + email
+                                )
+                        );
+
+        return mapToResponse(beneficiary);
+    }
+
+    // ============================================================
     // GET ALL BENEFICIARIES
     // ============================================================
 

@@ -521,4 +521,64 @@ class BeneficiaryControllerTest {
                     .andExpect(status().isNotFound());
         }
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // GET /beneficiaries/by-email?email=  (login OTP finalise-session)
+    //
+    // Email is a query parameter — NOT a path variable — because email addresses
+    // contain @ and . characters that Tomcat/Spring's PathPatternParser decodes
+    // and re-matches, stripping the .com domain suffix and returning 404.
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("GET /beneficiaries/by-email?email=")
+    class GetBeneficiaryByEmail {
+
+        @Test
+        @DisplayName("200 OK — returns beneficiary id and fullName for a simple email")
+        void getByEmail_found_returns200WithIdAndName() throws Exception {
+            given(beneficiaryService.getBeneficiaryByEmail("ravi@example.com"))
+                    .willReturn(legacyResponse);
+
+            mockMvc.perform(get("/beneficiaries/by-email")
+                            .param("email", "ravi@example.com"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.fullName").value("Ravi Kumar"))
+                    .andExpect(jsonPath("$.email").value("ravi@example.com"));
+        }
+
+        @Test
+        @DisplayName("200 OK — handles real-world email with @ and .com (regression for path-variable 404 bug)")
+        void getByEmail_emailWithAtSymbol_returns200() throws Exception {
+            // Simulates the exact email that triggered "No static resource" in production:
+            //   arekshiya@gmail.com → as a @PathVariable the .com was stripped → 404
+            //   as a @RequestParam it is decoded once and passed cleanly to the service
+            BeneficiaryResponse gmailResponse = BeneficiaryResponse.builder()
+                    .id(5)
+                    .fullName("Arekshiya Test")
+                    .email("arekshiya@gmail.com")
+                    .build();
+            given(beneficiaryService.getBeneficiaryByEmail("arekshiya@gmail.com"))
+                    .willReturn(gmailResponse);
+
+            mockMvc.perform(get("/beneficiaries/by-email")
+                            .param("email", "arekshiya@gmail.com"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(5))
+                    .andExpect(jsonPath("$.fullName").value("Arekshiya Test"))
+                    .andExpect(jsonPath("$.email").value("arekshiya@gmail.com"));
+        }
+
+        @Test
+        @DisplayName("404 Not Found — email is not registered")
+        void getByEmail_notFound_returns404() throws Exception {
+            willThrow(new BeneficiaryNotFoundException("Beneficiary not found with email: ghost@example.com"))
+                    .given(beneficiaryService).getBeneficiaryByEmail("ghost@example.com");
+
+            mockMvc.perform(get("/beneficiaries/by-email")
+                            .param("email", "ghost@example.com"))
+                    .andExpect(status().isNotFound());
+        }
+    }
 }

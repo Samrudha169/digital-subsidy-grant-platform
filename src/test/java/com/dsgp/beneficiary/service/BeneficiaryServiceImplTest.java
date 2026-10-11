@@ -659,4 +659,41 @@ class BeneficiaryServiceImplTest {
                     .isInstanceOf(BeneficiaryNotFoundException.class);
         }
     }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // getBeneficiaryByEmail  (login OTP finalise-session lookup)
+    // ════════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("getBeneficiaryByEmail()")
+    class GetBeneficiaryByEmail {
+
+        @Test
+        @DisplayName("returns the correct beneficiary response when email is found")
+        void getByEmail_found_returnsResponse() {
+
+            given(repository.findFirstByEmail("ravi@example.com"))
+                    .willReturn(Optional.of(savedBeneficiary));
+
+            BeneficiaryResponse response = service.getBeneficiaryByEmail("ravi@example.com");
+
+            assertThat(response.getId()).isEqualTo(1);
+            assertThat(response.getFullName()).isEqualTo("Ravi Kumar");
+            assertThat(response.getEmail()).isEqualTo("ravi@example.com");
+        }
+
+        @Test
+        @DisplayName("throws BeneficiaryNotFoundException when email is not registered")
+        void getByEmail_notFound_throws() {
+
+            given(repository.findFirstByEmail("ghost@example.com"))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(
+                    () -> service.getBeneficiaryByEmail("ghost@example.com")
+            )
+                    .isInstanceOf(BeneficiaryNotFoundException.class)
+                    .hasMessageContaining("ghost@example.com");
+        }
+    }
 }
