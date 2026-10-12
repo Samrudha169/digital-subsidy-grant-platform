@@ -33,7 +33,7 @@ function App() {
     const location = useLocation();
 
     const [isLoggedIn, setIsLoggedIn] = useState(
-        localStorage.getItem('isLoggedIn') === 'true'
+        sessionStorage.getItem('isLoggedIn') === 'true'
     );
 
     const isAdminPage = location.pathname.startsWith('/admin');

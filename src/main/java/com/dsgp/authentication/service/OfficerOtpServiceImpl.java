@@ -157,11 +157,17 @@ public class OfficerOtpServiceImpl implements OfficerOtpService {
             return new OtpVerifyResponse(false, "Invalid verification code. Please try again.");
         }
 
-        // -- Success: clear OTP (single-use guarantee) ------------------------
+        // -- Success --------------------------------------------------------------
+// Clear the single-use OTP and record when the officer successfully
+// completed OTP authentication.
+//
+// AuthServiceImpl uses this timestamp to allow the officer to log in
+// without another OTP for the next 24 hours.
         officer.setOtpCode(null);
         officer.setOtpExpiresAt(null);
-        officerRepository.save(officer);
+        officer.setLastOtpVerifiedAt(LocalDateTime.now());
 
+        officerRepository.save(officer);
         log.info(
                 "Login OTP verified for officer id={} email={}",
                 officerId,

@@ -215,7 +215,7 @@ function Eligibility() {
          * localStorage.setItem('beneficiaryId', beneficiary.id)
          */
         const storedBeneficiaryId =
-            localStorage.getItem('beneficiaryId');
+            sessionStorage.getItem('beneficiaryId');
 
         if (storedBeneficiaryId) {
             loadExistingDocuments(
@@ -632,7 +632,7 @@ function Eligibility() {
          * when resetting the result.
          */
         const storedBeneficiaryId =
-            localStorage.getItem('beneficiaryId');
+            sessionStorage.getItem('beneficiaryId');
 
         const requestedScheme =
             searchParams.get('scheme');

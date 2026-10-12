@@ -5,13 +5,14 @@ import com.dsgp.authentication.dto.LoginResponse;
 import com.dsgp.authentication.dto.OfficerLoginRequest;
 import com.dsgp.authentication.dto.OfficerLoginResponse;
 import com.dsgp.authentication.entity.Officer;
-import com.dsgp.authentication.entity.OfficerRole;
 import com.dsgp.authentication.repository.OfficerRepository;
 import com.dsgp.beneficiary.entity.Beneficiary;
 import com.dsgp.beneficiary.repository.BeneficiaryRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
 
 @Service
 @Slf4j
@@ -31,13 +32,13 @@ public class AuthServiceImpl implements AuthService {
             EmailOtpService emailOtpService) {
 
         this.beneficiaryRepository = beneficiaryRepository;
-        this.officerRepository     = officerRepository;
-        this.passwordEncoder       = passwordEncoder;
-        this.officerOtpService     = officerOtpService;
-        this.emailOtpService       = emailOtpService;
+        this.officerRepository = officerRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.officerOtpService = officerOtpService;
+        this.emailOtpService = emailOtpService;
     }
 
-    // ── Beneficiary login (unchanged) ─────────────────────────────────────────
+    // ── Beneficiary login ─────────────────────────────────────────────────────
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -73,14 +74,13 @@ public class AuthServiceImpl implements AuthService {
 
         // ── Email-verification guard for newly registered accounts ────────────
         //
-        // Accounts registered before this feature was introduced will have
-        //   emailVerified = false, otpCode = null  → allow login (legacy)
+        // New accounts that have not verified their email have:
+        // emailVerified = false AND otpCode != null
         //
-        // Accounts registered after this feature was introduced and not yet
-        // verified will have:
-        //   emailVerified = false, otpCode != null → block login
-        //
-        if (!beneficiary.isEmailVerified() && beneficiary.getOtpCode() != null) {
+        // These accounts must verify their email before logging in.
+        if (!beneficiary.isEmailVerified()
+                && beneficiary.getOtpCode() != null) {
+
             return new LoginResponse(
                     false,
                     "Please verify your email before logging in. "
@@ -92,9 +92,11 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        // ── Legacy accounts (emailVerified=false, otpCode=null) ───────────────
-        // Allowed through without OTP to preserve backward compatibility.
+        // ── Legacy accounts ───────────────────────────────────────────────────
+        //
+        // Preserve the existing backward-compatible behavior.
         if (!beneficiary.isEmailVerified()) {
+
             return new LoginResponse(
                     true,
                     "Login successful",
@@ -105,15 +107,40 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        // ── Verified accounts: issue a login OTP (two-step) ──────────────────
+        // ── 24-hour OTP trust window ──────────────────────────────────────────
+        //
+        // If the beneficiary successfully verified a login OTP within
+        // the last 24 hours, another OTP is NOT required.
+        if (isOtpTrusted(beneficiary.getLastOtpVerifiedAt())) {
+
+            log.info(
+                    "Beneficiary login allowed without OTP within 24-hour trust window: {}",
+                    maskEmail(beneficiary.getEmail())
+            );
+
+            return new LoginResponse(
+                    true,
+                    "Login successful",
+                    beneficiary.getId(),
+                    beneficiary.getFullName(),
+                    false,
+                    null
+            );
+        }
+
+        // ── Trust period expired → issue fresh login OTP ──────────────────────
         try {
+
             emailOtpService.sendLoginOtp(beneficiary.getEmail());
+
         } catch (IllegalStateException | IllegalArgumentException e) {
+
             log.warn(
                     "Login OTP send failed for email {}: {}",
                     maskEmail(request.getEmail()),
                     e.getMessage()
             );
+
             return new LoginResponse(
                     false,
                     "Could not send the login verification code. Please try again.",
@@ -129,47 +156,61 @@ public class AuthServiceImpl implements AuthService {
                 "Password verified. Please enter the code sent to your email.",
                 null,
                 null,
-                true,                       // otpRequired
-                beneficiary.getEmail()      // so the frontend knows where to send verify
+                true,
+                beneficiary.getEmail()
         );
     }
 
     // ── Officer login ─────────────────────────────────────────────────────────
 
     /**
-     * {@inheritDoc}
+     * Officer login flow:
      *
-     * <p>Two-step flow for non-ADMIN officers:
-     * <ol>
-     *   <li>Validate username + password.</li>
-     *   <li>If credentials are valid and role is {@code FIELD_OFFICER},
-     *       {@code DISTRICT_OFFICER}, or {@code FINANCE_APPROVER}: issue an OTP
-     *       to the officer's registered email and return
-     *       {@code otpRequired = true}.  No session data should be stored yet.</li>
-     *   <li>ADMIN accounts bypass OTP and receive the full session response
-     *       immediately.</li>
-     * </ol>
+     * 1. Validate email + password.
+     * 2. If the officer successfully verified an OTP within the
+     *    previous 24 hours, allow login directly.
+     * 3. Otherwise issue an OTP to the registered email.
+     * 4. Dashboard access is completed only after OTP verification.
      */
     @Override
     public OfficerLoginResponse officerLogin(OfficerLoginRequest request) {
 
         Officer officer = officerRepository
-                .findByUsername(request.getUsername())
+                .findByEmail(request.getEmail())
                 .orElse(null);
 
         if (officer == null || !officer.isActive()) {
-            return failureResponse("Invalid username or password");
+            return failureResponse("Invalid email or password");
         }
 
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 officer.getPassword())) {
 
-            return failureResponse("Invalid username or password");
+            return failureResponse("Invalid email or password");
         }
 
-        // ── ADMIN: bypass OTP, grant session immediately ──────────────────────
-        if (officer.getRole() == OfficerRole.ADMIN) {
+        // ── 24-hour OTP trust window ──────────────────────────────────────────
+        //
+        // Applies to ALL officer roles:
+        // ADMIN
+        // FIELD_OFFICER
+        // DISTRICT_OFFICER
+        // FINANCE_APPROVER
+        //
+        // No role bypasses OTP on the first login.
+        // After successful OTP verification, the officer is trusted
+        // for the next 24 hours.
+        if (isOtpTrusted(officer.getLastOtpVerifiedAt())) {
+
+            log.info(
+                    "Officer login allowed without OTP within 24-hour trust window: "
+                            + "officerId={} email={} role={}",
+                    officer.getId(),
+                    maskEmail(officer.getEmail()),
+                    officer.getRole()
+            );
+
             return new OfficerLoginResponse(
                     true,
                     "Login successful",
@@ -178,29 +219,31 @@ public class AuthServiceImpl implements AuthService {
                     officer.getFullName(),
                     officer.getRole(),
                     officer.getDistrict(),
-                    false               // otpRequired = false for ADMIN
+                    false
             );
         }
 
-        // ── Non-ADMIN: issue OTP and require second factor ────────────────────
+        // ── Trust period expired → issue fresh OTP ────────────────────────────
         try {
+
             officerOtpService.sendOtp(officer.getId());
+
         } catch (IllegalStateException e) {
-            // Officer has no registered email — cannot issue OTP
+
             log.warn(
-                    "OTP send failed for officer id={} username={}: {}",
+                    "OTP send failed for officer id={} email={}: {}",
                     officer.getId(),
-                    officer.getUsername(),
+                    maskEmail(officer.getEmail()),
                     e.getMessage()
             );
+
             return failureResponse(
                     "Your account does not have a registered email address. "
-                    + "Please contact your administrator."
+                            + "Please contact your administrator."
             );
         }
 
-        // Return officer identity so the frontend can route the OTP step,
-        // but do NOT store session data yet — the second factor must succeed first.
+        // Password is correct, but OTP verification is still required.
         return new OfficerLoginResponse(
                 true,
                 "Password verified. Please enter the OTP sent to your registered email.",
@@ -209,32 +252,61 @@ public class AuthServiceImpl implements AuthService {
                 officer.getFullName(),
                 officer.getRole(),
                 officer.getDistrict(),
-                true                    // otpRequired = true
+                true
         );
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
-    /** Builds a standardised failure response with all identity fields null. */
+    /**
+     * Returns true when the last successful login OTP verification
+     * happened within the previous 24 hours.
+     */
+    private boolean isOtpTrusted(LocalDateTime lastOtpVerifiedAt) {
+
+        if (lastOtpVerifiedAt == null) {
+            return false;
+        }
+
+        return lastOtpVerifiedAt.isAfter(
+                LocalDateTime.now().minusHours(24)
+        );
+    }
+
+    /**
+     * Builds a standardised failure response with all identity fields null.
+     */
     private OfficerLoginResponse failureResponse(String message) {
+
         return new OfficerLoginResponse(
                 false,
                 message,
-                null, null, null, null, null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 false
         );
     }
 
-    /** Returns a masked email address for safe log output (e.g. {@code us***@gmail.com}). */
+    /**
+     * Returns a masked email address for safe log output.
+     * Example: us***@gmail.com
+     */
     private String maskEmail(String email) {
+
         if (email == null || !email.contains("@")) {
             return "***";
         }
+
         String[] parts = email.split("@", 2);
         String local = parts[0];
+
         String masked = local.length() <= 2
                 ? local.charAt(0) + "***"
                 : local.substring(0, 2) + "***";
+
         return masked + "@" + parts[1];
     }
 }

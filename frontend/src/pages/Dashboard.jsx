@@ -12,8 +12,8 @@ function Dashboard({ onLogout }) {
 
     useEffect(() => {
 
-        const beneficiaryId = localStorage.getItem('beneficiaryId');
-        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const beneficiaryId = sessionStorage.getItem('beneficiaryId');
+        const isLoggedIn = sessionStorage.getItem('isLoggedIn');
 
         // If user is not logged in, send them to Login
         if (!beneficiaryId || isLoggedIn !== 'true') {
@@ -55,9 +55,9 @@ function Dashboard({ onLogout }) {
 
     const handleLogout = () => {
 
-        localStorage.removeItem('beneficiaryId');
-        localStorage.removeItem('beneficiaryName');
-        localStorage.removeItem('isLoggedIn');
+        sessionStorage.removeItem('beneficiaryId');
+        sessionStorage.removeItem('beneficiaryName');
+        sessionStorage.removeItem('isLoggedIn');
 
         if (onLogout) {
             onLogout();
@@ -148,7 +148,7 @@ function Dashboard({ onLogout }) {
 
                                 <h2>
                                     {beneficiary?.fullName ||
-                                        localStorage.getItem('beneficiaryName') ||
+                                        sessionStorage.getItem('beneficiaryName') ||
                                         'Beneficiary'}
                                 </h2>
 

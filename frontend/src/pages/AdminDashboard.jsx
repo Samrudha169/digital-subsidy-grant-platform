@@ -8,14 +8,19 @@ function AdminDashboard() {
     const navigate = useNavigate();
 
     const officerLoggedIn =
-        localStorage.getItem('officerLoggedIn') === 'true';
-    const officerRole = localStorage.getItem('officerRole');
+        sessionStorage.getItem('officerLoggedIn') === 'true';
+
+    const officerRole =
+        sessionStorage.getItem('officerRole');
+
     const officerName =
-        localStorage.getItem('officerName') || 'Administrator';
+        sessionStorage.getItem('officerName') || 'Administrator';
+
     const officerUsername =
-        localStorage.getItem('officerUsername') || '';
+        sessionStorage.getItem('officerUsername') || '';
+
     const loggedInOfficerId =
-        localStorage.getItem('officerId');
+        sessionStorage.getItem('officerId');
 
     const [schemes, setSchemes] = useState([]);
     const [officers, setOfficers] = useState([]);
@@ -1316,12 +1321,12 @@ function AdminDashboard() {
     ============================================================ */
 
     const logout = () => {
-        localStorage.removeItem('officerLoggedIn');
-        localStorage.removeItem('officerId');
-        localStorage.removeItem('officerUsername');
-        localStorage.removeItem('officerName');
-        localStorage.removeItem('officerRole');
-        localStorage.removeItem('officerDistrict');
+        sessionStorage.removeItem('officerLoggedIn');
+        sessionStorage.removeItem('officerId');
+        sessionStorage.removeItem('officerUsername');
+        sessionStorage.removeItem('officerName');
+        sessionStorage.removeItem('officerRole');
+        sessionStorage.removeItem('officerDistrict');
 
         navigate('/officer/login');
     };

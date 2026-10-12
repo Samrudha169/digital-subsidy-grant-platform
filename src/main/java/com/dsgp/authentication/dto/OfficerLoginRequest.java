@@ -1,20 +1,38 @@
 package com.dsgp.authentication.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
 
-/**
- * Request body for officer login.
- *
- * <p>Officers authenticate with their assigned {@code username} and
- * {@code password}, unlike beneficiaries who use email.
- */
-@Data
 public class OfficerLoginRequest {
 
-    @NotBlank(message = "Username is required")
-    private String username;
+    @NotBlank(message = "Email is required")
+    @Email(message = "Please enter a valid email address")
+    private String email;
 
     @NotBlank(message = "Password is required")
     private String password;
+
+    public OfficerLoginRequest() {
+    }
+
+    public OfficerLoginRequest(String email, String password) {
+        this.email = email;
+        this.password = password;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }

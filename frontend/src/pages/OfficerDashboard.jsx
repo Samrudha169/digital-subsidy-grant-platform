@@ -16,12 +16,8 @@ const ROLES = {
 
 const ROLE_STATUSES = {
     [ROLES.FIELD_OFFICER]: ['PENDING', 'UNDER_REVIEW'],
-    [ROLES.DISTRICT_OFFICER]: ['ESCALATED'],
-    [ROLES.FINANCE_APPROVER]: [
-        'FIELD_APPROVED',
-        'DISTRICT_APPROVED',
-        'APPROVED'
-    ],
+    [ROLES.DISTRICT_OFFICER]: ['ESCALATED', 'DISTRICT_REVIEW'],
+    [ROLES.FINANCE_APPROVER]: ['FIELD_APPROVED', 'DISTRICT_APPROVED'],
 };
 
 const ROLE_LABELS = {
@@ -2545,27 +2541,27 @@ function OfficerDashboard() {
     // ------------------------------------------------------------------------
 
     const officerLoggedIn =
-        localStorage.getItem(
+        sessionStorage.getItem(
             'officerLoggedIn'
         ) === 'true';
 
     const officerName =
-        localStorage.getItem(
+        sessionStorage.getItem(
             'officerName'
         ) || 'Officer';
 
     const officerRole =
-        localStorage.getItem(
+        sessionStorage.getItem(
             'officerRole'
         ) || '';
 
     const officerDistrict =
-        localStorage.getItem(
+        sessionStorage.getItem(
             'officerDistrict'
         ) || '';
 
     const officerUsername =
-        localStorage.getItem(
+        sessionStorage.getItem(
             'officerUsername'
         ) || '';
 

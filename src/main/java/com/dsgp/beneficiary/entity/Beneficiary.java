@@ -178,4 +178,7 @@ public class Beneficiary {
      */
     @Column(name = "login_otp_expires_at")
     private LocalDateTime loginOtpExpiresAt;
+
+    @Column(name = "last_otp_verified_at")
+    private LocalDateTime lastOtpVerifiedAt;
 }

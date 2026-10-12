@@ -6,11 +6,11 @@ import './OfficerLogin.css';
 /**
  * OfficerLogin — Separate authentication portal for government officers.
  *
- * Two-step flow for FIELD_OFFICER, DISTRICT_OFFICER, and FINANCE_APPROVER:
- *   Step 1 — Enter username + password   → POST /auth/officer-login
- *   Step 2 — Enter 6-digit email OTP     → POST /auth/officer-verify-otp
+ * Two-step flow for all government officers:
+ *   Step 1 — Enter email + password       → POST /auth/officer-login
+ *   Step 2 — Enter 6-digit email OTP      → POST /auth/officer-verify-otp
  *
- * ADMIN accounts skip OTP and are routed to the admin dashboard immediately.
+ * All officer roles, including ADMIN, require OTP verification.
  *
  * Officer roles:
  * - FIELD_OFFICER
@@ -24,7 +24,7 @@ function OfficerLogin({ onOfficerLogin }) {
 
     // ── Step 1 state ──────────────────────────────────────────────────────
     const [form, setForm] = useState({
-        username: '',
+        email: '',
         password: ''
     });
 
@@ -125,8 +125,10 @@ function OfficerLogin({ onOfficerLogin }) {
 
         const newErrors = {};
 
-        if (!form.username.trim()) {
-            newErrors.username = 'Username is required.';
+        if (!form.email.trim()) {
+            newErrors.email = 'Email is required.';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+            newErrors.email = 'Please enter a valid email address.';
         }
 
         if (!form.password) {
@@ -165,7 +167,7 @@ function OfficerLogin({ onOfficerLogin }) {
                     },
 
                     body: JSON.stringify({
-                        username: form.username.trim(),
+                        email: form.email.trim(),
                         password: form.password
                     })
                 }
@@ -190,26 +192,42 @@ function OfficerLogin({ onOfficerLogin }) {
             if (!res.ok || !data.success) {
                 setServerError(
                     data.message ||
-                    'Invalid username or password.'
+                    'Invalid email or password.'
                 );
                 return;
             }
 
 
-            // ── ADMIN: no OTP required, store session immediately ─────────────
-            if (data.role === 'ADMIN' && !data.otpRequired) {
+            // ── Check whether OTP is required ─────────────────────────────────────
+//
+// If the officer successfully verified an OTP within the last 24 hours,
+// the backend returns otpRequired = false and login is already complete.
+//
+// Otherwise, continue to the normal OTP screen.
+            if (!data.otpRequired) {
+
+                // Login is already complete — store the officer session.
                 storeOfficerSession(data);
-                if (onOfficerLogin) onOfficerLogin(data.role);
-                navigate('/admin/dashboard');
+
+                if (onOfficerLogin) {
+                    onOfficerLogin(data.role);
+                }
+
+                // Send ADMIN to Admin Dashboard.
+                // All other officers go to Officer Dashboard.
+                if (data.role === 'ADMIN') {
+                    navigate('/admin/dashboard');
+                } else {
+                    navigate('/officer/dashboard');
+                }
+
                 return;
             }
 
-
-            // ── Non-ADMIN: OTP required ───────────────────────────────────────
-            // Hold officer data in state — do NOT write to localStorage yet.
+// OTP is required.
+// Keep officer data in state only until OTP verification succeeds.
             setPendingOfficer(data);
             setOtpStep(true);
-
 
         } catch (error) {
 
@@ -253,9 +271,15 @@ function OfficerLogin({ onOfficerLogin }) {
             // ── OTP verified: now write session and navigate ───────────────────
             storeOfficerSession(pendingOfficer);
 
-            if (onOfficerLogin) onOfficerLogin(pendingOfficer.role);
+            if (onOfficerLogin) {
+                onOfficerLogin(pendingOfficer.role);
+            }
 
-            navigate('/officer/dashboard');
+            if (pendingOfficer.role === 'ADMIN') {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/officer/dashboard');
+            }
 
         } catch (error) {
 
@@ -299,15 +323,18 @@ function OfficerLogin({ onOfficerLogin }) {
     };
 
 
-    // ── Helper: write officer session to localStorage ─────────────────────
+    // ── Helper: write officer session to sessionStorage ────────────────────
+// sessionStorage is specific to each browser tab.
+// This allows Admin, Field Officer, Beneficiary, etc. to stay logged
+// into separate tabs without overwriting each other's sessions.
 
     const storeOfficerSession = (data) => {
-        localStorage.setItem('officerLoggedIn', 'true');
-        localStorage.setItem('officerId',       String(data.officerId));
-        localStorage.setItem('officerUsername', data.username || '');
-        localStorage.setItem('officerName',     data.fullName || '');
-        localStorage.setItem('officerRole',     data.role     || '');
-        localStorage.setItem('officerDistrict', data.district || '');
+        sessionStorage.setItem('officerLoggedIn', 'true');
+        sessionStorage.setItem('officerId',       String(data.officerId));
+        sessionStorage.setItem('officerUsername', data.username || '');
+        sessionStorage.setItem('officerName',     data.fullName || '');
+        sessionStorage.setItem('officerRole',     data.role     || '');
+        sessionStorage.setItem('officerDistrict', data.district || '');
     };
 
 
@@ -459,7 +486,7 @@ function OfficerLogin({ onOfficerLogin }) {
     }
 
 
-    // ── Render — Step 1: username + password ──────────────────────────────
+    // ── Render — Step 1: email + password ─────────────────────────────────
 
     return (
 
@@ -548,37 +575,37 @@ function OfficerLogin({ onOfficerLogin }) {
                 >
 
 
-                    {/* Username */}
+                    {/* Email Address */}
 
                     <div className="officer-form-group">
 
-                        <label htmlFor="officer-username">
-                            Username
+                        <label htmlFor="officer-email">
+                            Email Address
                         </label>
 
                         <input
-                            id="officer-username"
-                            name="username"
-                            type="text"
+                            id="officer-email"
+                            name="email"
+                            type="email"
                             autoComplete="username"
-                            placeholder="e.g. field.officer1"
-                            value={form.username}
+                            placeholder="e.g. digitalgrant.platform+admin@gmail.com"
+                            value={form.email}
                             onChange={handleChange}
                             className={
-                                errors.username
+                                errors.email
                                     ? 'input-error'
                                     : ''
                             }
                             disabled={loading}
                         />
 
-                        {errors.username && (
+                        {errors.email && (
 
                             <span
                                 className="field-error-msg"
                                 role="alert"
                             >
-                                {errors.username}
+                                {errors.email}
                             </span>
 
                         )}

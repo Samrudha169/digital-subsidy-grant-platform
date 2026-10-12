@@ -186,9 +186,9 @@ function Login({ onLogin }) {
             throw new Error('Session initialisation failed: beneficiary ID missing in server response.');
         }
 
-        localStorage.setItem('beneficiaryId',   String(prof.id));
-        localStorage.setItem('beneficiaryName', prof.fullName ?? '');
-        localStorage.setItem('isLoggedIn',      'true');
+        sessionStorage.setItem('beneficiaryId',   String(prof.id));
+        sessionStorage.setItem('beneficiaryName', prof.fullName ?? '');
+        sessionStorage.setItem('isLoggedIn',      'true');
 
         if (formData.remember) {
             localStorage.setItem('rememberedEmail', otpEmail);
@@ -202,9 +202,9 @@ function Login({ onLogin }) {
 
     // Immediate-success path (legacy accounts)
     const grantSession = (data) => {
-        localStorage.setItem('beneficiaryId', data.beneficiaryId ?? '');
-        localStorage.setItem('beneficiaryName', data.name ?? '');
-        localStorage.setItem('isLoggedIn', 'true');
+        sessionStorage.setItem('beneficiaryId', data.beneficiaryId ?? '');
+        sessionStorage.setItem('beneficiaryName', data.name ?? '');
+        sessionStorage.setItem('isLoggedIn', 'true');
 
         if (formData.remember) {
             localStorage.setItem('rememberedEmail', formData.email);
@@ -399,4 +399,4 @@ function Login({ onLogin }) {
     );
 }
 
-export default Login;
+export default Login;

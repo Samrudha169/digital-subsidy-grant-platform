@@ -322,9 +322,18 @@ public class EmailOtpServiceImpl implements EmailOtpService {
             return new OtpVerifyResponse(false, "Invalid login code. Please try again.");
         }
 
-        // -- Success: clear login OTP columns only, emailVerified is untouched --
+        // -- Success --------------------------------------------------------------
+// Clear the single-use login OTP and record the successful verification
+    // time. This timestamp is used for the 24-hour OTP trust window.
+//
+// IMPORTANT:
+// This is intentionally done for LOGIN OTP verification only.
+// Registration/email verification does not start the 24-hour login trust
+// window.
         beneficiary.setLoginOtpCode(null);
         beneficiary.setLoginOtpExpiresAt(null);
+        beneficiary.setLastOtpVerifiedAt(LocalDateTime.now());
+
         beneficiaryRepository.save(beneficiary);
 
         log.info(

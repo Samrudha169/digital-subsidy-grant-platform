@@ -75,4 +75,7 @@ public class Officer {
      */
     @Column(name = "otp_expires_at")
     private LocalDateTime otpExpiresAt;
+
+    @Column(name = "last_otp_verified_at")
+    private LocalDateTime lastOtpVerifiedAt;
 }
