@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import './Eligibility.css';
 
-/* ─── API base (Vite proxy forwards /api → localhost:8080) ─── */
+/* â”€â”€â”€ API base (Vite proxy forwards /api â†’ localhost:8080) â”€â”€â”€ */
 const API_BASE = '/api/v1';
 
-/* ─── Schemes known to the platform ─────────────────────────── */
+/* â”€â”€â”€ Schemes known to the platform â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const KNOWN_SCHEMES = [
     {
         id: 1,
@@ -42,7 +42,7 @@ const KNOWN_SCHEMES = [
     },
 ];
 
-/* ─── Criterion labels ───────────────────────────────────────── */
+/* â”€â”€â”€ Criterion labels â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const CRITERION_LABELS = {
     ageCheck: 'Age Range',
     incomeCheck: 'Annual Income',
@@ -52,7 +52,7 @@ const CRITERION_LABELS = {
     identityCheck: 'Identity Verified',
 };
 
-/* ─── Scheme-specific criterion maximums ─────────────────────
+/* â”€â”€â”€ Scheme-specific criterion maximums â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    These values MUST match EligibilityScoringEngine.java exactly.
 
    PM-KISAN  (scheme id 1 / name "PM-KISAN"):
@@ -66,7 +66,7 @@ const CRITERION_LABELS = {
    PMEGP  (scheme id 3 / name "PMEGP"):
      age=20, income=30, occupation=20, category=20, identity=10
      (no landCheck criterion for PMEGP)  Total = 100
-─────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const CRITERION_MAX_BY_SCHEME = {
     'PM-KISAN': {
         ageCheck:        15,
@@ -112,7 +112,7 @@ function resolveSchemeKey(schemeName) {
     return null;
 }
 
-/* ─── Required documents ──────────────────────────────────── */
+/* â”€â”€â”€ Required documents â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 const COMMON_DOCUMENTS = [
     { type: 'IDENTITY_PROOF', label: 'Aadhaar Card / PAN Card' },
@@ -151,9 +151,9 @@ function getRequiredDocs(schemeKey) {
     ];
 }
 
-/* ═══════════════════════════════════════════════════════════════
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
    MAIN COMPONENT
-═══════════════════════════════════════════════════════════════ */
+â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 function Eligibility() {
 
     /*
@@ -164,10 +164,10 @@ function Eligibility() {
      */
     const [searchParams] = useSearchParams();
 
-    /* ── Active tab: 'quick' | 'live' ── */
+    /* â”€â”€ Active tab: 'quick' | 'live' â”€â”€ */
     const [activeTab, setActiveTab] = useState('live');
 
-    /* ── Quick-check (static) state ── */
+    /* â”€â”€ Quick-check (static) state â”€â”€ */
     const [quickForm, setQuickForm] = useState({
         state: '',
         age: '',
@@ -179,7 +179,7 @@ function Eligibility() {
     const [quickResults, setQuickResults] = useState([]);
     const [quickSubmitted, setQuickSubmitted] = useState(false);
 
-    /* ── Live scoring (backend) state ── */
+    /* â”€â”€ Live scoring (backend) state â”€â”€ */
     const [liveForm, setLiveForm] = useState({
         beneficiaryId: '',
         schemeId: '',
@@ -190,22 +190,26 @@ function Eligibility() {
     const [liveError, setLiveError] = useState('');
     const [liveValidation, setLiveValidation] = useState({});
 
-    /* ── Application submission state ── */
+    /* â”€â”€ Application submission state â”€â”€ */
     const [applicationLoading, setApplicationLoading] = useState(false);
     const [applicationResult, setApplicationResult] = useState(null);
     const [applicationError, setApplicationError] = useState('');
     const [applicationSubmitted, setApplicationSubmitted] = useState(false);
     const [requestedAmount, setRequestedAmount] = useState('');
+
+    /* â”€â”€ Scheme details (for showing grant amount to the beneficiary) â”€â”€ */
+    const [schemeDetails, setSchemeDetails] = useState(null);
+
     /*
-     * Document upload state — keyed by document type string.
+     * Document upload state â€” keyed by document type string.
      * Each entry: { file: File|null, status: 'idle'|'uploading'|'done'|'error', error: string }
      */
     const [docUploads, setDocUploads] = useState({});
 
 
-    /* ════════════════════════════════════════════════════════════
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        AUTO-LOAD BENEFICIARY + SCHEME
-    ════════════════════════════════════════════════════════════ */
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     useEffect(() => {
 
         /*
@@ -286,7 +290,7 @@ function Eligibility() {
         /*
          * When user comes from:
          *
-         * Schemes → Apply Now
+         * Schemes â†’ Apply Now
          *
          * they should directly see Live Eligibility.
          */
@@ -297,9 +301,26 @@ function Eligibility() {
     }, [searchParams]);
 
 
-    /* ════════════════════════════════════════════════════════════
-       QUICK CHECK — static local filter
-    ════════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       FETCH SCHEME DETAILS (for grant amount display)
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+    useEffect(() => {
+        const id = liveForm.schemeId;
+        if (!id) {
+            setSchemeDetails(null);
+            return;
+        }
+        fetch(`${API_BASE}/schemes/${id}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => setSchemeDetails(data))
+            .catch(() => setSchemeDetails(null));
+    }, [liveForm.schemeId]);
+
+
+
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       QUICK CHECK â€” static local filter
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleQuickChange = (e) =>
         setQuickForm({
             ...quickForm,
@@ -331,9 +352,9 @@ function Eligibility() {
     };
 
 
-    /* ════════════════════════════════════════════════════════════
-       LIVE SCORING — validation
-    ════════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       LIVE SCORING â€” validation
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const validateLiveForm = () => {
 
         const errors = {};
@@ -347,9 +368,9 @@ function Eligibility() {
     };
 
 
-    /* ════════════════════════════════════════════════════════════
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        LIVE FORM CHANGE
-    ════════════════════════════════════════════════════════════ */
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleLiveChange = (e) => {
 
         setLiveForm({
@@ -378,9 +399,9 @@ function Eligibility() {
     };
 
 
-    /* ════════════════════════════════════════════════════════════
-       LIVE SCORING — backend API call
-    ════════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       LIVE SCORING â€” backend API call
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleLiveSubmit = async (e) => {
 
         e.preventDefault();
@@ -498,9 +519,9 @@ function Eligibility() {
         }
     };
 
-    /* ════════════════════════════════════════════════════════════
-       DOCUMENT UPLOAD — single file upload per document type
-    ════════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       DOCUMENT UPLOAD â€” single file upload per document type
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleDocUpload = async (docType, file) => {
 
         const beneficiaryId = parseInt(liveForm.beneficiaryId, 10);
@@ -553,9 +574,9 @@ function Eligibility() {
         }
     };
 
-    /* ════════════════════════════════════════════════════════════
-       APPLICATION SUBMISSION — backend API call
-    ════════════════════════════════════════════════════════════ */
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+       APPLICATION SUBMISSION â€” backend API call
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleApplicationSubmit = async () => {
 
         setApplicationLoading(true);
@@ -622,9 +643,9 @@ function Eligibility() {
     };
 
 
-    /* ════════════════════════════════════════════════════════════
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        RESET LIVE CHECK
-    ════════════════════════════════════════════════════════════ */
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const resetLive = () => {
 
         /*
@@ -670,7 +691,7 @@ function Eligibility() {
     };
 
 
-    /* ── Helpers ── */
+    /* â”€â”€ Helpers â”€â”€ */
 
     const scoreColor = (score) => {
 
@@ -709,14 +730,14 @@ function Eligibility() {
         );
 
 
-    /* ═════════════════════════════════════════════════════════════
+    /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        RENDER
-    ═════════════════════════════════════════════════════════════ */
+    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     return (
 
         <div className="eligibility-page">
 
-            {/* ── Hero ── */}
+            {/* â”€â”€ Hero â”€â”€ */}
 
             <section className="eligibility-hero">
 
@@ -727,7 +748,7 @@ function Eligibility() {
                     </h1>
 
                     <p>
-                        Discover government schemes you qualify for —
+                        Discover government schemes you qualify for â€”
                         instantly, using our weighted scoring engine.
                     </p>
 
@@ -736,7 +757,7 @@ function Eligibility() {
             </section>
 
 
-            {/* ── Tab bar ── */}
+            {/* â”€â”€ Tab bar â”€â”€ */}
 
             <div className="elig-tab-bar">
 
@@ -784,9 +805,9 @@ function Eligibility() {
             <main className="eligibility-container">
 
 
-                {/* ══════════════════════════════════════════════
-                    TAB 1 — QUICK CHECK
-                ══════════════════════════════════════════════ */}
+                {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                    TAB 1 â€” QUICK CHECK
+                â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
                 {activeTab === 'quick' && (
 
@@ -880,15 +901,15 @@ function Eligibility() {
                                         </option>
 
                                         <option value="18-25">
-                                            18 – 25
+                                            18 â€“ 25
                                         </option>
 
                                         <option value="26-40">
-                                            26 – 40
+                                            26 â€“ 40
                                         </option>
 
                                         <option value="41-60">
-                                            41 – 60
+                                            41 â€“ 60
                                         </option>
 
                                         <option value="above-60">
@@ -1009,15 +1030,15 @@ function Eligibility() {
                                         </option>
 
                                         <option value="1-3">
-                                            ₹1 – ₹3 Lakhs
+                                            ₹1 â€“ ₹3 Lakhs
                                         </option>
 
                                         <option value="3-5">
-                                            ₹3 – ₹5 Lakhs
+                                            ₹3 â€“ ₹5 Lakhs
                                         </option>
 
                                         <option value="5-10">
-                                            ₹5 – ₹10 Lakhs
+                                            ₹5 â€“ ₹10 Lakhs
                                         </option>
 
                                         <option value="above-10">
@@ -1124,9 +1145,9 @@ function Eligibility() {
                 )}
 
 
-                {/* ══════════════════════════════════════════════
-                    TAB 2 — LIVE SCORING
-                ══════════════════════════════════════════════ */}
+                {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+                    TAB 2 â€” LIVE SCORING
+                â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
                 {activeTab === 'live' && (
 
@@ -1157,7 +1178,7 @@ function Eligibility() {
                                 <div className="live-info-box">
 
                                     <span className="live-info-icon">
-                                        ✓
+                                        âœ“
                                     </span>
 
                                     <span>
@@ -1181,14 +1202,14 @@ function Eligibility() {
                                 <div className="live-info-box">
 
                                     <span className="live-info-icon">
-                                        ℹ
+                                        â„¹
                                     </span>
 
                                     <span>
                                         You must be registered as a beneficiary
-                                        to use live scoring. Score ≥&nbsp;60 →
+                                        to use live scoring. Score â‰¥&nbsp;60 â†’
                                         <strong> ELIGIBLE</strong>.
-                                        Score &lt;&nbsp;60 →
+                                        Score &lt;&nbsp;60 â†’
                                         <strong> INELIGIBLE</strong>.
                                     </span>
 
@@ -1301,7 +1322,7 @@ function Eligibility() {
                                                 key={s.backendId}
                                                 value={s.backendId}
                                             >
-                                                {s.name} — {s.category}
+                                                {s.name} â€” {s.category}
                                             </option>
 
                                         ))}
@@ -1342,7 +1363,7 @@ function Eligibility() {
                                                 aria-hidden="true"
                                             />
 
-                                            Evaluating…
+                                            Evaluatingâ€¦
 
                                         </span>
 
@@ -1357,7 +1378,7 @@ function Eligibility() {
                         </div>
 
 
-                        {/* ── API Error ── */}
+                        {/* â”€â”€ API Error â”€â”€ */}
 
                         {liveError && (
 
@@ -1367,7 +1388,7 @@ function Eligibility() {
                             >
 
                                 <span className="live-alert-icon">
-                                    ✕
+                                    âœ•
                                 </span>
 
                                 <div>
@@ -1387,7 +1408,7 @@ function Eligibility() {
                         )}
 
 
-                        {/* ── Result panel ── */}
+                        {/* â”€â”€ Result panel â”€â”€ */}
 
                         {liveResult && (
 
@@ -1410,7 +1431,7 @@ function Eligibility() {
                                         className="verdict-icon"
                                         aria-hidden="true"
                                     >
-                                        {liveResult.eligible ? '✓' : '✕'}
+                                        {liveResult.eligible ? 'âœ“' : 'âœ•'}
                                     </div>
 
 
@@ -1648,8 +1669,8 @@ function Eligibility() {
                                                                     aria-hidden="true"
                                                                 >
                                                                     {crit.passed
-                                                                        ? '✓'
-                                                                        : '✕'}
+                                                                        ? 'âœ“'
+                                                                        : 'âœ•'}
                                                                 </span>
 
 
@@ -1729,14 +1750,14 @@ function Eligibility() {
                                 </div>
 
 
-                                {/* Next steps — eligible */}
+                                {/* Next steps â€” eligible */}
 
                                 {liveResult.eligible && (
 
                                     <div className="next-steps-card">
 
                                         <h3>
-                                            🎉 Next Steps
+                                            ðŸŽ‰ Next Steps
                                         </h3>
 
                                         <p>
@@ -1767,7 +1788,7 @@ function Eligibility() {
                                                 <div className="doc-upload-section">
 
                                                     <h4 className="doc-upload-title">
-                                                        📎 Required Documents
+                                                        ðŸ“Ž Required Documents
                                                     </h4>
 
                                                     <p className="doc-upload-subtitle">
@@ -1798,12 +1819,12 @@ function Eligibility() {
                                                                         {status === 'uploading' && (
                                                                             <span className="spinner" aria-hidden="true" />
                                                                         )}
-                                                                        {status === 'done'    ? '✓ Uploaded'     : null}
-                                                                        {status === 'error'   ? '↺ Retry'        : null}
+                                                                        {status === 'done'    ? 'âœ“ Uploaded'     : null}
+                                                                        {status === 'error'   ? 'â†º Retry'        : null}
                                                                         {(status === 'idle' || status === 'uploading') && status !== 'uploading'
                                                                             ? 'Choose File'
                                                                             : null}
-                                                                        {status === 'uploading' ? ' Uploading…' : null}
+                                                                        {status === 'uploading' ? ' Uploadingâ€¦' : null}
 
                                                                         <input
                                                                             id={`doc-input-${type}`}
@@ -1844,7 +1865,7 @@ function Eligibility() {
 
                                                     {allDone && (
                                                         <p className="doc-upload-note doc-upload-note--done" role="status">
-                                                            ✓ All required documents uploaded. You may now submit your application.
+                                                            âœ“ All required documents uploaded. You may now submit your application.
                                                         </p>
                                                     )}
 
@@ -1867,17 +1888,22 @@ function Eligibility() {
                                                 type="number"
                                                 min="0.01"
                                                 step="0.01"
+                                                max={schemeDetails?.grantAmount ?? undefined}
                                                 value={requestedAmount}
                                                 onChange={(e) => setRequestedAmount(e.target.value)}
-                                                placeholder="Enter requested amount"
+                                                placeholder={
+                                                    schemeDetails?.grantAmount
+                                                        ? `Enter amount (max ₹${Number(schemeDetails.grantAmount).toLocaleString('en-IN')})`
+                                                        : 'Enter requested amount'
+                                                }
                                                 className="elig-input"
                                                 required
                                             />
 
-                                            {selectedScheme?.backendId === 1 && (
+                                            {schemeDetails?.grantAmount != null && (
                                                 <span className="field-hint">
-            Maximum grant: ₹6,000
-        </span>
+                                                    Maximum grant: ₹{Number(schemeDetails.grantAmount).toLocaleString('en-IN')}
+                                                </span>
                                             )}
                                         </div>
                                         <div className="next-steps-actions">
@@ -1898,7 +1924,7 @@ function Eligibility() {
                                             </Link>
 
 
-                                            {/* Submit Application — gated on all docs uploaded */}
+                                            {/* Submit Application â€” gated on all docs uploaded */}
                                             {!applicationSubmitted && (() => {
                                                 const schemeKey = resolveSchemeKey(liveResult.schemeName);
                                                 const requiredDocs = getRequiredDocs(schemeKey)
@@ -1917,9 +1943,9 @@ function Eligibility() {
                                                         title={!allDone ? 'Upload all required documents first' : undefined}
                                                     >
                                                         {applicationLoading
-                                                            ? 'Submitting…'
+                                                            ? 'Submittingâ€¦'
                                                             : applicationResult
-                                                                ? 'Application Submitted ✓'
+                                                                ? 'Application Submitted âœ“'
                                                                 : 'Submit Application'
                                                         }
                                                     </button>
@@ -1950,7 +1976,7 @@ function Eligibility() {
                                             >
 
                                                 <span className="live-alert-icon">
-                                                    ✕
+                                                    âœ•
                                                 </span>
 
                                                 <div>
@@ -1982,7 +2008,7 @@ function Eligibility() {
                                             >
 
                                                 <span className="live-info-icon">
-                                                    ✓
+                                                    âœ“
                                                 </span>
 
                                                 <span>
@@ -1998,7 +2024,7 @@ function Eligibility() {
                                                         }
                                                     </strong>
 
-                                                    {' '}— Status:{' '}
+                                                    {' '}â€” Status:{' '}
 
                                                     <strong>
                                                         {
@@ -2017,7 +2043,7 @@ function Eligibility() {
                                 )}
 
 
-                                {/* Next steps — ineligible */}
+                                {/* Next steps â€” ineligible */}
 
                                 {!liveResult.eligible && (
 

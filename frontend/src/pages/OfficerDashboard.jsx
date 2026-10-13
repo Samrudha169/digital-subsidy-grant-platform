@@ -124,7 +124,7 @@ const FIELD_PROOF_CONFIG = {
         ],
         documentLabel: 'Identity & Address Proof',
         type: 'DOCUMENT',
-        icon: '🪪',
+        icon: 'ðŸªª',
     },
 
     IDENTITY: {
@@ -134,7 +134,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['IDENTITY_PROOF'],
         documentLabel: 'Identity Proof',
         type: 'DOCUMENT',
-        icon: '🪪',
+        icon: 'ðŸªª',
     },
 
     ADDRESS: {
@@ -144,7 +144,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['ADDRESS_PROOF'],
         documentLabel: 'Address Proof',
         type: 'DOCUMENT',
-        icon: '🏠',
+        icon: 'ðŸ ',
     },
 
     INCOME: {
@@ -154,7 +154,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['INCOME_CERTIFICATE'],
         documentLabel: 'Income Certificate',
         type: 'DOCUMENT',
-        icon: '💰',
+        icon: 'ðŸ’°',
     },
 
     LAND: {
@@ -164,7 +164,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['LAND_RECORD'],
         documentLabel: 'Land Record',
         type: 'DOCUMENT',
-        icon: '🌾',
+        icon: 'ðŸŒ¾',
     },
 
     OCCUPATION: {
@@ -174,7 +174,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['OCCUPATION_PROOF'],
         documentLabel: 'Occupation Proof',
         type: 'DOCUMENT',
-        icon: '💼',
+        icon: 'ðŸ’¼',
     },
 
     CATEGORY: {
@@ -184,7 +184,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['CATEGORY_CERTIFICATE'],
         documentLabel: 'Category Certificate',
         type: 'DOCUMENT',
-        icon: '🏷️',
+        icon: 'ðŸ·ï¸',
     },
 
     ANNUAL_INCOME: {
@@ -193,7 +193,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['INCOME_CERTIFICATE'],
         documentLabel: 'Income Certificate',
         type: 'DOCUMENT',
-        icon: '💰',
+        icon: 'ðŸ’°',
     },
 
     CATEGORY_VERIFICATION: {
@@ -202,7 +202,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['CATEGORY_CERTIFICATE'],
         documentLabel: 'Category Certificate',
         type: 'DOCUMENT',
-        icon: '🏷️',
+        icon: 'ðŸ·ï¸',
     },
 
     AGE_PROOF: {
@@ -211,7 +211,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['IDENTITY_PROOF'],
         documentLabel: 'Identity Proof',
         type: 'DOCUMENT',
-        icon: '🪪',
+        icon: 'ðŸªª',
     },
 
     BANK_OWNERSHIP: {
@@ -220,7 +220,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['BANK_ACCOUNT_PROOF'],
         documentLabel: 'Bank Account Proof',
         type: 'DOCUMENT',
-        icon: '🏦',
+        icon: 'ðŸ¦',
     },
 
     ACCOUNT_NUMBER: {
@@ -229,7 +229,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['BANK_ACCOUNT_PROOF'],
         documentLabel: 'Bank Account Proof',
         type: 'DOCUMENT',
-        icon: '🏦',
+        icon: 'ðŸ¦',
     },
 
     IFSC_VERIFICATION: {
@@ -238,7 +238,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['BANK_ACCOUNT_PROOF'],
         documentLabel: 'Bank Account Proof',
         type: 'DOCUMENT',
-        icon: '🏦',
+        icon: 'ðŸ¦',
     },
 
     BENEFICIARY_ACCOUNT_MATCH: {
@@ -247,7 +247,7 @@ const FIELD_PROOF_CONFIG = {
         documentTypes: ['BANK_ACCOUNT_PROOF', 'IDENTITY_PROOF'],
         documentLabel: 'Bank and Identity Proof',
         type: 'DOCUMENT',
-        icon: '🏦',
+        icon: 'ðŸ¦',
     },
 
     DOCUMENTS: {
@@ -255,7 +255,7 @@ const FIELD_PROOF_CONFIG = {
         description:
             'Review all supporting documents submitted with the application.',
         type: 'ALL_DOCUMENTS',
-        icon: '📁',
+        icon: 'ðŸ“',
     },
 };
 
@@ -264,7 +264,7 @@ const FIELD_PROOF_CONFIG = {
 // ============================================================================
 
 function formatDate(dateStr) {
-    if (!dateStr) return '—';
+    if (!dateStr) return 'â€”';
 
     const d = new Date(dateStr);
 
@@ -280,7 +280,7 @@ function formatDate(dateStr) {
 }
 
 function formatDateTime(dateStr) {
-    if (!dateStr) return '—';
+    if (!dateStr) return 'â€”';
 
     const d = new Date(dateStr);
 
@@ -298,7 +298,7 @@ function formatDateTime(dateStr) {
 }
 
 function formatBytes(bytes) {
-    if (!bytes) return '—';
+    if (!bytes) return 'â€”';
 
     if (bytes < 1024) {
         return `${bytes} B`;
@@ -389,7 +389,7 @@ function getCriterionConfig(criterion) {
         description:
             'Review the relevant beneficiary information and supporting evidence.',
         type: 'PROFILE',
-        icon: '🔎',
+        icon: 'ðŸ”Ž',
     };
 }
 
@@ -644,9 +644,10 @@ function RemarksModal({
             .replace(/\b\w/g, c => c.toUpperCase())
         : 'Action';
 
-    // Maximum allowed = scheme grant amount (reference/upper bound)
+    // Maximum allowed = scheme grant amount (maximum cap from the scheme).
+    // ApplicationResponse.schemeGrantAmount is the flat field from the API.
     const maxGrantAmount =
-        app?.scheme?.grantAmount ?? null;
+        app?.schemeGrantAmount ?? null;
 
     const submit = () => {
         if (isFinanceApprove) {
@@ -700,7 +701,7 @@ function RemarksModal({
                         <p>
                             Application #
                             {app?.applicationId}
-                            {' — '}
+                            {' â€” '}
                             {app?.beneficiaryName}
                         </p>
                     </div>
@@ -711,7 +712,7 @@ function RemarksModal({
                         onClick={onCancel}
                         disabled={loading}
                     >
-                        ×
+                        Ã—
                     </button>
                 </div>
 
@@ -745,9 +746,15 @@ function RemarksModal({
                             autoFocus
                         />
 
+                        {app?.requestedAmount != null && (
+                            <p className="od-modal-hint">
+                                Beneficiary requested: ₹{Number(app.requestedAmount).toLocaleString('en-IN')}
+                            </p>
+                        )}
+
                         {maxGrantAmount !== null && (
                             <p className="od-modal-hint">
-                                Scheme grant amount (maximum): ₹{Number(maxGrantAmount).toLocaleString('en-IN')}
+                                Scheme max grant amount: ₹{Number(maxGrantAmount).toLocaleString('en-IN')}
                             </p>
                         )}
                     </>
@@ -910,7 +917,7 @@ function CriterionModal({
                         onClick={onCancel}
                         disabled={loading}
                     >
-                        ×
+                        Ã—
                     </button>
 
                 </div>
@@ -983,7 +990,7 @@ function CriterionModal({
                         }
                         disabled={loading}
                     >
-                        ✕ Fail
+                        âœ• Fail
                     </button>
 
                     <button
@@ -1002,7 +1009,7 @@ function CriterionModal({
                                 : 'Verify criterion'
                         }
                     >
-                        ✓ Review & Verify
+                        âœ“ Review & Verify
                     </button>
 
                 </div>
@@ -1120,10 +1127,10 @@ function CriterionCard({
                     }`}
                 >
                     {isVerified
-                        ? '✓ Verified'
+                        ? 'âœ“ Verified'
                         : isFailed
-                            ? '✕ Failed'
-                            : '○ Pending'}
+                            ? 'âœ• Failed'
+                            : 'â—‹ Pending'}
                 </div>
 
             </div>
@@ -1141,7 +1148,7 @@ function CriterionCard({
                     {relevantDocuments.length === 0 ? (
 
                         <div className="od-no-proof">
-                            <span>⚠️</span>
+                            <span>âš ï¸</span>
 
                             <div>
                                 <strong>
@@ -1168,7 +1175,7 @@ function CriterionCard({
                                     >
 
                                         <div className="od-document-icon">
-                                            📄
+                                            ðŸ“„
                                         </div>
 
                                         <div className="od-document-info">
@@ -1181,7 +1188,7 @@ function CriterionCard({
 
                                             <span>
                                                 {config.documentLabel}
-                                                {' · '}
+                                                {' Â· '}
                                                 {formatBytes(
                                                     doc.fileSize
                                                 )}
@@ -1231,7 +1238,7 @@ function CriterionCard({
                     {allDocuments.length === 0 ? (
 
                         <div className="od-no-proof">
-                            <span>⚠️</span>
+                            <span>âš ï¸</span>
 
                             <div>
                                 <strong>
@@ -1257,7 +1264,7 @@ function CriterionCard({
                                     >
 
                                         <div className="od-document-icon">
-                                            📄
+                                            ðŸ“„
                                         </div>
 
                                         <div className="od-document-info">
@@ -1276,7 +1283,7 @@ function CriterionCard({
                                                     /_/g,
                                                     ' '
                                                 )}
-                                                {' · '}
+                                                {' Â· '}
                                                 {formatBytes(
                                                     doc.fileSize
                                                 )}
@@ -1343,7 +1350,7 @@ function CriterionCard({
 
                     {isVerified && (
                         <span className="od-proof-success">
-                            ✓ Verified
+                            âœ“ Verified
                             {criterion.verifiedBy
                                 ? ` by ${criterion.verifiedBy}`
                                 : ''}
@@ -1352,7 +1359,7 @@ function CriterionCard({
 
                     {isFailed && (
                         <span className="od-proof-failed">
-                            ✕ Verification failed
+                            âœ• Verification failed
                         </span>
                     )}
 
@@ -1396,7 +1403,7 @@ function CriterionCard({
                             isVerified
                         }
                     >
-                        ✕ Fail
+                        âœ• Fail
                     </button>
 
                     <button
@@ -1416,7 +1423,7 @@ function CriterionCard({
                             !hasProof
                         }
                     >
-                        ✓ Review & Verify
+                        âœ“ Review & Verify
                     </button>
 
                 </div>
@@ -1471,25 +1478,25 @@ function RoleEvidenceWorkspace({
                         until a backend upload endpoint is connected.
                     </p>
                 </div>
-                <span className="od-section-icon">📂</span>
+                <span className="od-section-icon">ðŸ“‚</span>
             </div>
 
             <div className="od-proof-area">
                 <div className="od-proof-label">Available Uploaded Documents</div>
                 {visibleDocuments.length === 0 ? (
                     <div className="od-no-proof">
-                        ⚠️ No role-relevant documents found.
+                        âš ï¸ No role-relevant documents found.
                     </div>
                 ) : (
                     <div className="od-document-list">
                         {visibleDocuments.map(doc => (
                             <div className="od-document-item" key={doc.id}>
-                                <div className="od-document-icon">📄</div>
+                                <div className="od-document-icon">ðŸ“„</div>
                                 <div className="od-document-info">
                                     <strong>{doc.originalFileName || doc.fileName || 'Document'}</strong>
                                     <span>
                                         {String(doc.documentType || 'OTHER').replace(/_/g, ' ')}
-                                        {' · '}
+                                        {' Â· '}
                                         {formatBytes(doc.fileSize)}
                                     </span>
                                 </div>
@@ -1675,7 +1682,7 @@ function ApplicationReview({
                     className="od-back-button"
                     onClick={onBack}
                 >
-                    ← Back to Applications
+                    â† Back to Applications
                 </button>
 
                 <div className="od-review-title-row">
@@ -1695,7 +1702,7 @@ function ApplicationReview({
                         <p>
                             Application #
                             {app.applicationId}
-                            {' · '}
+                            {' Â· '}
                             {app.schemeName}
                         </p>
 
@@ -1730,7 +1737,7 @@ function ApplicationReview({
                 <div className="od-summary-card">
 
                     <span className="od-summary-icon">
-                        📋
+                        ðŸ“‹
                     </span>
 
                     <div>
@@ -1748,7 +1755,7 @@ function ApplicationReview({
                 <div className="od-summary-card">
 
                     <span className="od-summary-icon">
-                        🏛️
+                        ðŸ›ï¸
                     </span>
 
                     <div>
@@ -1758,7 +1765,7 @@ function ApplicationReview({
 
                         <strong>
                             {app.schemeName ||
-                                '—'}
+                                'â€”'}
                         </strong>
                     </div>
 
@@ -1767,7 +1774,7 @@ function ApplicationReview({
                 <div className="od-summary-card">
 
                     <span className="od-summary-icon">
-                        🎯
+                        ðŸŽ¯
                     </span>
 
                     <div>
@@ -1792,7 +1799,7 @@ function ApplicationReview({
                 <div className="od-summary-card">
 
                     <span className="od-summary-icon">
-                        📅
+                        ðŸ“…
                     </span>
 
                     <div>
@@ -1830,7 +1837,7 @@ function ApplicationReview({
                     </div>
 
                     <span className="od-section-icon">
-                        👤
+                        ðŸ‘¤
                     </span>
 
                 </div>
@@ -2037,6 +2044,31 @@ function ApplicationReview({
                             }
                         />
 
+                        <InfoRow
+                            label="Requested Amount"
+                            value={
+                                app.requestedAmount != null
+                                    ? `₹${Number(app.requestedAmount).toLocaleString('en-IN')}`
+                                    : null
+                            }
+                        />
+
+                        <InfoRow
+                            label="Max Grant Amount"
+                            value={
+                                app.schemeGrantAmount != null
+                                    ? `₹${Number(app.schemeGrantAmount).toLocaleString('en-IN')}`
+                                    : null
+                            }
+                        />
+
+                        {app.sanctionedAmount != null && (
+                            <InfoRow
+                                label="Sanctioned Amount"
+                                value={`₹${Number(app.sanctionedAmount).toLocaleString('en-IN')}`}
+                            />
+                        )}
+
                     </div>
 
                 </div>
@@ -2136,7 +2168,7 @@ function ApplicationReview({
 
                     {failedCount > 0 && (
                         <div className="od-progress-warning">
-                            ⚠️ {failedCount} criterion
+                            âš ï¸ {failedCount} criterion
                             {failedCount > 1
                                 ? 'a'
                                 : ''}
@@ -2160,7 +2192,7 @@ function ApplicationReview({
                     <div className="od-empty-card">
 
                         <span>
-                            🔎
+                            ðŸ”Ž
                         </span>
 
                         <h3>
@@ -2241,8 +2273,8 @@ function ApplicationReview({
 
                             <span className="od-approval-icon">
                                 {canFieldApprove
-                                    ? '✓'
-                                    : '🔒'}
+                                    ? 'âœ“'
+                                    : 'ðŸ”’'}
                             </span>
 
                                 <div>
@@ -2280,7 +2312,7 @@ function ApplicationReview({
                             >
                                 {actionLoading
                                     ? 'Processing...'
-                                    : '✓ Approve Application'}
+                                    : 'âœ“ Approve Application'}
                             </button>
 
                         </div>
@@ -2295,7 +2327,7 @@ function ApplicationReview({
                             <div>
 
                             <span className="od-approval-icon">
-                                🏛️
+                                ðŸ›ï¸
                             </span>
 
                                 <div>
@@ -2331,7 +2363,7 @@ function ApplicationReview({
                                     )
                                 }
                             >
-                                ✓ District Approve
+                                âœ“ District Approve
                             </button>
 
                         </div>
@@ -2346,7 +2378,7 @@ function ApplicationReview({
                             <div>
 
                             <span className="od-approval-icon">
-                                💰
+                                ðŸ’°
                             </span>
 
                                 <div>
@@ -2382,7 +2414,7 @@ function ApplicationReview({
                                     )
                                 }
                             >
-                                ✓ Finance Approve
+                                âœ“ Finance Approve
                             </button>
 
                         </div>
@@ -2414,7 +2446,7 @@ function ApplicationReview({
                     </div>
 
                     <span className="od-section-icon">
-                        🕐
+                        ðŸ•
                     </span>
 
                 </div>
@@ -2438,7 +2470,7 @@ function ApplicationReview({
                                 >
 
                                     <div className="od-timeline-dot">
-                                        ✓
+                                        âœ“
                                     </div>
 
                                     <div className="od-timeline-content">
@@ -2521,7 +2553,7 @@ function InfoRow({
                         : ''
                 }
             >
-                {value || '—'}
+                {value || 'â€”'}
             </strong>
 
         </div>
@@ -3108,7 +3140,7 @@ function OfficerDashboard() {
                     <div className="od-brand">
 
                         <div className="od-brand-mark">
-                            🏛️
+                            ðŸ›ï¸
                         </div>
 
                         <div>
@@ -3136,7 +3168,7 @@ function OfficerDashboard() {
                                     officerRole
                                     ] || officerRole}
                                 {officerDistrict
-                                    ? ` · ${officerDistrict}`
+                                    ? ` Â· ${officerDistrict}`
                                     : ''}
                             </span>
 
@@ -3158,13 +3190,13 @@ function OfficerDashboard() {
 
                 {successMsg && (
                     <div className="od-floating-success">
-                        ✓ {successMsg}
+                        âœ“ {successMsg}
                     </div>
                 )}
 
                 {actionError && (
                     <div className="od-floating-error">
-                        ⚠️ {actionError}
+                        âš ï¸ {actionError}
                     </div>
                 )}
 
@@ -3293,7 +3325,7 @@ function OfficerDashboard() {
                 <div className="od-brand">
 
                     <div className="od-brand-mark">
-                        🏛️
+                        ðŸ›ï¸
                     </div>
 
                     <div>
@@ -3322,7 +3354,7 @@ function OfficerDashboard() {
                                 ] || officerRole}
 
                             {officerDistrict
-                                ? ` · ${officerDistrict}`
+                                ? ` Â· ${officerDistrict}`
                                 : ''}
                         </span>
 
@@ -3363,14 +3395,14 @@ function OfficerDashboard() {
 
             {successMsg && (
                 <div className="od-notification od-notification-success">
-                    <span>✓</span>
+                    <span>âœ“</span>
                     {successMsg}
                 </div>
             )}
 
             {actionError && (
                 <div className="od-notification od-notification-error">
-                    <span>⚠️</span>
+                    <span>âš ï¸</span>
                     {actionError}
                 </div>
             )}
@@ -3421,7 +3453,7 @@ function OfficerDashboard() {
                 {fetchError && (
 
                     <div className="od-notification od-notification-error">
-                        <span>⚠️</span>
+                        <span>âš ï¸</span>
                         {fetchError}
                     </div>
 
@@ -3448,7 +3480,7 @@ function OfficerDashboard() {
                     <div className="od-empty-card od-queue-empty">
 
                         <span>
-                            ✓
+                            âœ“
                         </span>
 
                         <h2>
@@ -3630,7 +3662,7 @@ function OfficerDashboard() {
                                                             handleActionClick(app, 'start', false);
                                                         }}
                                                     >
-                                                        ▶ Start Verification
+                                                        â–¶ Start Verification
                                                     </button>
 
                                                 ) : (
@@ -3642,7 +3674,7 @@ function OfficerDashboard() {
                                                             openApplication(app)
                                                         }
                                                     >
-                                                        Review →
+                                                        Review â†’
                                                     </button>
 
                                                 )}
@@ -3662,7 +3694,7 @@ function OfficerDashboard() {
 
                 )}
 
-                {/* ── DISBURSEMENT ANALYTICS ─────────────────────────── */}
+                {/* â”€â”€ DISBURSEMENT ANALYTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
                 <DisbursementAnalyticsPanel />
 
             </main>
@@ -3672,4 +3704,3 @@ function OfficerDashboard() {
 }
 
 export default OfficerDashboard;
-

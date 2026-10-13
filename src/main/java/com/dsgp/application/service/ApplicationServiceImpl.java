@@ -199,6 +199,8 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .applicationStatus(app.getApplicationStatus())
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(app.getApplicationDate())
+                .requestedAmount(app.getRequestedAmount())
+                .schemeGrantAmount(app.getScheme().getGrantAmount())
                 .sanctionedAmount(app.getSanctionedAmount())
                 .build();
     }

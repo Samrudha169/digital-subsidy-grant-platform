@@ -85,6 +85,8 @@ class ApplicationControllerTest {
                 .applicationStatus("PENDING")
                 .eligibilityScore(80)
                 .applicationDate(LocalDateTime.now())
+                .requestedAmount(new BigDecimal("5000.00"))
+                .schemeGrantAmount(new BigDecimal("6000.00"))
                 .build();
     }
 
@@ -117,7 +119,9 @@ class ApplicationControllerTest {
                     .andExpect(jsonPath("$.eligibilityScore").value(80))
                     .andExpect(jsonPath("$.beneficiaryId").value(101))
                     .andExpect(jsonPath("$.schemeId").value(1))
-                    .andExpect(jsonPath("$.schemeName").value("PM-KISAN Samman Nidhi"));
+                    .andExpect(jsonPath("$.schemeName").value("PM-KISAN Samman Nidhi"))
+                    .andExpect(jsonPath("$.requestedAmount").value(5000.00))
+                    .andExpect(jsonPath("$.schemeGrantAmount").value(6000.00));
         }
 
         @Test

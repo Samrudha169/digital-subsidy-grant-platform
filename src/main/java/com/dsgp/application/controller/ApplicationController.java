@@ -107,6 +107,8 @@ public class ApplicationController {
                 .applicationStatus(application.getApplicationStatus())
                 .eligibilityScore(eligibilityScore)
                 .applicationDate(application.getApplicationDate())
+                .requestedAmount(application.getRequestedAmount())
+                .schemeGrantAmount(application.getScheme().getGrantAmount())
                 .sanctionedAmount(application.getSanctionedAmount())
                 .build();
 

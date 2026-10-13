@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 @Builder
 public class ApplicationResponse {
 
+
     /** Primary key of the created scheme_applications row. */
     private Long applicationId;
 
@@ -39,6 +40,18 @@ public class ApplicationResponse {
 
     /** Timestamp when the application was persisted. */
     private LocalDateTime applicationDate;
+
+    /**
+     * Amount requested by the beneficiary when submitting the application.
+     * Set at submission time; never null for any persisted application.
+     */
+    private BigDecimal requestedAmount;
+
+    /**
+     * Maximum grant amount defined by the scheme (i.e. Scheme.grantAmount).
+     * Provided here so UI consumers do not need a separate /schemes/{id} call.
+     */
+    private BigDecimal schemeGrantAmount;
 
     /** Amount sanctioned by the Finance Officer. */
     private BigDecimal sanctionedAmount;

@@ -93,6 +93,7 @@ class ApplicationServiceImplTest {
                 .beneficiary(beneficiary())
                 .scheme(scheme())
                 .applicationStatus("PENDING")
+                .requestedAmount(new BigDecimal("5000.00"))
                 .build();
         // Simulate @PrePersist
         try {
@@ -168,6 +169,16 @@ class ApplicationServiceImplTest {
             assertThat(response.getSchemeId()).isEqualTo(SCHEME_ID);
             assertThat(response.getSchemeName()).isEqualTo("PM-KISAN Samman Nidhi");
             assertThat(response.getBeneficiaryName()).isEqualTo("Ravi Kumar");
+            // Amount fields must all be present and distinct
+            assertThat(response.getRequestedAmount())
+                    .as("requestedAmount must equal what the beneficiary submitted")
+                    .isEqualByComparingTo(new BigDecimal("5000.00"));
+            assertThat(response.getSchemeGrantAmount())
+                    .as("schemeGrantAmount must equal the scheme ceiling, not the requested amount")
+                    .isEqualByComparingTo(new BigDecimal("6000.00"));
+            assertThat(response.getSanctionedAmount())
+                    .as("sanctionedAmount must be null until Finance Officer approves")
+                    .isNull();
         }
 
         @Test
@@ -329,7 +340,85 @@ class ApplicationServiceImplTest {
         }
     }
 
+    // ── Requested amount validation ───────────────────────────────────────────
+
+    @Nested
+    @DisplayName("submitApplication — requested amount validation")
+    class RequestedAmountValidation {
+
+
+        @Test
+        @DisplayName("throws ApplicationException when requestedAmount is null")
+        void submit_nullRequestedAmount_throws() {
+            // Throws after scheme lookup, before eligibility check — only stub what is reached.
+            given(beneficiaryRepository.findById(BENEFICIARY_ID))
+                    .willReturn(Optional.of(beneficiary()));
+            given(schemeRepository.findById(SCHEME_ID))
+                    .willReturn(Optional.of(scheme()));
+
+            ApplicationRequest req = new ApplicationRequest();
+            req.setBeneficiaryId(BENEFICIARY_ID);
+            req.setSchemeId(SCHEME_ID);
+            // requestedAmount intentionally left null
+
+            assertThatThrownBy(() -> applicationService.submitApplication(req))
+                    .isInstanceOf(ApplicationException.class)
+                    .hasMessageContaining("required");
+
+            then(applicationRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("throws ApplicationException when requestedAmount exceeds scheme grant ceiling")
+        void submit_requestedAmountExceedsGrantAmount_throws() {
+            // Throws after scheme lookup, before eligibility check — only stub what is reached.
+            given(beneficiaryRepository.findById(BENEFICIARY_ID))
+                    .willReturn(Optional.of(beneficiary()));
+            given(schemeRepository.findById(SCHEME_ID))
+                    .willReturn(Optional.of(scheme()));
+
+            // Scheme grant = 6000.00; request 7000.00 — must be rejected.
+            ApplicationRequest req = new ApplicationRequest();
+            req.setBeneficiaryId(BENEFICIARY_ID);
+            req.setSchemeId(SCHEME_ID);
+            req.setRequestedAmount(new BigDecimal("7000.00"));
+
+            assertThatThrownBy(() -> applicationService.submitApplication(req))
+                    .isInstanceOf(ApplicationException.class)
+                    .hasMessageContaining("cannot exceed")
+                    .hasMessageContaining("6000");
+
+            then(applicationRepository).should(never()).save(any());
+        }
+
+        @Test
+        @DisplayName("does NOT throw when requestedAmount equals the scheme grant ceiling exactly")
+        void submit_requestedAmountEqualsGrantAmount_succeeds() {
+            // At-ceiling request passes all rules — full stub set needed.
+            given(beneficiaryRepository.findById(BENEFICIARY_ID))
+                    .willReturn(Optional.of(beneficiary()));
+            given(schemeRepository.findById(SCHEME_ID))
+                    .willReturn(Optional.of(scheme()));
+            given(eligibilityResultRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.of(eligibleResult()));
+            given(applicationRepository.findByBeneficiaryIdAndSchemeId(BENEFICIARY_ID, SCHEME_ID))
+                    .willReturn(Optional.empty());
+            given(applicationRepository.save(any(SchemeApplication.class)))
+                    .willReturn(savedApplication());
+
+            // Exactly at the ceiling (6000.00) — must be allowed.
+            ApplicationRequest req = new ApplicationRequest();
+            req.setBeneficiaryId(BENEFICIARY_ID);
+            req.setSchemeId(SCHEME_ID);
+            req.setRequestedAmount(new BigDecimal("6000.00"));
+
+            assertThatCode(() -> applicationService.submitApplication(req))
+                    .doesNotThrowAnyException();
+        }
+    }
+
     // ── Cooling period ────────────────────────────────────────────────────────
+
 
     @Nested
     @DisplayName("submitApplication — rejection cooling period")
