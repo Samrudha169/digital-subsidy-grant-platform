@@ -579,6 +579,30 @@ function Eligibility() {
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleApplicationSubmit = async () => {
 
+        /* ── Client-side validation for requestedAmount ── */
+        const parsedAmount = Number(requestedAmount);
+
+        if (!requestedAmount || requestedAmount === '') {
+            setApplicationError('Requested amount is required.');
+            return;
+        }
+
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            setApplicationError('Requested amount must be greater than zero.');
+            return;
+        }
+
+        const maxGrant = schemeDetails?.grantAmount != null
+            ? Number(schemeDetails.grantAmount)
+            : null;
+
+        if (maxGrant !== null && parsedAmount > maxGrant) {
+            setApplicationError(
+                `Requested amount cannot exceed the scheme\u2019s maximum grant of \u20b9${maxGrant.toLocaleString('en-IN')}.`
+            );
+            return;
+        }
+
         setApplicationLoading(true);
         setApplicationError('');
         setApplicationResult(null);
@@ -592,8 +616,7 @@ function Eligibility() {
                 schemeId:
                     parseInt(liveForm.schemeId, 10),
 
-                requestedAmount:
-                    Number(requestedAmount),
+                requestedAmount: parsedAmount,
             };
 
             const res = await fetch(

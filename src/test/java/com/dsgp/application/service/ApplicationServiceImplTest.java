@@ -415,6 +415,34 @@ class ApplicationServiceImplTest {
             assertThatCode(() -> applicationService.submitApplication(req))
                     .doesNotThrowAnyException();
         }
+        @Test
+        @DisplayName("throws ApplicationException (not NPE) when scheme has no grant amount configured")
+        void submit_schemeGrantAmountNull_throwsApplicationException() {
+            // Scheme with null grantAmount — must produce a controlled error, never an NPE.
+            Scheme schemeWithNullGrant = new Scheme();
+            schemeWithNullGrant.setId(SCHEME_ID);
+            schemeWithNullGrant.setSchemeName("Unconfigured Scheme");
+            schemeWithNullGrant.setGrantAmount(null);
+            schemeWithNullGrant.setActive(true);
+
+            given(beneficiaryRepository.findById(BENEFICIARY_ID))
+                    .willReturn(Optional.of(beneficiary()));
+            given(schemeRepository.findById(SCHEME_ID))
+                    .willReturn(Optional.of(schemeWithNullGrant));
+
+            // Any positive requestedAmount — the null ceiling check fires first.
+            ApplicationRequest req = new ApplicationRequest();
+            req.setBeneficiaryId(BENEFICIARY_ID);
+            req.setSchemeId(SCHEME_ID);
+            req.setRequestedAmount(new BigDecimal("5000.00"));
+
+            assertThatThrownBy(() -> applicationService.submitApplication(req))
+                    .isInstanceOf(ApplicationException.class)
+                    .hasMessageContaining("does not have a maximum grant amount configured")
+                    .hasMessageContaining("Unconfigured Scheme");
+
+            then(applicationRepository).should(never()).save(any());
+        }
     }
 
     // ── Cooling period ────────────────────────────────────────────────────────

@@ -94,10 +94,17 @@ public class ApplicationServiceImpl implements ApplicationService {
             throw new ApplicationException("Requested amount must be greater than zero.");
         }
 
-        if (requestedAmount.compareTo(scheme.getGrantAmount()) > 0) {
+        BigDecimal maxGrant = scheme.getGrantAmount();
+        if (maxGrant == null) {
             throw new ApplicationException(
-                    "Requested amount cannot exceed the maximum grant amount of ₹"
-                            + scheme.getGrantAmount()
+                    "Scheme '" + scheme.getSchemeName()
+                    + "' does not have a maximum grant amount configured. "
+                    + "Please contact the administrator.");
+        }
+        if (requestedAmount.compareTo(maxGrant) > 0) {
+            throw new ApplicationException(
+                    "Requested amount cannot exceed the maximum grant amount of \u20b9"
+                            + maxGrant
                             + " for scheme '" + scheme.getSchemeName() + "'.");
         }
 
