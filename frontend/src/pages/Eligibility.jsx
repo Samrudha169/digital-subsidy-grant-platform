@@ -201,7 +201,7 @@ function Eligibility() {
     const [schemeDetails, setSchemeDetails] = useState(null);
 
     /*
-     * Document upload state â€” keyed by document type string.
+     * Document upload state — keyed by document type string.
      * Each entry: { file: File|null, status: 'idle'|'uploading'|'done'|'error', error: string }
      */
     const [docUploads, setDocUploads] = useState({});
@@ -319,7 +319,7 @@ function Eligibility() {
 
 
     /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       QUICK CHECK â€” static local filter
+       QUICK CHECK — static local filter
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleQuickChange = (e) =>
         setQuickForm({
@@ -353,7 +353,7 @@ function Eligibility() {
 
 
     /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       LIVE SCORING â€” validation
+       LIVE SCORING — validation
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const validateLiveForm = () => {
 
@@ -400,7 +400,7 @@ function Eligibility() {
 
 
     /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       LIVE SCORING â€” backend API call
+       LIVE SCORING — backend API call
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleLiveSubmit = async (e) => {
 
@@ -520,7 +520,7 @@ function Eligibility() {
     };
 
     /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       DOCUMENT UPLOAD â€” single file upload per document type
+       DOCUMENT UPLOAD — single file upload per document type
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleDocUpload = async (docType, file) => {
 
@@ -575,7 +575,7 @@ function Eligibility() {
     };
 
     /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-       APPLICATION SUBMISSION â€” backend API call
+       APPLICATION SUBMISSION — backend API call
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
     const handleApplicationSubmit = async () => {
 
@@ -771,7 +771,7 @@ function Eligibility() {
                     </h1>
 
                     <p>
-                        Discover government schemes you qualify for â€”
+                        Discover government schemes you qualify for —
                         instantly, using our weighted scoring engine.
                     </p>
 
@@ -829,7 +829,7 @@ function Eligibility() {
 
 
                 {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    TAB 1 â€” QUICK CHECK
+                    TAB 1 — QUICK CHECK
                 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
                 {activeTab === 'quick' && (
@@ -924,15 +924,15 @@ function Eligibility() {
                                         </option>
 
                                         <option value="18-25">
-                                            18 â€“ 25
+                                            18 – 25
                                         </option>
 
                                         <option value="26-40">
-                                            26 â€“ 40
+                                            26 – 40
                                         </option>
 
                                         <option value="41-60">
-                                            41 â€“ 60
+                                            41 – 60
                                         </option>
 
                                         <option value="above-60">
@@ -1053,15 +1053,15 @@ function Eligibility() {
                                         </option>
 
                                         <option value="1-3">
-                                            ₹1 â€“ ₹3 Lakhs
+                                            ₹1 – ₹3 Lakhs
                                         </option>
 
                                         <option value="3-5">
-                                            ₹3 â€“ ₹5 Lakhs
+                                            ₹3 – ₹5 Lakhs
                                         </option>
 
                                         <option value="5-10">
-                                            ₹5 â€“ ₹10 Lakhs
+                                            ₹5 – ₹10 Lakhs
                                         </option>
 
                                         <option value="above-10">
@@ -1169,7 +1169,7 @@ function Eligibility() {
 
 
                 {/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-                    TAB 2 â€” LIVE SCORING
+                    TAB 2 — LIVE SCORING
                 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
 
                 {activeTab === 'live' && (
@@ -1201,7 +1201,7 @@ function Eligibility() {
                                 <div className="live-info-box">
 
                                     <span className="live-info-icon">
-                                        âœ“
+                                        ✓
                                     </span>
 
                                     <span>
@@ -1345,7 +1345,7 @@ function Eligibility() {
                                                 key={s.backendId}
                                                 value={s.backendId}
                                             >
-                                                {s.name} â€” {s.category}
+                                                {s.name} — {s.category}
                                             </option>
 
                                         ))}
@@ -1386,7 +1386,7 @@ function Eligibility() {
                                                 aria-hidden="true"
                                             />
 
-                                            Evaluatingâ€¦
+                                            Evaluating…
 
                                         </span>
 
@@ -1454,7 +1454,7 @@ function Eligibility() {
                                         className="verdict-icon"
                                         aria-hidden="true"
                                     >
-                                        {liveResult.eligible ? 'âœ“' : 'âœ•'}
+                                        {liveResult.eligible ? '✓' : 'âœ•'}
                                     </div>
 
 
@@ -1692,7 +1692,7 @@ function Eligibility() {
                                                                     aria-hidden="true"
                                                                 >
                                                                     {crit.passed
-                                                                        ? 'âœ“'
+                                                                        ? '✓'
                                                                         : 'âœ•'}
                                                                 </span>
 
@@ -1773,14 +1773,14 @@ function Eligibility() {
                                 </div>
 
 
-                                {/* Next steps â€” eligible */}
+                                {/* Next steps — eligible */}
 
                                 {liveResult.eligible && (
 
                                     <div className="next-steps-card">
 
                                         <h3>
-                                            ðŸŽ‰ Next Steps
+                                            🎉 Next Steps
                                         </h3>
 
                                         <p>
@@ -1811,7 +1811,7 @@ function Eligibility() {
                                                 <div className="doc-upload-section">
 
                                                     <h4 className="doc-upload-title">
-                                                        ðŸ“Ž Required Documents
+                                                        📎 Required Documents
                                                     </h4>
 
                                                     <p className="doc-upload-subtitle">
@@ -1842,12 +1842,12 @@ function Eligibility() {
                                                                         {status === 'uploading' && (
                                                                             <span className="spinner" aria-hidden="true" />
                                                                         )}
-                                                                        {status === 'done'    ? 'âœ“ Uploaded'     : null}
+                                                                        {status === 'done'    ? '✓ Uploaded'     : null}
                                                                         {status === 'error'   ? 'â†º Retry'        : null}
                                                                         {(status === 'idle' || status === 'uploading') && status !== 'uploading'
                                                                             ? 'Choose File'
                                                                             : null}
-                                                                        {status === 'uploading' ? ' Uploadingâ€¦' : null}
+                                                                        {status === 'uploading' ? ' Uploading…' : null}
 
                                                                         <input
                                                                             id={`doc-input-${type}`}
@@ -1888,7 +1888,7 @@ function Eligibility() {
 
                                                     {allDone && (
                                                         <p className="doc-upload-note doc-upload-note--done" role="status">
-                                                            âœ“ All required documents uploaded. You may now submit your application.
+                                                            ✓ All required documents uploaded. You may now submit your application.
                                                         </p>
                                                     )}
 
@@ -1947,7 +1947,7 @@ function Eligibility() {
                                             </Link>
 
 
-                                            {/* Submit Application â€” gated on all docs uploaded */}
+                                            {/* Submit Application — gated on all docs uploaded */}
                                             {!applicationSubmitted && (() => {
                                                 const schemeKey = resolveSchemeKey(liveResult.schemeName);
                                                 const requiredDocs = getRequiredDocs(schemeKey)
@@ -1966,9 +1966,9 @@ function Eligibility() {
                                                         title={!allDone ? 'Upload all required documents first' : undefined}
                                                     >
                                                         {applicationLoading
-                                                            ? 'Submittingâ€¦'
+                                                            ? 'Submitting…'
                                                             : applicationResult
-                                                                ? 'Application Submitted âœ“'
+                                                                ? 'Application Submitted ✓'
                                                                 : 'Submit Application'
                                                         }
                                                     </button>
@@ -2031,7 +2031,7 @@ function Eligibility() {
                                             >
 
                                                 <span className="live-info-icon">
-                                                    âœ“
+                                                    ✓
                                                 </span>
 
                                                 <span>
@@ -2047,7 +2047,7 @@ function Eligibility() {
                                                         }
                                                     </strong>
 
-                                                    {' '}â€” Status:{' '}
+                                                    {' '}— Status:{' '}
 
                                                     <strong>
                                                         {
@@ -2066,7 +2066,7 @@ function Eligibility() {
                                 )}
 
 
-                                {/* Next steps â€” ineligible */}
+                                {/* Next steps — ineligible */}
 
                                 {!liveResult.eligible && (
 
