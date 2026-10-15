@@ -229,4 +229,39 @@ public class DisbursementController {
 
         return ResponseEntity.ok(stage);
     }
+
+
+    /*
+     * Review utilization compliance after a stage has been released.
+     */
+    @PutMapping("/stages/{stageId}/utilization-review")
+    public ResponseEntity<DisbursementStage> reviewUtilizationCompliance(
+            @PathVariable Long stageId,
+            @RequestParam ComplianceStatus status,
+            @RequestParam String remarks,
+            @RequestParam String verifiedBy,
+            @RequestParam(required = false) Long officerId) {
+
+        DisbursementStage stage =
+                disbursementStageService.reviewUtilizationCompliance(
+                        stageId,
+                        status,
+                        remarks,
+                        verifiedBy
+                );
+
+        if (officerId != null && auditLogService != null) {
+            auditLogService.createAuditLog(
+                    officerId,
+                    "UTILIZATION_COMPLIANCE_REVIEWED",
+                    "DISBURSEMENT_STAGE",
+                    stage.getId(),
+                    "Utilization compliance updated to " + status
+            );
+        }
+
+        return ResponseEntity.ok(stage);
+    }
+
+
 }

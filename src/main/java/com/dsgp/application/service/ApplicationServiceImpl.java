@@ -230,20 +230,41 @@ public class ApplicationServiceImpl implements ApplicationService {
                 .toList();
     }
 
+
+
     @Override
     @Transactional(readOnly = true)
     public List<ApplicationResponse> getApplicationsByStatus(String status) {
-        return applicationRepository.findByApplicationStatus(status)
-                .stream()
+
+        List<String> statuses;
+
+        if ("FINANCE_PENDING".equalsIgnoreCase(status)) {
+            statuses = List.of("FIELD_APPROVED", "DISTRICT_APPROVED");
+        } else {
+            statuses = List.of(status.toUpperCase());
+        }
+
+        return statuses.stream()
+                .flatMap(applicationStatus ->
+                        applicationRepository
+                                .findByApplicationStatus(applicationStatus)
+                                .stream()
+                )
                 .map(app -> {
                     int score = eligibilityResultRepository
-                            .findByBeneficiaryIdAndSchemeId(app.getBeneficiary().getId(), app.getScheme().getId())
+                            .findByBeneficiaryIdAndSchemeId(
+                                    app.getBeneficiary().getId(),
+                                    app.getScheme().getId()
+                            )
                             .map(EligibilityResult::getTotalScore)
                             .orElse(0);
+
                     return mapToResponse(app, score);
                 })
                 .toList();
     }
+
+
 
     @Override
     @Transactional(readOnly = true)

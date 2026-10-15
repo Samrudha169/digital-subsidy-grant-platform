@@ -38,6 +38,8 @@ import com.dsgp.beneficiary.repository.BeneficiaryDocumentRepository;
 import com.dsgp.beneficiary.entity.DocumentType;
 import com.dsgp.disbursement.entity.DisbursementType;
 import com.dsgp.disbursement.service.DisbursementPlanService;
+import com.dsgp.notification.service.NotificationService;
+import com.dsgp.notification.entity.NotificationType;
 
 @Service
 @RequiredArgsConstructor
@@ -72,6 +74,7 @@ public class VerificationServiceImpl implements VerificationService {
     private final VerificationCriterionRepository verificationCriterionRepository;
     private final BeneficiaryDocumentRepository documentRepository;
     private final DisbursementPlanService disbursementPlanService;
+    private final NotificationService notificationService;
     // ========================================================================
     // APPLICATION ROUTING
     // ========================================================================
@@ -709,6 +712,7 @@ public class VerificationServiceImpl implements VerificationService {
     // UPDATE CRITERION
     // ========================================================================
 
+
     @Override
     public VerificationCriterionResponse updateCriterion(
             Long applicationId,
@@ -716,7 +720,6 @@ public class VerificationServiceImpl implements VerificationService {
             VerificationCriterionUpdateRequest request) {
 
         if (request == null) {
-
             throw new InvalidVerificationTransitionException(
                     "Verification criterion update request is required."
             );
@@ -724,58 +727,42 @@ public class VerificationServiceImpl implements VerificationService {
 
         if (request.getPerformedBy() == null
                 || request.getPerformedBy().isBlank()) {
-
             throw new InvalidVerificationTransitionException(
                     "performedBy is required."
             );
         }
 
         if (request.getStatus() == null) {
-
             throw new InvalidVerificationTransitionException(
                     "Criterion status is required."
             );
         }
 
-        SchemeApplication application =
-                requireApplication(applicationId);
+        SchemeApplication application = requireApplication(applicationId);
 
         VerificationCriterion criterion =
-                verificationCriterionRepository
-                        .findById(criterionId)
+                verificationCriterionRepository.findById(criterionId)
                         .orElseThrow(() ->
                                 new InvalidVerificationTransitionException(
-                                        "Verification criterion not found: " +
-                                                criterionId
+                                        "Verification criterion not found: "
+                                                + criterionId
                                 )
                         );
 
-        // ------------------------------------------------------------
-        // Make sure criterion belongs to this application
-        // ------------------------------------------------------------
-
+        // Make sure the criterion belongs to this application.
         if (criterion.getSchemeApplication() == null
                 || criterion.getSchemeApplication().getId() == null
-                || !criterion.getSchemeApplication()
-                .getId()
+                || !criterion.getSchemeApplication().getId()
                 .equals(applicationId)) {
-
             throw new InvalidVerificationTransitionException(
                     "Verification criterion does not belong to this application."
             );
         }
 
-        Officer officer =
-                requireOfficer(
-                        request.getPerformedBy()
-                );
+        Officer officer = requireOfficer(request.getPerformedBy());
 
-        // ------------------------------------------------------------
-        // FIELD criteria → only Field Officer
-        // ------------------------------------------------------------
-
+        // FIELD criteria: only Field Officer.
         if (criterion.getStage() == VerificationStage.FIELD) {
-
             requireRole(
                     officer,
                     OfficerRole.FIELD_OFFICER,
@@ -783,12 +770,8 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
 
-        // ------------------------------------------------------------
-        // DISTRICT criteria → only District Officer
-        // ------------------------------------------------------------
-
+        // DISTRICT criteria: only District Officer.
         if (criterion.getStage() == VerificationStage.DISTRICT) {
-
             requireRole(
                     officer,
                     OfficerRole.DISTRICT_OFFICER,
@@ -796,12 +779,8 @@ public class VerificationServiceImpl implements VerificationService {
             );
         }
 
-        // ------------------------------------------------------------
-        // FINANCE criteria → only Finance Approver
-        // ------------------------------------------------------------
-
+        // FINANCE criteria: only Finance Approver.
         if (criterion.getStage() == VerificationStage.FINANCE) {
-
             requireRole(
                     officer,
                     OfficerRole.FINANCE_APPROVER,
@@ -812,7 +791,6 @@ public class VerificationServiceImpl implements VerificationService {
         if (request.getStatus() == VerificationCriterionStatus.FAILED
                 && (request.getRemarks() == null
                 || request.getRemarks().isBlank())) {
-
             throw new InvalidVerificationTransitionException(
                     "Remarks are required when rejecting a criterion."
             );
@@ -822,40 +800,62 @@ public class VerificationServiceImpl implements VerificationService {
             validateRequiredProof(application, criterion);
         }
 
-        criterion.setStatus(
-                request.getStatus()
-        );
+        /*
+         * Special handling for grant-utilization reviews:
+         * a failed utilization review requests corrective evidence instead
+         * of automatically rejecting the whole application.
+         */
+        boolean utilizationReview = isUtilizationCriterion(criterion);
 
-        criterion.setVerifiedBy(
-                request.getPerformedBy()
-        );
+        criterion.setStatus(request.getStatus());
+        criterion.setVerifiedBy(request.getPerformedBy());
+        criterion.setRemarks(request.getRemarks());
 
-        criterion.setRemarks(
-                request.getRemarks()
-        );
-
-        if (request.getStatus()
-                == VerificationCriterionStatus.VERIFIED) {
-
-            criterion.setVerifiedAt(
-                    LocalDateTime.now()
-            );
-
+        if (request.getStatus() == VerificationCriterionStatus.VERIFIED) {
+            criterion.setVerifiedAt(LocalDateTime.now());
         } else {
-
             criterion.setVerifiedAt(null);
         }
 
         VerificationCriterion saved =
-                verificationCriterionRepository.save(
-                        criterion
-                );
+                verificationCriterionRepository.save(criterion);
+
         if (request.getStatus() == VerificationCriterionStatus.FAILED) {
-            application.setApplicationStatus(STATUS_REJECTED);
-            application.setRejectedAt(LocalDateTime.now());
-            applicationRepository.save(application);
+
+            if (utilizationReview) {
+                Integer beneficiaryId = application.getBeneficiary().getId();
+
+                notificationService.createNotification(
+                        beneficiaryId,
+                        application.getId(),
+                        null,
+                        NotificationType.DOCUMENT_REQUEST,
+                        "Additional Grant Utilization Documents Required",
+                        "Your grant utilization documents require further review. "
+                                + "Officer remarks: " + request.getRemarks()
+                                + ". Please upload the missing or corrected "
+                                + "supporting documents. If repayment is required, "
+                                + "follow the official instructions issued by "
+                                + "the responsible authority."
+                );
+
+                log.info(
+                        "Utilization review failed; beneficiary notified. "
+                                + "applicationId={}, criterionId={}, by={}",
+                        applicationId,
+                        criterionId,
+                        request.getPerformedBy()
+                );
+
+            } else {
+                // Preserve existing rejection behavior for ordinary criteria.
+                application.setApplicationStatus(STATUS_REJECTED);
+                application.setRejectedAt(LocalDateTime.now());
+                applicationRepository.save(application);
+            }
         }
 
+        // Preserve the existing audit history.
         recordAction(
                 application,
                 criterion.getStage(),
@@ -863,15 +863,16 @@ public class VerificationServiceImpl implements VerificationService {
                 request.getPerformedBy(),
                 coalesce(
                         request.getRemarks(),
-                        "Criterion updated: " +
-                                criterion.getCriterionName() +
-                                " → " +
-                                request.getStatus().name()
+                        "Criterion updated: "
+                                + criterion.getCriterionName()
+                                + " → "
+                                + request.getStatus().name()
                 )
         );
 
         return toCriterionResponse(saved);
     }
+
 
     // ========================================================================
     // DISTRICT OFFICER - APPROVE
@@ -1585,6 +1586,35 @@ public class VerificationServiceImpl implements VerificationService {
     }
 
     // ========================================================================
+    // GRANT UTILIZATION REVIEW
+    // ========================================================================
+
+    /**
+     * Identifies criteria specifically about the use of an already-disbursed
+     * grant. Ordinary application eligibility/document verification failures
+     * must continue to follow the existing rejection behavior.
+     */
+    private boolean isUtilizationCriterion(VerificationCriterion criterion) {
+        String code = criterion.getCriterionCode() == null
+                ? ""
+                : criterion.getCriterionCode().toUpperCase();
+
+        String name = criterion.getCriterionName() == null
+                ? ""
+                : criterion.getCriterionName().toUpperCase();
+
+        String text = code + " " + name;
+
+        return text.contains("UTILIZATION")
+                || text.contains("UTILISATION")
+                || text.contains("GRANT_USAGE")
+                || text.contains("FUND_USAGE")
+                || text.contains("EXPENDITURE_PROOF")
+                || text.contains("UTILIZATION_PROOF")
+                || text.contains("UTILISATION_PROOF");
+    }
+
+    // ========================================================================
     // CRITERION RESPONSE
     // ========================================================================
 
@@ -1870,4 +1900,3 @@ public class VerificationServiceImpl implements VerificationService {
                 : fallback;
     }
 }
-

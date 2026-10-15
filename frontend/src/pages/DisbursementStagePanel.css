@@ -895,3 +895,73 @@
     }
 
 }
+
+/* Post-disbursement utilization review */
+.utilization-review-panel {
+    margin-top: 18px;
+    padding: 18px;
+    border: 1px solid #c7d2fe;
+    border-radius: 12px;
+    background: #f8faff;
+}
+.utilization-review-heading strong {
+    display: block;
+    color: #1e3a8a;
+    font-size: 1rem;
+}
+.utilization-review-heading p {
+    margin: 6px 0 16px;
+    color: #475569;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+.utilization-review-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+}
+.utilization-review-grid > div { min-width: 0; }
+.utilization-review-grid label {
+    display: block;
+    margin-bottom: 6px;
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+.utilization-review-grid select,
+.utilization-review-grid input,
+.utilization-review-grid textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 11px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: #fff;
+    color: #0f172a;
+    font: inherit;
+}
+.utilization-review-grid textarea { resize: vertical; }
+.utilization-review-grid select:focus,
+.utilization-review-grid input:focus,
+.utilization-review-grid textarea:focus {
+    outline: 2px solid #a5b4fc;
+    outline-offset: 1px;
+    border-color: #6366f1;
+}
+.utilization-review-remarks { grid-column: 1 / -1; }
+.utilization-review-note {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-left: 3px solid #d97706;
+    border-radius: 4px;
+    background: #fffbeb;
+    color: #92400e;
+    font-size: 0.86rem;
+    line-height: 1.5;
+}
+.utilization-review-save { margin-top: 14px; }
+@media (max-width: 640px) {
+    .utilization-review-grid { grid-template-columns: 1fr; }
+    .utilization-review-remarks { grid-column: auto; }
+    .utilization-review-panel { padding: 14px; }
+}

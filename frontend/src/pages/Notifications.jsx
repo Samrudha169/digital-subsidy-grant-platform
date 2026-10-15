@@ -11,7 +11,7 @@ function Notifications() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
 
-    const beneficiaryId = localStorage.getItem('beneficiaryId');
+    const beneficiaryId = sessionStorage.getItem('beneficiaryId');
 
     useEffect(() => {
         if (!beneficiaryId) {

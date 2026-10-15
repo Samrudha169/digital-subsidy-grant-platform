@@ -39,8 +39,8 @@ function MyApplications() {
 
     useEffect(() => {
 
-        const beneficiaryId = localStorage.getItem('beneficiaryId');
-        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const beneficiaryId = sessionStorage.getItem('beneficiaryId');
+        const isLoggedIn = sessionStorage.getItem('isLoggedIn');
 
         if (!beneficiaryId || isLoggedIn !== 'true') {
             navigate('/login');
@@ -93,7 +93,7 @@ function MyApplications() {
         const loadDisbursementStages = async () => {
 
             const beneficiaryId =
-                localStorage.getItem('beneficiaryId');
+                sessionStorage.getItem('beneficiaryId');
 
             if (!beneficiaryId) {
                 return;
@@ -424,7 +424,7 @@ function MyApplications() {
     ) => {
 
         const beneficiaryId =
-            localStorage.getItem('beneficiaryId');
+            sessionStorage.getItem('beneficiaryId');
 
         const key =
             `${applicationId}_${documentType}`;
@@ -627,7 +627,7 @@ function MyApplications() {
     ) => {
 
         const beneficiaryId =
-            localStorage.getItem('beneficiaryId');
+            sessionStorage.getItem('beneficiaryId');
 
         if (!beneficiaryId || !documentId) {
             return;

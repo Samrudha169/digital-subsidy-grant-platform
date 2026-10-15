@@ -7,6 +7,8 @@ import com.dsgp.disbursement.entity.DisbursementStageStatus;
 import com.dsgp.disbursement.entity.DisbursementStatus;
 import com.dsgp.disbursement.repository.DisbursementPlanRepository;
 import com.dsgp.disbursement.repository.DisbursementStageRepository;
+import com.dsgp.notification.entity.NotificationType;
+import com.dsgp.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,9 +21,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class DisbursementStageService {
-
     private final DisbursementPlanRepository disbursementPlanRepository;
     private final DisbursementStageRepository disbursementStageRepository;
+    private final NotificationService notificationService;
 
     @Transactional
     public DisbursementStage createStage(
@@ -158,6 +160,85 @@ public class DisbursementStageService {
 
         return disbursementStageRepository.save(stage);
     }
+
+
+
+    @Transactional
+    public DisbursementStage reviewUtilizationCompliance(
+            Long stageId,
+            ComplianceStatus complianceStatus,
+            String remarks,
+            String verifiedBy) {
+
+        DisbursementStage stage =
+                disbursementStageRepository.findById(stageId)
+                        .orElseThrow(() ->
+                                new IllegalArgumentException(
+                                        "Disbursement stage not found: " + stageId));
+
+        if (stage.getStatus() != DisbursementStageStatus.RELEASED) {
+            throw new IllegalStateException(
+                    "Utilization review is only allowed after disbursement.");
+        }
+
+        if (complianceStatus == null) {
+            throw new IllegalArgumentException(
+                    "Compliance status cannot be null.");
+        }
+
+        if (complianceStatus == ComplianceStatus.PENDING) {
+            throw new IllegalArgumentException(
+                    "Utilization review must be COMPLETED or NON_COMPLIANT.");
+        }
+
+        if (remarks == null || remarks.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Compliance remarks cannot be empty.");
+        }
+
+        if (verifiedBy == null || verifiedBy.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Verified by cannot be empty.");
+        }
+
+        stage.setComplianceStatus(complianceStatus);
+        stage.setComplianceRemarks(remarks.trim());
+        stage.setComplianceVerifiedBy(verifiedBy.trim());
+        stage.setComplianceVerifiedAt(LocalDateTime.now());
+
+        DisbursementStage savedStage =
+                disbursementStageRepository.save(stage);
+
+        if (complianceStatus == ComplianceStatus.NON_COMPLIANT) {
+            DisbursementPlan plan = stage.getDisbursementPlan();
+
+            Long applicationId = plan.getApplication().getId();
+            Integer beneficiaryId =
+                    plan.getApplication().getBeneficiary().getId();
+
+            String message =
+                    "Your grant utilization review requires further action. "
+                            + "Please review the officer's remarks and submit the "
+                            + "requested or corrected supporting documents. "
+                            + "Remarks: " + remarks.trim()
+                            + ". If repayment is officially required, follow the "
+                            + "instructions provided by the authorized officer.";
+
+            notificationService.createNotification(
+                    beneficiaryId,
+                    applicationId,
+                    stage.getStageNumber(),
+                    NotificationType.DOCUMENT_REQUEST,
+                    "Additional Grant Utilization Documents Required",
+                    message
+            );
+        }
+
+        return savedStage;
+    }
+
+
+
 
     @Transactional
     public DisbursementStage releaseStage(Long stageId) {

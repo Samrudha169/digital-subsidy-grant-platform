@@ -209,6 +209,9 @@ export default function DisbursementStagePanel({ application }) {
      */
     const [complianceDrafts, setComplianceDrafts] = useState({});
 
+    /* Separate form state for post-disbursement utilization reviews. */
+    const [utilizationDrafts, setUtilizationDrafts] = useState({});
+
 
     /*
      * ============================================================
@@ -820,6 +823,70 @@ export default function DisbursementStagePanel({ application }) {
 
         } finally {
 
+            setSaving(false);
+        }
+    };
+
+
+    /*
+     * ============================================================
+     * REVIEW POST-DISBURSEMENT UTILIZATION
+     * ============================================================
+     */
+    const handleUtilizationReview = async (stage) => {
+        const draft = utilizationDrafts[stage.id] || {};
+        const status = draft.status || "";
+        const remarks = draft.remarks || "";
+        const verifiedBy = draft.verifiedBy || "";
+
+        if (stage.status !== "RELEASED") {
+            setError("Utilization can only be reviewed after the stage is released.");
+            return;
+        }
+        if (!status) {
+            setError("Choose whether the utilization evidence is satisfactory or insufficient.");
+            return;
+        }
+        if (!remarks.trim() || !verifiedBy.trim()) {
+            setError("Enter the review remarks and officer name before saving.");
+            return;
+        }
+
+        setSaving(true);
+        setError("");
+        setSuccess("");
+
+        try {
+            const params = new URLSearchParams({
+                status,
+                remarks: remarks.trim(),
+                verifiedBy: verifiedBy.trim()
+            });
+            const officerId = getOfficerId();
+            if (officerId) params.set("officerId", officerId);
+
+            const response = await fetch(
+                `${API_BASE}/stages/${stage.id}/utilization-review?${params.toString()}`,
+                { method: "PUT" }
+            );
+            const data = await response.json().catch(() => null);
+
+            if (!response.ok) {
+                throw new Error(
+                    data?.message || data?.error || "Unable to save utilization review."
+                );
+            }
+
+            setSuccess(
+                status === "NON_COMPLIANT"
+                    ? "Utilization review saved. A document-request notification has been sent to the beneficiary."
+                    : "Utilization review marked as satisfactory."
+            );
+            await loadPlanAndStages();
+        } catch (err) {
+            console.error("Utilization review error:", err);
+            setError(err.message || "Unable to save utilization review.");
+        } finally {
             setSaving(false);
         }
     };
@@ -2349,11 +2416,74 @@ export default function DisbursementStagePanel({ application }) {
                                             ================================== */}
 
                                             {stage.status === "RELEASED" && (
+                                                <div className="utilization-review-panel">
+                                                    <div className="utilization-review-heading">
+                                                        <strong>✓ Payment Released — Utilization Review</strong>
+                                                        <p>Review the beneficiary's submitted bills, receipts, and utilization evidence before saving your decision.</p>
+                                                    </div>
 
-                                                <span className="stage-released-label">
-                                                    ✓ Payment Released
-                                                </span>
+                                                    <div className="utilization-review-grid">
+                                                        <div>
+                                                            <label htmlFor={`utilization-status-${stage.id}`}>Review decision</label>
+                                                            <select
+                                                                id={`utilization-status-${stage.id}`}
+                                                                value={utilizationDrafts[stage.id]?.status || ""}
+                                                                onChange={(e) => setUtilizationDrafts((previous) => ({
+                                                                    ...previous,
+                                                                    [stage.id]: { ...(previous[stage.id] || {}), status: e.target.value }
+                                                                }))}
+                                                                disabled={saving}
+                                                            >
+                                                                <option value="" disabled>Select a review decision</option>
+                                                                <option value="COMPLETED">Satisfactory — utilization evidence accepted</option>
+                                                                <option value="NON_COMPLIANT">Insufficient — action required</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label htmlFor={`utilization-officer-${stage.id}`}>Reviewed by</label>
+                                                            <input
+                                                                id={`utilization-officer-${stage.id}`}
+                                                                type="text"
+                                                                value={utilizationDrafts[stage.id]?.verifiedBy || stage.complianceVerifiedBy || ""}
+                                                                onChange={(e) => setUtilizationDrafts((previous) => ({
+                                                                    ...previous,
+                                                                    [stage.id]: { ...(previous[stage.id] || {}), verifiedBy: e.target.value }
+                                                                }))}
+                                                                placeholder="Officer name"
+                                                                disabled={saving}
+                                                            />
+                                                        </div>
+                                                        <div className="utilization-review-remarks">
+                                                            <label htmlFor={`utilization-remarks-${stage.id}`}>Review remarks / required action</label>
+                                                            <textarea
+                                                                id={`utilization-remarks-${stage.id}`}
+                                                                value={utilizationDrafts[stage.id]?.remarks ?? stage.complianceRemarks ?? ""}
+                                                                onChange={(e) => setUtilizationDrafts((previous) => ({
+                                                                    ...previous,
+                                                                    [stage.id]: { ...(previous[stage.id] || {}), remarks: e.target.value }
+                                                                }))}
+                                                                placeholder="For example: Upload the missing invoice and proof of payment for the equipment purchased."
+                                                                rows={3}
+                                                                disabled={saving}
+                                                            />
+                                                        </div>
+                                                    </div>
 
+                                                    {utilizationDrafts[stage.id]?.status === "NON_COMPLIANT" && (
+                                                        <p className="utilization-review-note">
+                                                            Saving an insufficient review sends the beneficiary a notification requesting missing or corrected documents. Repayment or legal action must follow the authorized process.
+                                                        </p>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        className="stage-verify-button utilization-review-save"
+                                                        onClick={() => handleUtilizationReview(stage)}
+                                                        disabled={saving}
+                                                    >
+                                                        {saving ? "Saving review..." : "Save Utilization Review"}
+                                                    </button>
+                                                </div>
                                             )}
 
                                         </div>

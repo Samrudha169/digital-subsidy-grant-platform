@@ -17,7 +17,10 @@ const ROLES = {
 const ROLE_STATUSES = {
     [ROLES.FIELD_OFFICER]: ['PENDING', 'UNDER_REVIEW'],
     [ROLES.DISTRICT_OFFICER]: ['ESCALATED', 'DISTRICT_REVIEW'],
-    [ROLES.FINANCE_APPROVER]: ['FIELD_APPROVED', 'DISTRICT_APPROVED'],
+    [ROLES.FINANCE_APPROVER]: [
+        'FIELD_APPROVED',
+        'DISTRICT_APPROVED',
+    ],
 };
 
 const ROLE_LABELS = {
@@ -1610,9 +1613,14 @@ function ApplicationReview({
             isCriterionVisibleToRole(criterion, officerRole, app.schemeName)
         );
 
+
+    ;
+
     const verifiedCount =
         visibleCriteria.filter(
-            c => c.status === 'VERIFIED'
+            c =>
+                c.status === 'VERIFIED' ||
+                c.status === 'NOT_APPLICABLE'
         ).length;
 
     const failedCount =
@@ -1640,11 +1648,19 @@ function ApplicationReview({
         totalCriteria > 0 &&
         verifiedCount === totalCriteria;
 
+
+
     const canDistrictApprove =
         officerRole === ROLES.DISTRICT_OFFICER &&
-        app.applicationStatus === 'ESCALATED' &&
+        ['ESCALATED', 'DISTRICT_REVIEW'].includes(
+            app.applicationStatus
+        ) &&
+        !criteriaLoading &&
         totalCriteria > 0 &&
         verifiedCount === totalCriteria;
+
+
+
 
     const canFinanceApprove =
         officerRole === ROLES.FINANCE_APPROVER &&

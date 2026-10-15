@@ -18,7 +18,7 @@ function Profile() {
 
     useEffect(() => {
         const beneficiaryId = localStorage.getItem('beneficiaryId');
-        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const isLoggedIn = sessionStorage.getItem('isLoggedIn');
 
         if (!beneficiaryId || isLoggedIn !== 'true') {
             navigate('/login');
